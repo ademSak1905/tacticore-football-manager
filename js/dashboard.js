@@ -108,7 +108,7 @@ function renderGeneralDashboard() {
   `;
   updateGameState(state, nextOpponent);
   renderEuropeWeek(state, europe);
-  byId('currencySelect').value = data.club.currency || localStorage.getItem('tacticoreCurrency') || 'TRY';
+  byId('currencySelect').value = data.club.currency || localStorage.getItem('tacticoreCurrency') || 'EUR';
   renderDashboardPitch(lineupData.lineup);
 }
 

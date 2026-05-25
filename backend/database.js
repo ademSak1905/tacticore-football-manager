@@ -229,7 +229,7 @@ async function createSchema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER UNIQUE,
       team_id INTEGER,
-      currency TEXT NOT NULL DEFAULT 'TRY',
+      currency TEXT NOT NULL DEFAULT 'EUR',
       name TEXT NOT NULL UNIQUE,
       budget INTEGER NOT NULL DEFAULT 5000000,
       salary_budget INTEGER NOT NULL DEFAULT 0,
@@ -595,7 +595,7 @@ async function createSchema() {
   `);
 
   await ensureColumn('clubs', 'team_id', 'INTEGER');
-  await ensureColumn('clubs', 'currency', "TEXT NOT NULL DEFAULT 'TRY'");
+  await ensureColumn('clubs', 'currency', "TEXT NOT NULL DEFAULT 'EUR'");
   await ensureColumn('players', 'team_id', 'INTEGER');
   await ensureColumn('players', 'nationality', "TEXT NOT NULL DEFAULT 'Türkiye'");
   await ensureColumn('players', 'preferred_foot', "TEXT NOT NULL DEFAULT 'right'");
@@ -798,7 +798,7 @@ async function backfillSeasonPlans() {
     const salaryBudget = planWasOld ? plan.salaryBudget : (club.salary_budget || plan.salaryBudget);
     await run(`
       UPDATE clubs
-      SET budget = ?, salary_budget = ?, season_objectives_json = ?
+      SET currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?
       WHERE id = ?
     `, [budget, salaryBudget, JSON.stringify(plan), club.id]);
   }
@@ -996,7 +996,7 @@ async function restoreCareerSave(userId, saveId) {
   );
   const plan = parseSeasonPlan(career.season_json, team || {});
   await run(`UPDATE clubs
-    SET team_id = ?, name = ?, budget = ?, salary_budget = ?, season_objectives_json = ?,
+    SET team_id = ?, name = ?, currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?,
       season_intro_seen = ?, season_summary_seen = ?, last_match = NULL
     WHERE user_id = ?`, [
     career.team_id,
@@ -1085,7 +1085,7 @@ async function createCareerSave(userId, teamId, name) {
 
   await run('UPDATE career_saves SET is_active = 0 WHERE user_id = ?', [userId]);
   await run(`UPDATE clubs
-    SET team_id = ?, name = ?, budget = ?, salary_budget = ?, season_objectives_json = ?,
+    SET team_id = ?, name = ?, currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?,
       season_intro_seen = 0, season_summary_seen = 0, stadium_capacity = ?, fans = ?, last_match = NULL
     WHERE user_id = ?`, [
     team.id,

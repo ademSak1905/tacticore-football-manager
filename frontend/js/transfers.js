@@ -7,6 +7,8 @@ let marketMeta = { window: { isOpen: true, name: 'Transfer dönemi' }, categorie
 function transferCard(player) {
   const market = transferMode === 'market';
   const price = market ? Number(player.asking_price ?? player.market_value) : Math.round(player.market_value * 0.82);
+  const displayPrice = toCurrencyInput(price);
+  const displaySalary = toCurrencyInput(player.salary);
   const action = market ? 'buy' : 'sell';
   const label = market
     ? player.can_buy ? 'Teklif yap' : 'Söylenti çıkar'
@@ -29,9 +31,9 @@ function transferCard(player) {
       ${market ? `<p class="muted">${player.reason}</p>` : ''}
       ${market ? `
         <div class="offer-box">
-          <label><span>Teklif</span><input type="number" data-offer="${player.id}" value="${price}"></label>
-          <label><span>Maaş</span><input type="number" data-wage="${player.id}" value="${player.salary}"></label>
-          <label><span>İmza</span><input type="number" data-bonus="${player.id}" value="0"></label>
+          <label><span>Teklif (EUR)</span><input type="number" data-offer="${player.id}" value="${displayPrice}"></label>
+          <label><span>Maaş (EUR)</span><input type="number" data-wage="${player.id}" value="${displaySalary}"></label>
+          <label><span>İmza (EUR)</span><input type="number" data-bonus="${player.id}" value="0"></label>
           <label class="checkbox-line"><input type="checkbox" data-role="${player.id}"><span>İlk 11 sözü</span></label>
         </div>
       ` : ''}
@@ -106,9 +108,9 @@ document.addEventListener('click', async (event) => {
       method: 'POST',
       body: JSON.stringify({
         playerId: id,
-        offerPrice: Number(document.querySelector(`[data-offer="${id}"]`)?.value || 0),
-        wageOffer: Number(document.querySelector(`[data-wage="${id}"]`)?.value || 0),
-        signingBonus: Number(document.querySelector(`[data-bonus="${id}"]`)?.value || 0),
+        offerPrice: fromCurrencyInput(document.querySelector(`[data-offer="${id}"]`)?.value || 0),
+        wageOffer: fromCurrencyInput(document.querySelector(`[data-wage="${id}"]`)?.value || 0),
+        signingBonus: fromCurrencyInput(document.querySelector(`[data-bonus="${id}"]`)?.value || 0),
         firstTeamPromise: Boolean(document.querySelector(`[data-role="${id}"]`)?.checked)
       })
     });

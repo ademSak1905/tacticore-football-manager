@@ -161,7 +161,7 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
     const plan = buildSeasonPlan(team || club);
     await run('DELETE FROM league_standings WHERE user_id = ?', [req.session.userId]);
     await run(`UPDATE clubs
-      SET budget = ?, salary_budget = ?, season_objectives_json = ?, season_intro_seen = 0,
+      SET currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?, season_intro_seen = 0,
         season_summary_seen = 0, points = 0, wins = 0, draws = 0, losses = 0,
         goals_for = 0, goals_against = 0, last_match = NULL
       WHERE user_id = ?`, [plan.transferBudget, plan.salaryBudget, JSON.stringify(plan), req.session.userId]);
@@ -188,7 +188,7 @@ router.get('/game/season-plan', requireAuth, async (req, res, next) => {
     const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
     const plan = parseSeasonPlan(club.season_objectives_json, team || club);
     if (!club.season_objectives_json || club.season_objectives_json === '{}') {
-      await run('UPDATE clubs SET season_objectives_json = ?, budget = ?, salary_budget = ? WHERE user_id = ?', [
+      await run("UPDATE clubs SET currency = 'EUR', season_objectives_json = ?, budget = ?, salary_budget = ? WHERE user_id = ?", [
         JSON.stringify(plan),
         plan.transferBudget,
         plan.salaryBudget,
@@ -310,7 +310,7 @@ router.post('/game/season-review/seen', requireAuth, async (req, res, next) => {
 
 router.post('/game/currency', requireAuth, async (req, res, next) => {
   try {
-    const currency = ['TRY', 'USD', 'EUR'].includes(req.body.currency) ? req.body.currency : 'TRY';
+    const currency = ['TRY', 'USD', 'EUR'].includes(req.body.currency) ? req.body.currency : 'EUR';
     await run('UPDATE clubs SET currency = ? WHERE user_id = ?', [currency, req.session.userId]);
     res.json({ currency });
   } catch (error) {

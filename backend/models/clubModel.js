@@ -10,8 +10,8 @@ async function createClub(userId, name, teamId = null) {
   const stadiumCapacity = team ? Math.max(12000, Math.round(team.fans / 1200)) : 18000;
   return run(
     `INSERT INTO clubs
-      (user_id, team_id, name, budget, salary_budget, season_objectives_json, season_intro_seen, season_summary_seen, stadium_capacity, fans)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+      (user_id, team_id, name, currency, budget, salary_budget, season_objectives_json, season_intro_seen, season_summary_seen, stadium_capacity, fans)
+     VALUES (?, ?, ?, 'EUR', ?, ?, ?, 0, 0, ?, ?)`,
     [userId, teamId, name, budget, salaryBudget, JSON.stringify(plan), stadiumCapacity, fans]
   );
 }

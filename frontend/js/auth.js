@@ -16,11 +16,24 @@ const API_BASE_URL = window.location.hostname.includes('netlify.app')
   : '';
 
 function money(value) {
-  const currency = localStorage.getItem('tacticoreCurrency') || 'TRY';
+  const currency = localStorage.getItem('tacticoreCurrency') || 'EUR';
   const rates = { TRY: 1, USD: 32, EUR: 35 };
   const symbols = { TRY: 'TL', USD: '$', EUR: 'EUR' };
   const converted = Number(value || 0) / rates[currency];
   return `${converted.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ${symbols[currency]}`;
+}
+
+function currencyRate() {
+  const currency = localStorage.getItem('tacticoreCurrency') || 'EUR';
+  return { TRY: 1, USD: 32, EUR: 35 }[currency] || 35;
+}
+
+function toCurrencyInput(value) {
+  return Math.round(Number(value || 0) / currencyRate());
+}
+
+function fromCurrencyInput(value) {
+  return Math.round(Number(value || 0) * currencyRate());
 }
 
 function byId(id) {
@@ -52,7 +65,7 @@ async function requireAuth() {
     const session = await api.request('/api/me');
     const badge = byId('userBadge');
     if (badge && session.club) badge.textContent = session.club.name;
-    if (session.club?.currency) localStorage.setItem('tacticoreCurrency', session.club.currency);
+    localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
     return session;
   } catch (error) {
     window.location.href = '/login.html';
