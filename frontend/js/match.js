@@ -6,6 +6,7 @@ let postMatchResult = null;
 let isPostMatchVisible = false;
 let currentMatch = null;
 let activeScreen = 'match';
+let isRunningMatch = false;
 const POST_MATCH_STEPS = ['score', 'stats', 'ratings', 'standings', 'scores', 'social'];
 
 function getPostMatchSteps(data = postMatchResult) {
@@ -485,7 +486,18 @@ byId('playMatch')?.addEventListener('pointerdown', () => window.stopTactiCoreMus
 byId('skipMatch')?.addEventListener('pointerdown', () => window.stopTactiCoreMusic?.());
 
 async function runMatchRound(skipLive = false) {
+  if (isRunningMatch) return;
+  isRunningMatch = true;
   setMatchButtons(true, skipLive ? 'skip' : 'play');
+  byId('matchClock').textContent = '--';
+  byId('scoreboard').classList.add('empty');
+  byId('scoreboard').innerHTML = skipLive ? 'Maç sonucu hazırlanıyor...' : 'Maç hazırlanıyor...';
+  byId('matchStats').innerHTML = '<div class="empty">Sunucu cevap verince maç başlayacak.</div>';
+  byId('events').innerHTML = '<div class="event">İstek gönderildi. Render ücretsiz sunucu uyanıyorsa ilk maç biraz geç başlayabilir.</div>';
+  const slowNotice = setTimeout(() => {
+    byId('events').innerHTML += '<div class="event">Hala bekliyoruz... Bu genelde sunucunun uyanmasından kaynaklanır, işlem gelince otomatik devam edecek.</div>';
+    byId('events').scrollTop = byId('events').scrollHeight;
+  }, 8000);
   try {
     window.stopTactiCoreMusic?.();
     resetPostMatchOverlay();
@@ -516,6 +528,8 @@ async function runMatchRound(skipLive = false) {
     byId('events').innerHTML = `<div class="event">${error.message}</div>`;
     document.body.classList.remove('match-focus');
   } finally {
+    clearTimeout(slowNotice);
+    isRunningMatch = false;
     setMatchButtons(false);
   }
 }

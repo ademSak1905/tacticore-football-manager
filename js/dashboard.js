@@ -1,5 +1,6 @@
 let activeDashboardTab = 'general';
 let dashboardCache = null;
+let isAdvancingWeek = false;
 
 function competitionLabel(type) {
   if (type === 'champions_league') return 'Şampiyonlar Ligi';
@@ -196,6 +197,18 @@ function updateGameState(state, nextOpponent) {
 }
 
 async function advance(days) {
+  if (isAdvancingWeek) return;
+  isAdvancingWeek = true;
+  const nextWeekButton = byId('nextWeek');
+  const originalText = nextWeekButton?.textContent || 'Haftayı İlerle';
+  if (nextWeekButton) {
+    nextWeekButton.disabled = true;
+    nextWeekButton.textContent = 'Hafta ilerletiliyor...';
+  }
+  byId('gameState').textContent = 'Takvim ilerletiliyor, sunucu uyanıyorsa biraz sürebilir...';
+  const slowNotice = setTimeout(() => {
+    byId('gameState').textContent = 'Hala işleniyor... Render ücretsiz sunucu uyanırken ilk işlem yavaş gelebilir.';
+  }, 8000);
   try {
     const state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
     dashboardCache.state = state;
@@ -204,6 +217,13 @@ async function advance(days) {
     byId('gameState').textContent = error.message;
     byId('goMatch').style.display = 'inline-flex';
     byId('nextWeek').disabled = true;
+  } finally {
+    clearTimeout(slowNotice);
+    isAdvancingWeek = false;
+    if (nextWeekButton && !dashboardCache?.state?.matchAvailable) {
+      nextWeekButton.disabled = false;
+      nextWeekButton.textContent = originalText;
+    }
   }
 }
 
