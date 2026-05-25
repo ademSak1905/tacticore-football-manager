@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Takim logosu placeholder">
+  <rect width="120" height="120" rx="18" fill="#0e2138"/>
+  <circle cx="60" cy="60" r="42" fill="#122f4f" stroke="#facc15" stroke-width="5"/>
+  <path d="M60 24 L92 42 V66 C92 84 78 99 60 104 C42 99 28 84 28 66 V42 Z" fill="#0f7a3b" stroke="#ffffff" stroke-opacity=".7" stroke-width="3"/>
+  <text x="60" y="68" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">SL</text>
+</svg>

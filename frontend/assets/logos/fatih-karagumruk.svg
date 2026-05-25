@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="FKG TactiCore logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b20d18"/>
+      <stop offset="1" stop-color="#111111"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <path filter="url(#shadow)" d="M60 6 103 24v35c0 26-17 45-43 55-26-10-43-29-43-55V24L60 6Z" fill="url(#bg)"/>
+  <path d="M60 13 96 28v31c0 21-13 37-36 47-23-10-36-26-36-47V28l36-15Z" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.9"/>
+  <path d="M24 64h72" stroke="#ffffff" stroke-width="4" opacity="0.22"/>
+  <circle cx="60" cy="60" r="24" fill="rgba(0,0,0,0.22)" stroke="#ffffff" stroke-width="3"/>
+  <text x="60" y="72" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="900" fill="#ffffff" letter-spacing="0">FKG</text>
+  <path d="M43 35h34M40 86h40" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
+</svg>

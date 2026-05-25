@@ -1,0 +1,5 @@
+backend/node_modules/
+backend/football_manager.sqlite
+backend/sessions.sqlite
+*.log
+.env
