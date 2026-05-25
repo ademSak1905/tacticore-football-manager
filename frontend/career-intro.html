@@ -32,6 +32,9 @@
           <strong>Yeni teknik direktor goreve basladi</strong>
           <span id="introNews">Taraftarlar ilk antrenmani bekliyor.</span>
         </article>
+        <div class="intro-actions">
+          <button id="continueIntro" class="btn green" type="button">Devam et</button>
+        </div>
       </section>
     </main>
     <script src="/js/auth.js?v=20260525-season-start"></script>
@@ -48,10 +51,11 @@
             : 'Yonetim yeni sezon planini hazirladi.';
           byId('signatureClub').textContent = club.name || 'TactiCore';
           byId('introNews').textContent = `${club.name || 'Kulup'} tesislerinde imza toreni tamamlandi.`;
-          setTimeout(() => {
+          byId('continueIntro').addEventListener('click', async () => {
+            await api.request('/api/game/season-plan/seen', { method: 'POST' }).catch(() => {});
             localStorage.removeItem('tacticorePendingIntro');
             window.location.href = '/dashboard.html';
-          }, 2800);
+          });
         } catch {
           window.location.href = '/login.html';
         }
