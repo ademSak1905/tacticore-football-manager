@@ -20,7 +20,9 @@ const { FORMATIONS } = require('./utils/tacticEngine');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
 
+app.set('trust proxy', 1);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,7 +34,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   })

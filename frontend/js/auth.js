@@ -1,6 +1,6 @@
 ﻿const api = {
   async request(path, options = {}) {
-    const response = await fetch(path, {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       ...options
@@ -10,6 +10,10 @@
     return data;
   }
 };
+
+const API_BASE_URL = window.location.hostname.includes('netlify.app')
+  ? 'https://tacticore-backend.onrender.com'
+  : '';
 
 function money(value) {
   const currency = localStorage.getItem('tacticoreCurrency') || 'TRY';
