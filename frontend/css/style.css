@@ -1808,6 +1808,317 @@ td {
   border: 1px solid rgba(111, 78, 31, 0.65);
 }
 
+.intro-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 18% 15%, rgba(63, 174, 43, 0.22), transparent 30%),
+    linear-gradient(135deg, #020711, #06162b 48%, #020711);
+}
+
+.signing-stage {
+  width: min(1080px, calc(100% - 32px));
+}
+
+.signing-card {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  padding: 34px;
+  border: 1px solid rgba(72, 143, 255, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(2, 12, 28, 0.98), rgba(4, 25, 56, 0.96)),
+    #06152c;
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48);
+}
+
+.signing-logo-wrap {
+  position: relative;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.signing-logo {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 28px rgba(102, 217, 40, 0.32));
+  animation: introPop .7s ease both;
+}
+
+.signing-logo-wrap .brand-mark {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+}
+
+.signing-copy h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(34px, 6vw, 68px);
+  line-height: 0.95;
+}
+
+.signature-scene {
+  grid-column: 1 / -1;
+  position: relative;
+  min-height: 190px;
+  display: grid;
+  align-items: center;
+}
+
+.paper {
+  width: min(720px, 100%);
+  min-height: 150px;
+  padding: 22px 28px;
+  color: #111827;
+  background: linear-gradient(180deg, #fffaf0, #eadfc7);
+  border-radius: 6px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.36);
+  transform: rotate(-1deg);
+}
+
+.paper span {
+  color: #5b4b2b;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.paper strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.paper svg {
+  width: 100%;
+  height: 82px;
+}
+
+.signature-line {
+  fill: none;
+  stroke: #0b2b66;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 700;
+  stroke-dashoffset: 700;
+  animation: signLine 1.8s .45s ease forwards;
+}
+
+.pen {
+  position: absolute;
+  left: 42%;
+  bottom: 52px;
+  width: 130px;
+  height: 13px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #111827 0 72%, #d6a641 72%);
+  transform: rotate(-18deg);
+  animation: penMove 1.8s .45s ease forwards;
+}
+
+.news-flash {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-left: 4px solid #ffca08;
+  background: rgba(5, 25, 58, 0.92);
+}
+
+.season-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 5, 14, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.season-modal-panel {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(73, 143, 255, 0.44);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 0 0, rgba(102, 217, 40, 0.14), transparent 34%),
+    linear-gradient(145deg, rgba(2, 13, 31, 0.98), rgba(4, 28, 63, 0.98));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.52);
+}
+
+.season-modal-panel h1 {
+  margin: 12px 0 20px;
+  font-size: 42px;
+}
+
+.season-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.season-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid rgba(73, 143, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(3, 19, 45, 0.74);
+}
+
+.season-row strong {
+  color: var(--yellow);
+  text-align: right;
+}
+
+.season-evaluations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.season-evaluations article,
+.verdict-card {
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(3, 19, 45, 0.74);
+  border: 1px solid rgba(73, 143, 255, 0.24);
+}
+
+.season-evaluations article.success {
+  border-left: 4px solid #66d928;
+}
+
+.season-evaluations article.fail {
+  border-left: 4px solid #ef4444;
+}
+
+.season-evaluations strong,
+.verdict-card strong {
+  display: block;
+  color: #fff;
+  font-size: 22px;
+}
+
+.season-evaluations em {
+  color: var(--yellow);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.verdict-card {
+  margin: 16px 0;
+}
+
+.lineup-tactic-layout {
+  grid-template-columns: minmax(640px, 1.22fr) minmax(360px, 420px);
+}
+
+.lineup-pitch {
+  min-height: 720px;
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(221, 255, 215, 0.45) 49.8%, rgba(221, 255, 215, 0.45) 50.2%, transparent 50.5%),
+    radial-gradient(circle at 50% 50%, transparent 0 72px, rgba(221, 255, 215, 0.36) 73px 75px, transparent 76px),
+    repeating-linear-gradient(90deg, #197a29 0 9.1%, #268e31 9.1% 18.2%);
+}
+
+.lineup-pitch::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 24px;
+  bottom: 24px;
+  border-top: 2px solid rgba(221, 255, 215, 0.45);
+  border-bottom: 2px solid rgba(221, 255, 215, 0.45);
+  pointer-events: none;
+}
+
+.lineup-player {
+  width: 132px;
+  min-height: 82px;
+  align-content: center;
+  border-color: rgba(88, 160, 255, 0.58);
+  background:
+    linear-gradient(180deg, rgba(7, 28, 68, 0.98), rgba(2, 11, 28, 0.98));
+}
+
+.lineup-player:hover,
+.bench-player:hover,
+.bench-player.selected {
+  border-color: rgba(255, 210, 26, 0.9);
+  box-shadow: 0 0 0 3px rgba(255, 210, 26, 0.12), 0 16px 28px rgba(0, 0, 0, 0.36);
+}
+
+.lineup-player strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineup-player small {
+  color: #9cc9ff;
+  font-weight: 800;
+}
+
+.bench-player {
+  align-items: center;
+  min-height: 50px;
+  border-color: rgba(73, 143, 255, 0.28);
+  background: linear-gradient(145deg, rgba(7, 34, 78, 0.88), rgba(2, 14, 35, 0.92));
+}
+
+.bench-player strong {
+  flex: 1;
+  text-align: left;
+}
+
+@keyframes signLine {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes penMove {
+  0% { transform: translate(-190px, -14px) rotate(-18deg); }
+  100% { transform: translate(230px, -42px) rotate(-18deg); opacity: 0; }
+}
+
+@keyframes introPop {
+  from { transform: scale(0.82); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .signing-card,
+  .lineup-tactic-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lineup-pitch {
+    min-height: 640px;
+  }
+
+  .lineup-player {
+    width: 104px;
+    min-height: 76px;
+    font-size: 12px;
+  }
+
+  .news-flash,
+  .season-row {
+    display: grid;
+  }
+}
+
 #logoutButton::before {
   content: "↪";
   margin-right: 8px;

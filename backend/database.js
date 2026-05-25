@@ -4,6 +4,7 @@ const { createPlayerBatch, createMarketPlayers } = require('./utils/generatePlay
 const { seedSuperLigData } = require('./seed/superligSeed');
 const { seedEuropeanData } = require('./seed/uefaSeed');
 const { seasonDate } = require('./utils/seasonCalendar');
+const { buildSeasonPlan, parseSeasonPlan } = require('./utils/seasonPlanning');
 
 const dbPath = path.join(__dirname, 'football_manager.sqlite');
 const db = new sqlite3.Database(dbPath);
@@ -67,6 +68,11 @@ async function createSchema() {
       standings_json TEXT NOT NULL DEFAULT '[]',
       matches_json TEXT NOT NULL DEFAULT '{"matches":[],"events":[],"ratings":[]}',
       europe_json TEXT NOT NULL DEFAULT '{"entries":[],"matches":[],"standings":[],"draws":[],"history":[],"awards":[],"snapshots":[]}',
+      club_budget INTEGER NOT NULL DEFAULT 0,
+      salary_budget INTEGER NOT NULL DEFAULT 0,
+      season_json TEXT NOT NULL DEFAULT '{}',
+      season_intro_seen INTEGER NOT NULL DEFAULT 0,
+      season_summary_seen INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -226,6 +232,10 @@ async function createSchema() {
       currency TEXT NOT NULL DEFAULT 'TRY',
       name TEXT NOT NULL UNIQUE,
       budget INTEGER NOT NULL DEFAULT 5000000,
+      salary_budget INTEGER NOT NULL DEFAULT 0,
+      season_objectives_json TEXT NOT NULL DEFAULT '{}',
+      season_intro_seen INTEGER NOT NULL DEFAULT 0,
+      season_summary_seen INTEGER NOT NULL DEFAULT 0,
       stadium_capacity INTEGER NOT NULL DEFAULT 18000,
       fans INTEGER NOT NULL DEFAULT 15000,
       points INTEGER NOT NULL DEFAULT 0,
@@ -639,6 +649,15 @@ async function createSchema() {
   await ensureColumn('matches', 'man_of_match', 'TEXT');
   await ensureColumn('teams', 'prestige', 'INTEGER NOT NULL DEFAULT 50');
   await ensureColumn('career_saves', 'europe_json', 'TEXT NOT NULL DEFAULT \'{"entries":[],"matches":[],"standings":[],"draws":[],"history":[],"awards":[],"snapshots":[]}\'');
+  await ensureColumn('career_saves', 'club_budget', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('career_saves', 'salary_budget', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('career_saves', 'season_json', "TEXT NOT NULL DEFAULT '{}'");
+  await ensureColumn('career_saves', 'season_intro_seen', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('career_saves', 'season_summary_seen', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('clubs', 'salary_budget', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('clubs', 'season_objectives_json', "TEXT NOT NULL DEFAULT '{}'");
+  await ensureColumn('clubs', 'season_intro_seen', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('clubs', 'season_summary_seen', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('european_entries', 'user_id', 'INTEGER');
   await ensureColumn('european_matches', 'user_id', 'INTEGER');
   await ensureColumn('european_standings', 'user_id', 'INTEGER');
@@ -765,6 +784,43 @@ async function backfillMatchDays() {
   }
 }
 
+async function backfillSeasonPlans() {
+  const clubs = await all(`
+    SELECT c.*, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
+    FROM clubs c
+    LEFT JOIN teams t ON t.id = c.team_id
+  `);
+  for (const club of clubs) {
+    const plan = parseSeasonPlan(club.season_objectives_json, club);
+    const budget = club.budget || plan.transferBudget;
+    const salaryBudget = club.salary_budget || plan.salaryBudget;
+    await run(`
+      UPDATE clubs
+      SET budget = ?, salary_budget = ?, season_objectives_json = ?
+      WHERE id = ?
+    `, [budget, salaryBudget, club.season_objectives_json && club.season_objectives_json !== '{}' ? club.season_objectives_json : JSON.stringify(plan), club.id]);
+  }
+
+  const saves = await all(`
+    SELECT cs.*, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
+    FROM career_saves cs
+    LEFT JOIN teams t ON t.id = cs.team_id
+  `);
+  for (const save of saves) {
+    const plan = parseSeasonPlan(save.season_json, save);
+    await run(`
+      UPDATE career_saves
+      SET club_budget = ?, salary_budget = ?, season_json = ?
+      WHERE id = ?
+    `, [
+      save.club_budget || plan.transferBudget,
+      save.salary_budget || plan.salaryBudget,
+      save.season_json && save.season_json !== '{}' ? save.season_json : JSON.stringify(plan),
+      save.id
+    ]);
+  }
+}
+
 async function ensureCareerForUser(userId) {
   await run('INSERT OR IGNORE INTO career_states (user_id, current_day, next_match_day, week) VALUES (?, 1, 7, 1)', [userId]);
   const teams = await all('SELECT id FROM teams ORDER BY id ASC');
@@ -841,7 +897,9 @@ async function saveCurrentCareer(userId) {
   await run(`
     UPDATE career_saves
     SET team_id = ?, name = ?, current_day = ?, next_match_day = ?, week = ?,
-      standings_json = ?, matches_json = ?, europe_json = ?, updated_at = CURRENT_TIMESTAMP
+      standings_json = ?, matches_json = ?, europe_json = ?, club_budget = ?,
+      salary_budget = ?, season_json = ?, season_intro_seen = ?, season_summary_seen = ?,
+      updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND user_id = ?
   `, [
     club?.team_id || active.team_id,
@@ -852,6 +910,11 @@ async function saveCurrentCareer(userId) {
     JSON.stringify(snapshot.standings),
     JSON.stringify(snapshot.matchData),
     JSON.stringify(snapshot.europeData),
+    club?.budget || active.club_budget || 0,
+    club?.salary_budget || active.salary_budget || 0,
+    club?.season_objectives_json || active.season_json || '{}',
+    club?.season_intro_seen ?? active.season_intro_seen ?? 0,
+    club?.season_summary_seen ?? active.season_summary_seen ?? 0,
     active.id,
     userId
   ]);
@@ -864,11 +927,15 @@ async function ensureInitialCareerSave(userId) {
   if (existing) return existing;
 
   const club = await get('SELECT c.*, t.name AS team_name FROM clubs c LEFT JOIN teams t ON t.id = c.team_id WHERE c.user_id = ?', [userId]);
+  const team = club?.team_id ? await get('SELECT * FROM teams WHERE id = ?', [club.team_id]) : null;
+  const plan = parseSeasonPlan(club?.season_objectives_json, team || club || {});
   const snapshot = await collectCareerSnapshot(userId);
   const result = await run(`
     INSERT INTO career_saves
-      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, europe_json, is_active)
-    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      (user_id, slot_number, team_id, name, current_day, next_match_day, week,
+       standings_json, matches_json, europe_json, club_budget, salary_budget, season_json,
+       season_intro_seen, season_summary_seen, is_active)
+    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `, [
     userId,
     club?.team_id || 1,
@@ -878,7 +945,12 @@ async function ensureInitialCareerSave(userId) {
     snapshot.state.week,
     JSON.stringify(snapshot.standings),
     JSON.stringify(snapshot.matchData),
-    JSON.stringify(snapshot.europeData)
+    JSON.stringify(snapshot.europeData),
+    club?.budget || plan.transferBudget,
+    club?.salary_budget || plan.salaryBudget,
+    club?.season_objectives_json || JSON.stringify(plan),
+    club?.season_intro_seen ?? 0,
+    club?.season_summary_seen ?? 0
   ]);
   return get('SELECT * FROM career_saves WHERE id = ?', [result.id]);
 }
@@ -888,7 +960,7 @@ async function listCareerSaves(userId) {
   await saveCurrentCareer(userId);
   return all(`
     SELECT cs.id, cs.slot_number, cs.team_id, cs.name, cs.current_day, cs.next_match_day, cs.week,
-      cs.is_active, cs.created_at, cs.updated_at, t.logo_url, t.city, t.stadium
+      cs.club_budget, cs.salary_budget, cs.is_active, cs.created_at, cs.updated_at, t.logo_url, t.city, t.stadium
     FROM career_saves cs
     LEFT JOIN teams t ON t.id = cs.team_id
     WHERE cs.user_id = ?
@@ -918,9 +990,18 @@ async function restoreCareerSave(userId, saveId) {
     'UPDATE career_states SET current_day = ?, next_match_day = ?, week = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
     [career.current_day, career.next_match_day, career.week, userId]
   );
-  await run('UPDATE clubs SET team_id = ?, name = ?, last_match = NULL WHERE user_id = ?', [
+  const plan = parseSeasonPlan(career.season_json, team || {});
+  await run(`UPDATE clubs
+    SET team_id = ?, name = ?, budget = ?, salary_budget = ?, season_objectives_json = ?,
+      season_intro_seen = ?, season_summary_seen = ?, last_match = NULL
+    WHERE user_id = ?`, [
     career.team_id,
     `${career.name} Kariyer ${userId}`,
+    career.club_budget || plan.transferBudget,
+    career.salary_budget || plan.salaryBudget,
+    career.season_json || JSON.stringify(plan),
+    career.season_intro_seen ?? 1,
+    career.season_summary_seen ?? 0,
     userId
   ]);
 
@@ -996,12 +1077,18 @@ async function createCareerSave(userId, teamId, name) {
   const maxSlot = await get('SELECT COALESCE(MAX(slot_number), 0) AS slot FROM career_saves WHERE user_id = ?', [userId]);
   const slotNumber = Number(maxSlot?.slot || 0) + 1;
   const careerName = String(name || team.name).trim() || team.name;
+  const plan = buildSeasonPlan(team);
 
   await run('UPDATE career_saves SET is_active = 0 WHERE user_id = ?', [userId]);
-  await run('UPDATE clubs SET team_id = ?, name = ?, budget = ?, stadium_capacity = ?, fans = ?, last_match = NULL WHERE user_id = ?', [
+  await run(`UPDATE clubs
+    SET team_id = ?, name = ?, budget = ?, salary_budget = ?, season_objectives_json = ?,
+      season_intro_seen = 0, season_summary_seen = 0, stadium_capacity = ?, fans = ?, last_match = NULL
+    WHERE user_id = ?`, [
     team.id,
     `${careerName} Kariyer ${userId}`,
-    team.budget || 5000000,
+    plan.transferBudget,
+    plan.salaryBudget,
+    JSON.stringify(plan),
     Math.max(12000, Math.round((team.fans || 16000) / 1200)),
     team.fans || 16000,
     userId
@@ -1010,8 +1097,10 @@ async function createCareerSave(userId, teamId, name) {
   const snapshot = await collectCareerSnapshot(userId);
   const result = await run(`
     INSERT INTO career_saves
-      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, europe_json, is_active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      (user_id, slot_number, team_id, name, current_day, next_match_day, week,
+       standings_json, matches_json, europe_json, club_budget, salary_budget, season_json,
+       season_intro_seen, season_summary_seen, is_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1)
   `, [
     userId,
     slotNumber,
@@ -1022,7 +1111,10 @@ async function createCareerSave(userId, teamId, name) {
     snapshot.state.week,
     JSON.stringify(snapshot.standings),
     JSON.stringify(snapshot.matchData),
-    JSON.stringify(snapshot.europeData)
+    JSON.stringify(snapshot.europeData),
+    plan.transferBudget,
+    plan.salaryBudget,
+    JSON.stringify(plan)
   ]);
   return get('SELECT * FROM career_saves WHERE id = ?', [result.id]);
 }
@@ -1077,6 +1169,7 @@ async function initDatabase() {
   await seedEuropeanData({ run, get, all });
   await backfillPlayerTransferData();
   await backfillMatchDays();
+  await backfillSeasonPlans();
   await seedTransferMarket();
   const users = await all('SELECT id FROM users');
   for (const user of users) {

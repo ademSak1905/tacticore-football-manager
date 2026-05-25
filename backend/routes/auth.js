@@ -67,7 +67,7 @@ router.post('/register', async (req, res, next) => {
     await ensureInitialCareerSave(user.id);
 
     req.session.userId = user.id;
-    res.status(201).json({ id: user.id, username, email, clubName });
+    res.status(201).json({ id: user.id, username, email, clubName: selectedTeam.name, teamId: selectedTeam.id });
   } catch (error) {
     if (String(error.message).includes('UNIQUE')) return res.status(409).json({ message: 'Bu takım adı veya hesap bilgileri kullanılıyor.' });
     next(error);

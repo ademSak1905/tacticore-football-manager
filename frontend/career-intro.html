@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Imza Toreni | TactiCore</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260525-season-start">
+  </head>
+  <body class="intro-page">
+    <main class="signing-stage">
+      <section class="signing-card">
+        <div class="signing-logo-wrap">
+          <img id="introLogo" class="signing-logo" src="/assets/logos/placeholder.svg" alt="">
+          <span class="brand-mark">TC</span>
+        </div>
+        <div class="signing-copy">
+          <span class="badge">Resmi aciklama</span>
+          <h1 id="introTitle">Yeni teknik direktor goreve basladi</h1>
+          <p id="introText">Kulup yeni sezona taze bir planla giriyor.</p>
+        </div>
+        <div class="signature-scene">
+          <div class="paper">
+            <span>Sozlesme</span>
+            <strong id="signatureClub">TactiCore</strong>
+            <svg viewBox="0 0 420 90" aria-hidden="true">
+              <path class="signature-line" d="M20 62 C80 20, 105 88, 150 50 S220 18, 270 48 S330 78, 400 34" />
+            </svg>
+          </div>
+          <div class="pen"></div>
+        </div>
+        <article class="news-flash">
+          <strong>Yeni teknik direktor goreve basladi</strong>
+          <span id="introNews">Taraftarlar ilk antrenmani bekliyor.</span>
+        </article>
+      </section>
+    </main>
+    <script src="/js/auth.js?v=20260525-season-start"></script>
+    <script>
+      (async () => {
+        try {
+          const session = await requireAuth();
+          const plan = await api.request('/api/game/season-plan').catch(() => null);
+          const club = session.club || {};
+          byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
+          byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
+          byId('introText').textContent = plan
+            ? `Lig hedefi: ${plan.league?.label || 'Orta sira'} - Transfer butcesi: ${money(plan.transferBudget)}`
+            : 'Yonetim yeni sezon planini hazirladi.';
+          byId('signatureClub').textContent = club.name || 'TactiCore';
+          byId('introNews').textContent = `${club.name || 'Kulup'} tesislerinde imza toreni tamamlandi.`;
+          setTimeout(() => {
+            localStorage.removeItem('tacticorePendingIntro');
+            window.location.href = '/dashboard.html';
+          }, 2800);
+        } catch {
+          window.location.href = '/login.html';
+        }
+      })();
+    </script>
+  </body>
+</html>

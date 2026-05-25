@@ -2,6 +2,7 @@
 let allPlayers = [];
 let selectedIds = [];
 let formations = [];
+let selectedBenchId = null;
 
 function statAverage(players, field) {
   if (!players.length) return 0;
@@ -59,17 +60,29 @@ function renderLineup() {
       [selectedIds[from], selectedIds[to]] = [selectedIds[to], selectedIds[from]];
       renderLineup();
     });
+    card.addEventListener('click', () => {
+      if (!selectedBenchId) return;
+      selectedIds[index] = selectedBenchId;
+      selectedBenchId = null;
+      renderLineup();
+      setLineupMessage('Oyuncu pozisyona yerlestirildi. Kaydetmeyi unutma.');
+    });
     pitch.appendChild(card);
   });
 
   const benchPlayers = allPlayers.filter((player) => !selectedIds.map(Number).includes(player.id));
   byId('bench').innerHTML = benchPlayers.length ? benchPlayers.map((player) => `
-    <button class="bench-player" draggable="true" data-player="${player.id}">
+    <button class="bench-player ${selectedBenchId === player.id ? 'selected' : ''}" draggable="true" data-player="${player.id}" type="button">
       <span>${player.overall}</span><strong>${player.name}</strong><small>${player.position}</small>
     </button>
   `).join('') : '<div class="empty">Yedek kulübesinde oyuncu yok.</div>';
   document.querySelectorAll('.bench-player').forEach((button) => {
     button.addEventListener('dragstart', (event) => event.dataTransfer.setData('text/plain', `bench:${button.dataset.player}`));
+    button.addEventListener('click', () => {
+      selectedBenchId = Number(button.dataset.player);
+      renderLineup();
+      setLineupMessage('Simdi sahadaki bir pozisyona tikla.');
+    });
   });
   document.querySelectorAll('.lineup-player').forEach((slot) => {
     slot.addEventListener('drop', (event) => {

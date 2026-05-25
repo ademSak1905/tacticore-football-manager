@@ -183,11 +183,16 @@ function wireAuthForms() {
           body.email = byId('email').value;
           body.password = byId('password').value;
         }
-        await api.request(careerMode ? '/api/career/new' : '/api/register', {
+        const result = await api.request(careerMode ? '/api/career/new' : '/api/register', {
           method: 'POST',
           body: JSON.stringify(body)
         });
-        window.location.href = '/index.html';
+        localStorage.setItem('tacticorePendingIntro', JSON.stringify({
+          clubName: result.clubName || byId('clubName').value,
+          teamId: result.teamId || byId('teamId').value,
+          createdAt: Date.now()
+        }));
+        window.location.href = '/career-intro.html';
       } catch (error) {
         setMessage(error.message, 'error');
       }

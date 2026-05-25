@@ -7,6 +7,13 @@ const { ensureDailyFeed, combinedFeed } = require('../utils/feedEngine');
 const { simulateAiTransfers } = require('../utils/transferEngine');
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
 const { leagueWeeksForTeamCount } = require('../utils/matchEngine');
+const {
+  buildSeasonPlan,
+  parseSeasonPlan,
+  evaluateLeague,
+  evaluateChampionsLeague,
+  managementVerdict
+} = require('../utils/seasonPlanning');
 
 const router = express.Router();
 
@@ -150,8 +157,14 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
     const state = await getCareerState(req.session.userId);
     const currentDay = Number(state?.current_day || 1);
     const nextStartDay = Math.max(currentDay + 14, Number(state?.next_match_day || currentDay) + 14);
+    const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
+    const plan = buildSeasonPlan(team || club);
     await run('DELETE FROM league_standings WHERE user_id = ?', [req.session.userId]);
-    await run('UPDATE clubs SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0, last_match = NULL WHERE user_id = ?', [req.session.userId]);
+    await run(`UPDATE clubs
+      SET budget = ?, salary_budget = ?, season_objectives_json = ?, season_intro_seen = 0,
+        season_summary_seen = 0, points = 0, wins = 0, draws = 0, losses = 0,
+        goals_for = 0, goals_against = 0, last_match = NULL
+      WHERE user_id = ?`, [plan.transferBudget, plan.salaryBudget, JSON.stringify(plan), req.session.userId]);
     await run('UPDATE career_states SET current_day = ?, next_match_day = ?, week = 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [
       nextStartDay,
       nextStartDay + 7,
@@ -163,7 +176,133 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
       newCurrentDay: nextStartDay,
       newNextMatchDay: nextStartDay + 7
     });
-    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: nextStartDay + 7, week: 1 });
+    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: nextStartDay + 7, week: 1, seasonPlan: plan });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/game/season-plan', requireAuth, async (req, res, next) => {
+  try {
+    const club = await clubModel.getByUserId(req.session.userId);
+    const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
+    const plan = parseSeasonPlan(club.season_objectives_json, team || club);
+    if (!club.season_objectives_json || club.season_objectives_json === '{}') {
+      await run('UPDATE clubs SET season_objectives_json = ?, budget = ?, salary_budget = ? WHERE user_id = ?', [
+        JSON.stringify(plan),
+        plan.transferBudget,
+        plan.salaryBudget,
+        req.session.userId
+      ]);
+    }
+    res.json({
+      ...plan,
+      transferBudget: club.budget || plan.transferBudget,
+      salaryBudget: club.salary_budget || plan.salaryBudget,
+      seen: Boolean(club.season_intro_seen)
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/game/season-plan/seen', requireAuth, async (req, res, next) => {
+  try {
+    await run('UPDATE clubs SET season_intro_seen = 1 WHERE user_id = ?', [req.session.userId]);
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function uclStageLabel(phase, champion = false) {
+  if (champion) return { stage: 'champion', label: 'Şampiyonluk' };
+  const labels = {
+    league: 'Lig asamasi',
+    qualifying: 'Eleme',
+    round_of_16: 'Son 16',
+    quarter_final: 'Ceyrek final',
+    semi_final: 'Yari final',
+    final: 'Final'
+  };
+  return { stage: phase || 'none', label: labels[phase] || 'Katilmadi' };
+}
+
+async function championsLeagueResult(userId, teamId) {
+  const matches = await all(`
+    SELECT phase, round_name, home_team_id, away_team_id, home_score, away_score, played
+    FROM european_matches
+    WHERE user_id = ? AND competition_code = 'UCL' AND (home_team_id = ? OR away_team_id = ?)
+    ORDER BY match_day ASC, id ASC
+  `, [userId, teamId, teamId]);
+  if (!matches.length) return null;
+  const unfinished = matches.find((match) => !match.played);
+  if (unfinished) return { stage: unfinished.phase || 'league', label: `${unfinished.round_name || 'UCL'} devam ediyor` };
+  const final = matches.find((match) => match.phase === 'final');
+  if (final) {
+    const isHome = final.home_team_id === teamId;
+    const goalsFor = isHome ? final.home_score : final.away_score;
+    const goalsAgainst = isHome ? final.away_score : final.home_score;
+    return uclStageLabel('final', goalsFor > goalsAgainst);
+  }
+  const order = ['league', 'qualifying', 'round_of_16', 'quarter_final', 'semi_final'];
+  const reached = matches.reduce((best, match) => (
+    order.indexOf(match.phase) > order.indexOf(best) ? match.phase : best
+  ), 'league');
+  return uclStageLabel(reached);
+}
+
+router.get('/game/season-review', requireAuth, async (req, res, next) => {
+  try {
+    const club = await clubModel.getByUserId(req.session.userId);
+    const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
+    const plan = parseSeasonPlan(club.season_objectives_json, team || club);
+    const table = await clubModel.table(req.session.userId);
+    const rank = table.findIndex((item) => item.id === club.team_id) + 1;
+    const leagueRow = table.find((item) => item.id === club.team_id) || {};
+    const leaders = await all(`
+      SELECT p.name,
+        COALESCE(SUM(r.goals), 0) AS goals,
+        COALESCE(SUM(r.assists), 0) AS assists
+      FROM match_player_ratings r
+      JOIN players p ON p.id = r.player_id
+      JOIN matches m ON m.id = r.match_id
+      WHERE m.user_id = ? AND r.team_id = ?
+      GROUP BY p.id
+      ORDER BY goals DESC, assists DESC, p.overall DESC
+      LIMIT 12
+    `, [req.session.userId, club.team_id]);
+    const topScorer = leaders.find((item) => Number(item.goals) > 0) || leaders[0] || null;
+    const topAssist = [...leaders].sort((a, b) => Number(b.assists || 0) - Number(a.assists || 0))[0] || null;
+    const leagueEvaluation = evaluateLeague(plan, rank);
+    const uclEvaluation = evaluateChampionsLeague(plan, await championsLeagueResult(req.session.userId, club.team_id));
+    const evaluations = [leagueEvaluation, uclEvaluation].filter(Boolean);
+    const successCount = evaluations.filter((item) => item.success).length;
+    res.json({
+      seen: Boolean(club.season_summary_seen),
+      league: {
+        rank,
+        points: leagueRow.points || 0,
+        wins: leagueRow.wins || 0,
+        draws: leagueRow.draws || 0,
+        losses: leagueRow.losses || 0,
+        goals_for: leagueRow.goals_for || 0,
+        goals_against: leagueRow.goals_against || 0
+      },
+      topScorer: topScorer ? { name: topScorer.name, goals: topScorer.goals || 0 } : null,
+      topAssist: topAssist ? { name: topAssist.name, assists: topAssist.assists || 0 } : null,
+      evaluations,
+      verdict: managementVerdict(successCount, evaluations.length)
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/game/season-review/seen', requireAuth, async (req, res, next) => {
+  try {
+    await run('UPDATE clubs SET season_summary_seen = 1 WHERE user_id = ?', [req.session.userId]);
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

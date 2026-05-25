@@ -1,20 +1,26 @@
 const { get, run, all } = require('../database');
+const { buildSeasonPlan } = require('../utils/seasonPlanning');
 
 async function createClub(userId, name, teamId = null) {
   const team = teamId ? await get('SELECT * FROM teams WHERE id = ?', [teamId]) : null;
-  const budget = team?.budget || 5000000;
+  const plan = buildSeasonPlan(team || {});
+  const budget = plan.transferBudget || team?.budget || 5000000;
+  const salaryBudget = plan.salaryBudget || 0;
   const fans = team?.fans || 16000;
   const stadiumCapacity = team ? Math.max(12000, Math.round(team.fans / 1200)) : 18000;
   return run(
-    'INSERT INTO clubs (user_id, team_id, name, budget, stadium_capacity, fans) VALUES (?, ?, ?, ?, ?, ?)',
-    [userId, teamId, name, budget, stadiumCapacity, fans]
+    `INSERT INTO clubs
+      (user_id, team_id, name, budget, salary_budget, season_objectives_json, season_intro_seen, season_summary_seen, stadium_capacity, fans)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+    [userId, teamId, name, budget, salaryBudget, JSON.stringify(plan), stadiumCapacity, fans]
   );
 }
 
 async function getByUserId(userId) {
   return get(`
     SELECT c.id, c.user_id, c.team_id, c.currency, COALESCE(t.name, c.name) AS name,
-      c.budget, c.stadium_capacity, c.fans, c.points, c.wins, c.draws, c.losses,
+      c.budget, c.salary_budget, c.season_objectives_json, c.season_intro_seen, c.season_summary_seen,
+      c.stadium_capacity, c.fans, c.points, c.wins, c.draws, c.losses,
       c.goals_for, c.goals_against, c.last_match, t.name AS team_name,
       t.logo_url, t.city, t.stadium, t.overall AS team_overall,
       t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall,

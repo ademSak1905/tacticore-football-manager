@@ -77,7 +77,8 @@ function renderGeneralDashboard() {
     <div class="mini-stats" style="margin-top:16px">
       <span>Hücum ${data.club.attack_overall}</span><span>Orta saha ${data.club.midfield_overall}</span>
       <span>Savunma ${data.club.defense_overall}</span><span>Kaleci ${data.club.goalkeeper_overall}</span>
-      <span>Haftalık maaş ${money(data.weeklySalary)}</span><span>Sakat ${data.injuredPlayers.length}</span>
+      <span>Haftalık maaş ${money(data.weeklySalary)}</span><span>Maaş bütçesi ${money(data.club.salary_budget || 0)}</span>
+      <span>Sakat ${data.injuredPlayers.length}</span>
     </div>
   `;
   updateGameState(state, nextOpponent);
@@ -219,6 +220,7 @@ async function loadDashboard() {
   const lineupData = await api.request(`/api/teams/${data.club.team_id}/lineup`);
   dashboardCache = { data, state, europe, league, calendar, lineupData };
   renderDashboard();
+  showSeasonScreens();
 }
 
 document.addEventListener('click', (event) => {
@@ -233,5 +235,97 @@ byId('currencySelect')?.addEventListener('change', async () => {
   await api.request('/api/game/currency', { method: 'POST', body: JSON.stringify({ currency }) });
   loadDashboard();
 });
+
+function modalRows(rows) {
+  return rows.map(([label, value]) => `
+    <div class="season-row"><span>${label}</span><strong>${value || '-'}</strong></div>
+  `).join('');
+}
+
+function openSeasonModal(html, onClose) {
+  document.querySelector('.season-modal')?.remove();
+  const modal = document.createElement('section');
+  modal.className = 'season-modal';
+  modal.innerHTML = `
+    <div class="season-modal-panel">
+      ${html}
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('[data-season-close]')?.addEventListener('click', async () => {
+    await onClose?.();
+    modal.remove();
+  });
+}
+
+async function showSeasonPlan() {
+  const plan = await api.request('/api/game/season-plan').catch(() => null);
+  if (!plan || plan.seen) return false;
+  openSeasonModal(`
+    <span class="badge">Yeni sezon</span>
+    <h1>Yonetim Hedefleri</h1>
+    <div class="season-rows">
+      ${modalRows([
+        ['Lig hedefi', plan.league?.label],
+        ['Kupa hedefi', plan.cup?.label],
+        ...(plan.championsLeague ? [['Sampiyonlar Ligi hedefi', plan.championsLeague.label]] : []),
+        ['Transfer butcesi', money(plan.transferBudget)],
+        ['Maas butcesi', money(plan.salaryBudget)]
+      ])}
+    </div>
+    <button class="btn green" data-season-close type="button">Sezona basla</button>
+  `, () => api.request('/api/game/season-plan/seen', { method: 'POST' }));
+  return true;
+}
+
+async function showSeasonReview() {
+  if (dashboardCache?.state?.next_match_competition_type !== 'season_end') return false;
+  const review = await api.request('/api/game/season-review').catch(() => null);
+  if (!review || review.seen) return false;
+  const verdict = review.verdict || {};
+  openSeasonModal(`
+    <span class="badge">Sezon sonu</span>
+    <h1>Sezon Ozeti</h1>
+    <div class="season-rows">
+      ${modalRows([
+        ['Lig sirasi', `${review.league.rank}.`],
+        ['Puan', review.league.points],
+        ['Galibiyet / Beraberlik / Maglubiyet', `${review.league.wins} / ${review.league.draws} / ${review.league.losses}`],
+        ['Atılan / yenilen gol', `${review.league.goals_for} / ${review.league.goals_against}`],
+        ['En golcu', review.topScorer ? `${review.topScorer.name} (${review.topScorer.goals})` : '-'],
+        ['En cok asist', review.topAssist ? `${review.topAssist.name} (${review.topAssist.assists})` : '-']
+      ])}
+    </div>
+    <div class="season-evaluations">
+      ${(review.evaluations || []).map((item) => `
+        <article class="${item.success ? 'success' : 'fail'}">
+          <span>${item.target}</span>
+          <strong>${item.result}</strong>
+          <em>${item.success ? 'Basarili' : 'Basarisiz'}</em>
+        </article>
+      `).join('')}
+    </div>
+    <article class="verdict-card">
+      <span>Yonetim puani: ${verdict.score || 0}</span>
+      <strong>${verdict.label || 'Ortalama sezon'}</strong>
+      <p>${verdict.note || ''}</p>
+    </article>
+    <div class="actions">
+      <button class="btn secondary" data-season-close type="button">Kapat</button>
+      <button class="btn green" id="nextSeasonFromReview" type="button">Yeni sezona gec</button>
+    </div>
+  `, () => api.request('/api/game/season-review/seen', { method: 'POST' }));
+  byId('nextSeasonFromReview')?.addEventListener('click', async () => {
+    await api.request('/api/game/season-review/seen', { method: 'POST' });
+    await api.request('/api/game/next-season', { method: 'POST' });
+    window.location.reload();
+  });
+  return true;
+}
+
+async function showSeasonScreens() {
+  if (await showSeasonReview()) return;
+  await showSeasonPlan();
+}
 
 loadDashboard().catch((error) => setMessage(error.message, 'error'));
