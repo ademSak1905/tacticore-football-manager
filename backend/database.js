@@ -791,14 +791,16 @@ async function backfillSeasonPlans() {
     LEFT JOIN teams t ON t.id = c.team_id
   `);
   for (const club of clubs) {
+    const oldPlanText = club.season_objectives_json || '{}';
     const plan = parseSeasonPlan(club.season_objectives_json, club);
-    const budget = club.budget || plan.transferBudget;
-    const salaryBudget = club.salary_budget || plan.salaryBudget;
+    const planWasOld = !String(oldPlanText).includes('"financeVersion":2');
+    const budget = planWasOld ? plan.transferBudget : (club.budget || plan.transferBudget);
+    const salaryBudget = planWasOld ? plan.salaryBudget : (club.salary_budget || plan.salaryBudget);
     await run(`
       UPDATE clubs
       SET budget = ?, salary_budget = ?, season_objectives_json = ?
       WHERE id = ?
-    `, [budget, salaryBudget, club.season_objectives_json && club.season_objectives_json !== '{}' ? club.season_objectives_json : JSON.stringify(plan), club.id]);
+    `, [budget, salaryBudget, JSON.stringify(plan), club.id]);
   }
 
   const saves = await all(`
@@ -807,15 +809,17 @@ async function backfillSeasonPlans() {
     LEFT JOIN teams t ON t.id = cs.team_id
   `);
   for (const save of saves) {
+    const oldPlanText = save.season_json || '{}';
     const plan = parseSeasonPlan(save.season_json, save);
+    const planWasOld = !String(oldPlanText).includes('"financeVersion":2');
     await run(`
       UPDATE career_saves
       SET club_budget = ?, salary_budget = ?, season_json = ?
       WHERE id = ?
     `, [
-      save.club_budget || plan.transferBudget,
-      save.salary_budget || plan.salaryBudget,
-      save.season_json && save.season_json !== '{}' ? save.season_json : JSON.stringify(plan),
+      planWasOld ? plan.transferBudget : (save.club_budget || plan.transferBudget),
+      planWasOld ? plan.salaryBudget : (save.salary_budget || plan.salaryBudget),
+      JSON.stringify(plan),
       save.id
     ]);
   }

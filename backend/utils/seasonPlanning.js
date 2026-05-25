@@ -1,6 +1,4 @@
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, Number(value) || 0));
-}
+const FINANCE_VERSION = 2;
 
 function seededNoise(seed, min, max) {
   const raw = Math.sin(Number(seed || 1) * 999) * 10000;
@@ -32,12 +30,12 @@ function buildFinancialPlan(team = {}) {
   const tier = planTier(team);
   const id = Number(team.id || team.team_id || 1);
   const ranges = {
-    giant: { transfer: [820000000, 1180000000], salary: [42000000, 64000000] },
-    big: { transfer: [520000000, 780000000], salary: [30000000, 46000000] },
-    upper: { transfer: [260000000, 460000000], salary: [19000000, 32000000] },
-    middle: { transfer: [140000000, 250000000], salary: [12500000, 21000000] },
-    lower: { transfer: [70000000, 135000000], salary: [8500000, 14500000] },
-    survival: { transfer: [35000000, 80000000], salary: [5500000, 9500000] }
+    giant: { transfer: [780000000, 1050000000], salary: [42000000, 60000000] },
+    big: { transfer: [430000000, 620000000], salary: [27000000, 40000000] },
+    upper: { transfer: [210000000, 340000000], salary: [16000000, 26000000] },
+    middle: { transfer: [85000000, 155000000], salary: [8500000, 15500000] },
+    lower: { transfer: [42000000, 82000000], salary: [5200000, 9200000] },
+    survival: { transfer: [22000000, 52000000], salary: [3200000, 6200000] }
   };
   const selected = ranges[tier];
   return {
@@ -74,6 +72,7 @@ function buildSeasonPlan(team = {}) {
 
   return {
     season: 2025,
+    financeVersion: FINANCE_VERSION,
     generatedAt: new Date().toISOString(),
     tier,
     league: leagueTargets[tier],
@@ -87,7 +86,7 @@ function buildSeasonPlan(team = {}) {
 function parseSeasonPlan(value, team = {}) {
   try {
     const parsed = JSON.parse(value || '{}');
-    if (parsed && parsed.league && parsed.transferBudget) return parsed;
+    if (parsed && parsed.league && parsed.transferBudget && parsed.financeVersion === FINANCE_VERSION) return parsed;
   } catch {
     // fall through
   }

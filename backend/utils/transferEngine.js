@@ -42,16 +42,18 @@ function askingPrice(player, category) {
   const base = Number(player.market_value || 0);
   const multipliers = {
     free: 0,
-    loan: 0.18,
-    expiring: 0.58,
-    youth: 1.18,
-    premium: 1.55,
-    bargain: 0.72,
-    unhappy: 0.82,
-    swap: 0.9,
-    listed: 1
+    loan: 0.08,
+    expiring: 0.42,
+    youth: 0.92,
+    premium: 1.22,
+    bargain: 0.52,
+    unhappy: 0.62,
+    swap: 0.72,
+    listed: 0.82
   };
-  return Math.max(0, Math.round(base * (multipliers[category] || 1)));
+  const ageDiscount = Number(player.age || 24) >= 31 ? 0.78 : 1;
+  const price = Math.round(base * (multipliers[category] || 0.82) * ageDiscount);
+  return Math.max(0, Math.round(price / 50000) * 50000);
 }
 
 function listingReason(player, category, window) {
@@ -129,7 +131,8 @@ async function evaluateOffer({ player, buyerTeam, offerPrice, wageOffer, signing
   const happinessNeed = Math.max(0, 70 - Number(player.happiness || 70)) * 0.22;
   const score = Math.round((offerPrice / Math.max(1, expected || 1)) * 52 + salaryBoost * 18 + prestige * 0.22 + role + happinessNeed + signingBonus / 500000);
   const accepted = category === 'free' ? score >= 48 : score >= 72;
-  const counter = accepted ? 0 : Math.round(expected * 1.08 + player.salary * 3);
+  const counterBase = expected * (category === 'premium' ? 1.08 : 0.98) + player.salary * 1.4;
+  const counter = accepted ? 0 : Math.round(counterBase / 50000) * 50000;
   return { accepted, score, counter, expected, category };
 }
 
@@ -169,7 +172,7 @@ async function negotiateTransfer(club, body = {}) {
   const offerPrice = Math.max(0, Number(body.offerPrice ?? askingPrice(player, category)));
   const wageOffer = Math.max(0, Number(body.wageOffer ?? player.salary));
   const signingBonus = Math.max(0, Number(body.signingBonus ?? 0));
-  const loanFee = category === 'loan' ? Math.max(0, Number(body.loanFee ?? Math.round(player.market_value * 0.08))) : 0;
+  const loanFee = category === 'loan' ? Math.max(0, Number(body.loanFee ?? Math.round(player.market_value * 0.04))) : 0;
   const buyOption = Math.max(0, Number(body.buyOption ?? 0));
   const sellOnPercent = clamp(body.sellOnPercent ?? 0, 0, 40);
   const firstTeamPromise = body.firstTeamPromise ? 1 : 0;
@@ -224,7 +227,7 @@ async function simulateAiTransfers(excludeTeamId = null) {
   `);
   const completed = [];
   for (const team of teams.filter((item) => item.id !== Number(excludeTeamId)).slice(0, 4)) {
-    const player = candidates.find((item) => item.team_id !== team.id && item.market_value < team.budget * 0.22);
+    const player = candidates.find((item) => item.team_id !== team.id && askingPrice(item, categoryForPlayer(item, state.current_day)) < team.budget * 0.16);
     if (!player || Math.random() > 0.34) continue;
     const category = categoryForPlayer(player, state.current_day);
     const price = askingPrice(player, category);
