@@ -1942,6 +1942,27 @@ td {
   font-size: 16px;
 }
 
+.loading-card strong {
+  width: 70%;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(73, 143, 255, 0.16), rgba(255, 210, 26, 0.22), rgba(73, 143, 255, 0.16));
+  background-size: 220% 100%;
+  animation: loadingSweep 1.4s ease-in-out infinite;
+}
+
+.dashboard-loading-note {
+  position: absolute;
+  inset: auto 24px 24px;
+  text-align: center;
+  background: rgba(3, 19, 45, 0.74);
+}
+
+@keyframes loadingSweep {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
+
 .season-modal {
   position: fixed;
   inset: 0;

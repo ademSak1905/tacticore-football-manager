@@ -25,6 +25,30 @@ function setDashboardTab(tab) {
   renderDashboard();
 }
 
+function renderDashboardLoading(club = {}) {
+  byId('dashboardStats').innerHTML = Array.from({ length: 8 }).map((_, index) => `
+    <article class="card stat-card loading-card">
+      <span class="muted">${index === 0 ? 'Bütçe' : 'Yükleniyor'}</span>
+      <strong></strong>
+    </article>
+  `).join('');
+  byId('dashboardPitch').innerHTML = '<div class="empty dashboard-loading-note">Kadro sahaya yerleşiyor...</div>';
+  byId('nextMatchCard').innerHTML = '<article class="event">Dashboard hazırlanıyor...</article>';
+  byId('gameState').textContent = 'Veriler yükleniyor, sunucu uyanıyorsa ilk giriş biraz sürebilir...';
+  byId('clubSummary').innerHTML = `
+    <div class="team-hero">
+      <img class="team-logo large" src="${club.logo_url || '/assets/logos/placeholder.svg'}" alt="">
+      <div>
+        <h2>${club.name || 'Kulüp yükleniyor'}</h2>
+        <p class="muted">Menü hazır, detaylar birazdan gelecek.</p>
+      </div>
+    </div>
+  `;
+  byId('dashboardLeagueTable').innerHTML = '<div class="empty">Lig tablosu yükleniyor...</div>';
+  byId('dashboardEuropeContent').innerHTML = '<div class="empty">Avrupa verileri yükleniyor...</div>';
+  byId('dashboardCalendarContent').innerHTML = '<div class="empty">Takvim yükleniyor...</div>';
+}
+
 function renderDashboard() {
   if (!dashboardCache) return;
   const panels = {
@@ -108,7 +132,7 @@ function renderDashboardLeague() {
 function renderDashboardEurope() {
   const { europe } = dashboardCache;
   if (!europe) {
-    byId('dashboardEuropeContent').innerHTML = '<div class="empty">Avrupa verisi alınamadı.</div>';
+    byId('dashboardEuropeContent').innerHTML = '<div class="empty">Avrupa verileri yükleniyor...</div>';
     return;
   }
   const next = europe.next;
@@ -167,7 +191,11 @@ function renderEuropeWeek(state, europe) {
   `;
 }
 
-function renderDashboardPitch(lineup) {
+function renderDashboardPitch(lineup = []) {
+  if (!lineup.length) {
+    byId('dashboardPitch').innerHTML = '<div class="empty dashboard-loading-note">İlk 11 yükleniyor...</div>';
+    return;
+  }
   byId('dashboardPitch').innerHTML = lineup.map((row) => `
     <div class="dash-player" style="left:${row.x_position}%;top:${row.y_position}%">
       <span>${row.overall}</span><strong>${row.name.split(' ').slice(-1)[0]}</strong>
@@ -229,18 +257,37 @@ async function advance(days) {
 
 async function loadDashboard() {
   wireShell('dashboard');
-  await requireAuth();
-  const [data, state, europe, league, calendar] = await Promise.all([
+  renderDashboardLoading();
+  const session = await requireAuth();
+  renderDashboardLoading(session?.club);
+
+  const [data, state] = await Promise.all([
     api.request('/api/club'),
-    api.request('/api/game/state'),
-    api.request('/api/europe/overview').catch(() => null),
-    api.request('/api/league/table').catch(() => []),
-    api.request('/api/calendar').catch(() => ({ next5Matches: [] }))
+    api.request('/api/game/state')
   ]);
-  const lineupData = await api.request(`/api/teams/${data.club.team_id}/lineup`);
-  dashboardCache = { data, state, europe, league, calendar, lineupData };
+  dashboardCache = {
+    data,
+    state,
+    europe: null,
+    league: [],
+    calendar: { next5Matches: [] },
+    lineupData: { lineup: [] }
+  };
   renderDashboard();
   showSeasonScreens();
+
+  const detailResults = await Promise.allSettled([
+    api.request(`/api/teams/${data.club.team_id}/lineup`),
+    api.request('/api/europe/overview'),
+    api.request('/api/league/table'),
+    api.request('/api/calendar')
+  ]);
+  const [lineupResult, europeResult, leagueResult, calendarResult] = detailResults;
+  if (lineupResult.status === 'fulfilled') dashboardCache.lineupData = lineupResult.value;
+  if (europeResult.status === 'fulfilled') dashboardCache.europe = europeResult.value;
+  if (leagueResult.status === 'fulfilled') dashboardCache.league = leagueResult.value;
+  if (calendarResult.status === 'fulfilled') dashboardCache.calendar = calendarResult.value;
+  renderDashboard();
 }
 
 document.addEventListener('click', (event) => {
