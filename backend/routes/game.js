@@ -62,12 +62,12 @@ async function makeSocialPosts(day, teamName) {
 router.get('/game/state', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    await ensureEuropeanSeason(club.team_id);
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
     const state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
-    const europeNext = await nextEuropeanMatch(club.team_id);
+    const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, europeNext?.match_day || nextLeagueDay);
     const nextCompetitionType = europeNext && europeNext.match_day < nextLeagueDay
@@ -98,12 +98,12 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
   try {
     const days = Number(req.body.days) === 7 ? 7 : 1;
     const club = await clubModel.getByUserId(req.session.userId);
-    await ensureEuropeanSeason(club.team_id);
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
     const currentState = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
     const leagueFinished = Number(currentState.week || 1) > totalLeagueWeeks;
-    const europeNext = await nextEuropeanMatch(club.team_id);
+    const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : currentState.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, europeNext?.match_day || nextLeagueDay);
     if (leagueFinished && !europeNext) {
@@ -115,7 +115,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const targetDay = Math.min(currentState.current_day + days, nextFixtureDay);
     await run('UPDATE career_states SET current_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [targetDay, req.session.userId]);
     const state = await getCareerState(req.session.userId);
-    const updatedEuropeNext = await nextEuropeanMatch(club.team_id);
+    const updatedEuropeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const updatedLeagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const updatedLeagueDay = updatedLeagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const updatedFixtureDay = Math.min(updatedLeagueDay, updatedEuropeNext?.match_day || updatedLeagueDay);
@@ -141,7 +141,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
 router.post('/game/next-season', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    const pendingEurope = await nextEuropeanMatch(club.team_id);
+    const pendingEurope = await nextEuropeanMatch(req.session.userId, club.team_id);
     if (pendingEurope) {
       return res.status(400).json({
         message: `${pendingEurope.short_name || 'Avrupa'} fikstürün devam ediyor. Yeni sezona geçmeden önce Avrupa maçlarını bitirmelisin.`

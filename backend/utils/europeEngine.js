@@ -44,6 +44,16 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value) || 0));
 }
 
+function activeUserId(userId) {
+  return Number(userId || 0) || null;
+}
+
+async function careerState(userId) {
+  if (!userId) return get('SELECT * FROM game_state WHERE id = 1');
+  const state = await get('SELECT * FROM career_states WHERE user_id = ?', [userId]);
+  return state || { current_day: 1, next_match_day: 7, week: 1 };
+}
+
 function pick(items, index = rand(0, items.length - 1)) {
   return items[Math.abs(index) % items.length];
 }
@@ -147,15 +157,16 @@ async function resetEuropeanSeasonIfNeeded() {
   `, [SEASON, JSON.stringify({ version: 2, rule: 'domestic_league_and_cup_only' })]);
 }
 
-async function repairEuropeanCalendarBacklog() {
-  const state = await get('SELECT * FROM game_state WHERE id = 1');
+async function repairEuropeanCalendarBacklog(userId = null) {
+  const scopedUserId = activeUserId(userId);
+  const state = await careerState(scopedUserId);
   if (!state?.current_day) return;
   const staleDays = await all(`
     SELECT DISTINCT match_day
     FROM european_matches
-    WHERE season = ? AND played = 0 AND match_day < ?
+    WHERE user_id = ? AND season = ? AND played = 0 AND match_day < ?
     ORDER BY match_day ASC
-  `, [SEASON, state.current_day]);
+  `, [scopedUserId, SEASON, state.current_day]);
   if (!staleDays.length) return;
 
   let targetDay = Math.max(Number(state.next_match_day || state.current_day) + 3, Number(state.current_day) + 3);
@@ -164,8 +175,8 @@ async function repairEuropeanCalendarBacklog() {
     await run(`
       UPDATE european_matches
       SET match_day = ?, match_date = ?
-      WHERE season = ? AND played = 0 AND match_day = ?
-    `, [targetDay, seasonDate(targetDay), SEASON, row.match_day]);
+      WHERE user_id = ? AND season = ? AND played = 0 AND match_day = ?
+    `, [targetDay, seasonDate(targetDay), scopedUserId, SEASON, row.match_day]);
     repairs.push({ from: row.match_day, to: targetDay });
     targetDay += 7;
   }
@@ -177,7 +188,18 @@ async function repairEuropeanCalendarBacklog() {
   });
 }
 
-async function domesticTable() {
+async function domesticTable(userId = null) {
+  if (userId) {
+    return all(`
+      SELECT t.*, ls.points, ls.wins, ls.draws, ls.losses, ls.goals_for, ls.goals_against, ls.form,
+        (ls.wins + ls.draws + ls.losses) AS played,
+        (ls.goals_for - ls.goals_against) AS goal_difference
+      FROM league_standings ls
+      JOIN teams t ON t.id = ls.team_id
+      WHERE ls.user_id = ?
+      ORDER BY ls.points DESC, goal_difference DESC, ls.goals_for DESC, t.overall DESC, t.name ASC
+    `, [userId]);
+  }
   return all(`
     SELECT *, (wins + draws + losses) AS played, (goals_for - goals_against) AS goal_difference
     FROM teams
@@ -276,25 +298,26 @@ function participantKeys(match) {
     .filter((key) => !key.endsWith('null') && !key.endsWith('undefined') && key !== 'E0' && key !== 'T0');
 }
 
-async function repairEuropeanDuplicateFixtures() {
+async function repairEuropeanDuplicateFixtures(userId = null) {
+  const scopedUserId = activeUserId(userId);
   const groups = await all(`
     SELECT competition_code, match_day
     FROM european_matches
-    WHERE season = ?
+    WHERE user_id = ? AND season = ?
     GROUP BY competition_code, match_day
     ORDER BY match_day ASC
-  `, [SEASON]);
+  `, [scopedUserId, SEASON]);
   const removed = [];
 
   for (const group of groups) {
     const matches = await all(`
       SELECT *
       FROM european_matches
-      WHERE season = ? AND competition_code = ? AND match_day = ?
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND match_day = ?
       ORDER BY
         CASE WHEN home_team_id IS NOT NULL OR away_team_id IS NOT NULL THEN 0 ELSE 1 END,
         id ASC
-    `, [SEASON, group.competition_code, group.match_day]);
+    `, [scopedUserId, SEASON, group.competition_code, group.match_day]);
     const busy = new Set();
 
     for (const match of matches) {
@@ -331,52 +354,55 @@ async function competition(code) {
   return get('SELECT * FROM european_competitions WHERE code = ?', [code]);
 }
 
-async function ensureStanding({ competitionCode, teamId = null, europeanTeamId = null }) {
+async function ensureStanding({ userId = null, competitionCode, teamId = null, europeanTeamId = null }) {
+  const scopedUserId = activeUserId(userId);
   const existing = await get(`
     SELECT id FROM european_standings
-    WHERE season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
     LIMIT 1
-  `, [SEASON, competitionCode, teamId, europeanTeamId]);
+  `, [scopedUserId, SEASON, competitionCode, teamId, europeanTeamId]);
   if (existing) return;
   await run(`
-    INSERT INTO european_standings (season, competition_code, team_id, european_team_id)
-    VALUES (?, ?, ?, ?)
-  `, [SEASON, competitionCode, teamId, europeanTeamId]);
+    INSERT INTO european_standings (user_id, season, competition_code, team_id, european_team_id)
+    VALUES (?, ?, ?, ?, ?)
+  `, [scopedUserId, SEASON, competitionCode, teamId, europeanTeamId]);
 }
 
-async function insertEntry({ competitionCode, teamId = null, europeanTeamId = null, source, entryStage = 'league' }) {
+async function insertEntry({ userId = null, competitionCode, teamId = null, europeanTeamId = null, source, entryStage = 'league' }) {
+  const scopedUserId = activeUserId(userId);
   const existing = await get(`
     SELECT id FROM european_entries
-    WHERE season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
     LIMIT 1
-  `, [SEASON, competitionCode, teamId, europeanTeamId]);
+  `, [scopedUserId, SEASON, competitionCode, teamId, europeanTeamId]);
   if (existing) {
-    await ensureStanding({ competitionCode, teamId, europeanTeamId });
+    await ensureStanding({ userId: scopedUserId, competitionCode, teamId, europeanTeamId });
     return;
   }
   await run(`
-    INSERT INTO european_entries (season, competition_code, team_id, european_team_id, source, entry_stage)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `, [SEASON, competitionCode, teamId, europeanTeamId, source, entryStage]);
-  await ensureStanding({ competitionCode, teamId, europeanTeamId });
+    INSERT INTO european_entries (user_id, season, competition_code, team_id, european_team_id, source, entry_stage)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, [scopedUserId, SEASON, competitionCode, teamId, europeanTeamId, source, entryStage]);
+  await ensureStanding({ userId: scopedUserId, competitionCode, teamId, europeanTeamId });
 }
 
-async function scheduleLeagueStageForLocalEntry(competitionCode, teamId, startAfterDay = 0) {
+async function scheduleLeagueStageForLocalEntry(userId, competitionCode, teamId, startAfterDay = 0) {
+  const scopedUserId = activeUserId(userId);
   const existing = await get(`
     SELECT id FROM european_matches
-    WHERE season = ? AND competition_code = ? AND phase = 'league'
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league'
       AND played = 0 AND (home_team_id = ? OR away_team_id = ?)
     LIMIT 1
-  `, [SEASON, competitionCode, teamId, teamId]);
+  `, [scopedUserId, SEASON, competitionCode, teamId, teamId]);
   if (existing) return;
 
   const euroOpponents = await all(`
     SELECT ee.european_team_id, et.overall
     FROM european_entries ee
     JOIN european_teams et ON et.id = ee.european_team_id
-    WHERE ee.season = ? AND ee.competition_code = ? AND ee.european_team_id IS NOT NULL
+    WHERE ee.user_id = ? AND ee.season = ? AND ee.competition_code = ? AND ee.european_team_id IS NOT NULL
     ORDER BY et.pot ASC, et.overall DESC
-  `, [SEASON, competitionCode]);
+  `, [scopedUserId, SEASON, competitionCode]);
   if (!euroOpponents.length) return;
 
   const days = EURO_DAYS[competitionCode].filter((day) => day > startAfterDay);
@@ -388,9 +414,10 @@ async function scheduleLeagueStageForLocalEntry(competitionCode, teamId, startAf
     const homeLocal = i % 2 === 0;
     await run(`
       INSERT INTO european_matches
-        (season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
-      VALUES (?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?, ?, ?)
+        (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+      VALUES (?, ?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?, ?, ?)
     `, [
+      scopedUserId,
       SEASON,
       competitionCode,
       usableDays[i],
@@ -404,45 +431,46 @@ async function scheduleLeagueStageForLocalEntry(competitionCode, teamId, startAf
   }
 
   await run(`
-    INSERT INTO european_draws (season, competition_code, phase, draw_data)
-    VALUES (?, ?, 'league_stage_after_qualifying', ?)
-  `, [SEASON, competitionCode, JSON.stringify(drawRows)]);
+    INSERT INTO european_draws (user_id, season, competition_code, phase, draw_data)
+    VALUES (?, ?, ?, 'league_stage_after_qualifying', ?)
+  `, [scopedUserId, SEASON, competitionCode, JSON.stringify(drawRows)]);
 }
 
-async function scheduleExternalLeagueFixtures(competitionCode) {
-  const state = await get('SELECT current_day FROM game_state WHERE id = 1');
+async function scheduleExternalLeagueFixtures(userId, competitionCode) {
+  const scopedUserId = activeUserId(userId);
+  const state = await careerState(scopedUserId);
   const currentDay = Number(state?.current_day || 1);
   const leagueDays = await all(`
     SELECT DISTINCT match_day
     FROM european_matches
-    WHERE season = ? AND competition_code = ? AND phase = 'league' AND played = 0 AND match_day >= ?
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league' AND played = 0 AND match_day >= ?
     ORDER BY match_day ASC
-  `, [SEASON, competitionCode, currentDay]);
+  `, [scopedUserId, SEASON, competitionCode, currentDay]);
   if (!leagueDays.length) return;
 
   const externalEntrants = await all(`
     SELECT ee.european_team_id, et.overall
     FROM european_entries ee
     JOIN european_teams et ON et.id = ee.european_team_id
-    WHERE ee.season = ? AND ee.competition_code = ? AND ee.european_team_id IS NOT NULL
+    WHERE ee.user_id = ? AND ee.season = ? AND ee.competition_code = ? AND ee.european_team_id IS NOT NULL
     ORDER BY et.pot ASC, et.overall DESC
-  `, [SEASON, competitionCode]);
+  `, [scopedUserId, SEASON, competitionCode]);
   if (externalEntrants.length < 2) return;
 
   for (const row of leagueDays) {
     const existing = await get(`
       SELECT COUNT(*) AS count
       FROM european_matches
-      WHERE season = ? AND competition_code = ? AND phase = 'league' AND match_day = ?
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league' AND match_day = ?
         AND home_european_team_id IS NOT NULL AND away_european_team_id IS NOT NULL
-    `, [SEASON, competitionCode, row.match_day]);
+    `, [scopedUserId, SEASON, competitionCode, row.match_day]);
     if (existing?.count) continue;
 
     const busyRows = await all(`
       SELECT *
       FROM european_matches
-      WHERE season = ? AND competition_code = ? AND match_day = ?
-    `, [SEASON, competitionCode, row.match_day]);
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND match_day = ?
+    `, [scopedUserId, SEASON, competitionCode, row.match_day]);
     const roundBusy = new Set(busyRows.flatMap((match) => participantKeys(match)));
     const availableEntrants = externalEntrants.filter((entry) => !roundBusy.has(`E${entry.european_team_id}`));
     const rotation = row.match_day % Math.max(1, availableEntrants.length);
@@ -453,19 +481,22 @@ async function scheduleExternalLeagueFixtures(competitionCode) {
       if (roundBusy.has(homeKey) || roundBusy.has(awayKey)) continue;
       await run(`
         INSERT INTO european_matches
-          (season, competition_code, phase, round_name, leg, match_day, match_date, home_european_team_id, away_european_team_id)
-        VALUES (?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?)
-      `, [SEASON, competitionCode, row.match_day, seasonDate(row.match_day), rotated[i].european_team_id, rotated[i + 1].european_team_id]);
+          (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_european_team_id, away_european_team_id)
+        VALUES (?, ?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?)
+      `, [scopedUserId, SEASON, competitionCode, row.match_day, seasonDate(row.match_day), rotated[i].european_team_id, rotated[i + 1].european_team_id]);
       roundBusy.add(homeKey);
       roundBusy.add(awayKey);
     }
   }
 }
 
-async function createSquadSnapshot(clubOrTeamId, teamId = null) {
-  const state = await get('SELECT * FROM game_state WHERE id = 1');
-  const club = teamId ? { id: clubOrTeamId, team_id: teamId } : await get('SELECT * FROM clubs WHERE team_id = ?', [clubOrTeamId]);
-  const effectiveTeamId = teamId || clubOrTeamId;
+async function createSquadSnapshot(userIdOrClubId, clubOrTeamId = null, teamId = null) {
+  const hasUserScope = teamId !== null || clubOrTeamId !== null;
+  const scopedUserId = hasUserScope ? activeUserId(userIdOrClubId) : null;
+  const effectiveClubOrTeamId = hasUserScope ? clubOrTeamId : userIdOrClubId;
+  const effectiveTeamId = teamId || effectiveClubOrTeamId;
+  const state = await careerState(scopedUserId);
+  const club = teamId ? { id: effectiveClubOrTeamId, team_id: teamId } : await get('SELECT * FROM clubs WHERE team_id = ? ORDER BY user_id IS NULL ASC LIMIT 1', [effectiveClubOrTeamId]);
   const players = await all('SELECT * FROM players WHERE team_id = ? ORDER BY id ASC', [effectiveTeamId]);
   if (!players.length) return null;
   const snapshot = players.map((player) => ({
@@ -479,9 +510,9 @@ async function createSquadSnapshot(clubOrTeamId, teamId = null) {
     morale: player.morale
   }));
   return run(`
-    INSERT INTO squad_snapshots (club_id, team_id, week, day, snapshot_data)
-    VALUES (?, ?, ?, ?, ?)
-  `, [club?.id || null, effectiveTeamId, state?.week || 1, state?.current_day || 1, JSON.stringify(snapshot)]);
+    INSERT INTO squad_snapshots (user_id, club_id, team_id, week, day, snapshot_data)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [scopedUserId, club?.id || null, effectiveTeamId, state?.week || 1, state?.current_day || 1, JSON.stringify(snapshot)]);
 }
 
 async function restoreLastSquadSnapshot(teamId) {
@@ -498,18 +529,20 @@ async function restoreLastSquadSnapshot(teamId) {
   return { restored: players.length, message: 'Kadro son sağlam kayıttan onarıldı.' };
 }
 
-async function ensureEuropeanSeason(userTeamId = null) {
+async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = null) {
+  const scopedUserId = maybeUserTeamId === null ? null : activeUserId(userIdOrTeamId);
+  const userTeamId = maybeUserTeamId === null ? userIdOrTeamId : maybeUserTeamId;
   await resetEuropeanSeasonIfNeeded();
-  const existing = await get('SELECT COUNT(*) AS count FROM european_entries WHERE season = ?', [SEASON]);
+  const existing = await get('SELECT COUNT(*) AS count FROM european_entries WHERE user_id = ? AND season = ?', [scopedUserId, SEASON]);
   if (existing?.count) {
-    for (const comp of ['UCL', 'UEL', 'UECL']) await scheduleExternalLeagueFixtures(comp);
-    await repairEuropeanDuplicateFixtures();
-    await repairEuropeanCalendarBacklog();
-    await repairEuropeanDuplicateFixtures();
+    for (const comp of ['UCL', 'UEL', 'UECL']) await scheduleExternalLeagueFixtures(scopedUserId, comp);
+    await repairEuropeanDuplicateFixtures(scopedUserId);
+    await repairEuropeanCalendarBacklog(scopedUserId);
+    await repairEuropeanDuplicateFixtures(scopedUserId);
     return { ready: true, created: false, userTeamId };
   }
 
-  const table = await domesticTable();
+  const table = await domesticTable(scopedUserId);
   const cupWinner = await turkishCupWinnerFromConfig(table);
   const qualifications = assignEuropeanQualification(table, cupWinner);
   const external = await all('SELECT * FROM european_teams ORDER BY overall DESC, pot ASC');
@@ -531,29 +564,32 @@ async function ensureEuropeanSeason(userTeamId = null) {
     const team = table.find((item) => item.id === qualification.teamId);
     if (!team) continue;
     await insertEntry({
+      userId: scopedUserId,
       competitionCode: qualification.competition,
       teamId: team.id,
       source: qualification.reason,
       entryStage: qualification.entryRound
     });
-    await createSquadSnapshot(team.id);
+    await createSquadSnapshot(scopedUserId, team.id);
     const comp = await competition(qualification.competition);
     await run(`
-      INSERT INTO european_history (season, competition_code, team_id, event_type, description, money_award, prestige_delta, fan_delta, day)
-      VALUES (?, ?, ?, 'qualification', ?, ?, 2, 1500, 1)
-    `, [SEASON, qualification.competition, team.id, `${team.name}, ${comp.short_name} için Avrupa bileti aldı.`, PRIZE[qualification.competition].participation]);
-    const club = await get('SELECT * FROM clubs WHERE team_id = ?', [team.id]);
+      INSERT INTO european_history (user_id, season, competition_code, team_id, event_type, description, money_award, prestige_delta, fan_delta, day)
+      VALUES (?, ?, ?, ?, 'qualification', ?, ?, 2, 1500, 1)
+    `, [scopedUserId, SEASON, qualification.competition, team.id, `${team.name}, ${comp.short_name} için Avrupa bileti aldı.`, PRIZE[qualification.competition].participation]);
+    const club = scopedUserId
+      ? await get('SELECT * FROM clubs WHERE user_id = ? AND team_id = ?', [scopedUserId, team.id])
+      : await get('SELECT * FROM clubs WHERE team_id = ?', [team.id]);
     if (club) await run('UPDATE clubs SET budget = budget + ?, fans = fans + 1500 WHERE id = ?', [PRIZE[qualification.competition].participation, club.id]);
   }
 
   for (const comp of ['UCL', 'UEL', 'UECL']) {
-    const locals = await all('SELECT * FROM european_entries WHERE season = ? AND competition_code = ? AND team_id IS NOT NULL', [SEASON, comp]);
+    const locals = await all('SELECT * FROM european_entries WHERE user_id = ? AND season = ? AND competition_code = ? AND team_id IS NOT NULL', [scopedUserId, SEASON, comp]);
     const needed = Math.max(20, 24 - locals.length);
     const offset = comp === 'UCL' ? 0 : comp === 'UEL' ? 12 : 24;
     for (const team of external.slice(offset, offset + needed)) {
-      await insertEntry({ competitionCode: comp, europeanTeamId: team.id, source: 'UEFA seed', entryStage: 'league' });
+      await insertEntry({ userId: scopedUserId, competitionCode: comp, europeanTeamId: team.id, source: 'UEFA seed', entryStage: 'league' });
     }
-    const entrants = await all('SELECT * FROM european_entries WHERE season = ? AND competition_code = ?', [SEASON, comp]);
+    const entrants = await all('SELECT * FROM european_entries WHERE user_id = ? AND season = ? AND competition_code = ?', [scopedUserId, SEASON, comp]);
     const euroOpponents = entrants.filter((entry) => entry.european_team_id);
     const localEntrants = entrants.filter((entry) => entry.team_id);
     const days = EURO_DAYS[comp];
@@ -566,9 +602,10 @@ async function ensureEuropeanSeason(userTeamId = null) {
           const day = comp === 'UCL' ? (leg === 1 ? 8 : 12) : (leg === 1 ? 15 : 19);
           await run(`
             INSERT INTO european_matches
-              (season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
-            VALUES (?, ?, 'qualifying', 'Play-Off', ?, ?, ?, ?, ?, ?, ?)
+              (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+            VALUES (?, ?, ?, 'qualifying', 'Play-Off', ?, ?, ?, ?, ?, ?, ?)
           `, [
+            scopedUserId,
             SEASON,
             comp,
             leg,
@@ -588,9 +625,10 @@ async function ensureEuropeanSeason(userTeamId = null) {
         const homeLocal = i % 2 === 0;
         await run(`
           INSERT INTO european_matches
-            (season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
-          VALUES (?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?, ?, ?)
+            (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+          VALUES (?, ?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?, ?, ?)
         `, [
+          scopedUserId,
           SEASON,
           comp,
           days[i],
@@ -604,15 +642,15 @@ async function ensureEuropeanSeason(userTeamId = null) {
       }
     }
     await run(`
-      INSERT INTO european_draws (season, competition_code, phase, draw_data)
-      VALUES (?, ?, 'league_stage', ?)
-    `, [SEASON, comp, JSON.stringify(drawRows.filter((row) => row.competition === comp))]);
-    await scheduleExternalLeagueFixtures(comp);
+      INSERT INTO european_draws (user_id, season, competition_code, phase, draw_data)
+      VALUES (?, ?, ?, 'league_stage', ?)
+    `, [scopedUserId, SEASON, comp, JSON.stringify(drawRows.filter((row) => row.competition === comp))]);
+    await scheduleExternalLeagueFixtures(scopedUserId, comp);
   }
 
-  await repairEuropeanDuplicateFixtures();
-  await repairEuropeanCalendarBacklog();
-  await repairEuropeanDuplicateFixtures();
+  await repairEuropeanDuplicateFixtures(scopedUserId);
+  await repairEuropeanCalendarBacklog(scopedUserId);
+  await repairEuropeanDuplicateFixtures(scopedUserId);
   return { ready: true, created: true, userTeamId };
 }
 
@@ -955,11 +993,12 @@ async function simulateEuropeanBotMatch(match) {
 async function settleQualifyingTie(match, home, away, homeScore, awayScore) {
   const firstLeg = await get(`
     SELECT * FROM european_matches
-    WHERE season = ? AND competition_code = ? AND phase = 'qualifying' AND round_name = ? AND leg = 1
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'qualifying' AND round_name = ? AND leg = 1
       AND ((home_team_id = ? OR away_team_id = ? OR home_european_team_id = ? OR away_european_team_id = ?)
       AND (home_team_id = ? OR away_team_id = ? OR home_european_team_id = ? OR away_european_team_id = ?))
     ORDER BY id DESC LIMIT 1
   `, [
+    activeUserId(match.user_id),
     SEASON,
     match.competition_code,
     match.round_name,
@@ -1000,20 +1039,21 @@ async function settleQualifyingTie(match, home, away, homeScore, awayScore) {
       await run(`
         UPDATE european_entries
         SET status = 'active', entry_stage = 'league_phase'
-        WHERE season = ? AND competition_code = ? AND team_id = ?
-      `, [SEASON, match.competition_code, side.id]);
-      await scheduleLeagueStageForLocalEntry(match.competition_code, side.id, match.match_day);
+        WHERE user_id = ? AND season = ? AND competition_code = ? AND team_id = ?
+      `, [activeUserId(match.user_id), SEASON, match.competition_code, side.id]);
+      await scheduleLeagueStageForLocalEntry(match.user_id, match.competition_code, side.id, match.match_day);
     } else {
       await run(`
         UPDATE european_entries
         SET status = 'eliminated'
-        WHERE season = ? AND competition_code = ? AND team_id = ?
-      `, [SEASON, match.competition_code, side.id]);
+        WHERE user_id = ? AND season = ? AND competition_code = ? AND team_id = ?
+      `, [activeUserId(match.user_id), SEASON, match.competition_code, side.id]);
     }
     await run(`
-      INSERT INTO european_history (season, competition_code, team_id, event_type, description, money_award, prestige_delta, fan_delta, day)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO european_history (user_id, season, competition_code, team_id, event_type, description, money_award, prestige_delta, fan_delta, day)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
+      activeUserId(match.user_id),
       SEASON,
       match.competition_code,
       side.id,
@@ -1027,7 +1067,7 @@ async function settleQualifyingTie(match, home, away, homeScore, awayScore) {
       match.match_day
     ]);
     if (!advanced) {
-      const state = await get('SELECT * FROM game_state WHERE id = 1');
+      const state = await careerState(match.user_id);
       await run(`
         INSERT INTO news_feed (day, category, title, summary, template_key, team_id, match_id)
         VALUES (?, 'europe', ?, ?, 'europe_eliminated', ?, ?)
@@ -1065,18 +1105,20 @@ function knockoutWinner(match) {
   return homePower >= awayPower ? participantFromMatch(match, 'home') : participantFromMatch(match, 'away');
 }
 
-async function knockoutPhaseCount(competitionCode, phase) {
+async function knockoutPhaseCount(userId, competitionCode, phase) {
+  const scopedUserId = activeUserId(userId);
   const row = await get(`
     SELECT COUNT(*) AS count
     FROM european_matches
-    WHERE season = ? AND competition_code = ? AND phase = ?
-  `, [SEASON, competitionCode, phase]);
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ?
+  `, [scopedUserId, SEASON, competitionCode, phase]);
   return Number(row?.count || 0);
 }
 
-async function createKnockoutRound(competitionCode, phaseInfo, participants, baseDay, rankedPairing = false) {
+async function createKnockoutRound(userId, competitionCode, phaseInfo, participants, baseDay, rankedPairing = false) {
+  const scopedUserId = activeUserId(userId);
   if (participants.length < phaseInfo.size) return false;
-  if (await knockoutPhaseCount(competitionCode, phaseInfo.phase)) return false;
+  if (await knockoutPhaseCount(scopedUserId, competitionCode, phaseInfo.phase)) return false;
   const needed = participants.slice(0, phaseInfo.size);
   const pairs = [];
   for (let index = 0; index < needed.length / 2; index += 1) {
@@ -1089,9 +1131,10 @@ async function createKnockoutRound(competitionCode, phaseInfo, participants, bas
     const [home, away] = pairs[index];
     await run(`
       INSERT INTO european_matches
-        (season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
-      VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+        (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
     `, [
+      scopedUserId,
       SEASON,
       competitionCode,
       phaseInfo.phase,
@@ -1106,9 +1149,9 @@ async function createKnockoutRound(competitionCode, phaseInfo, participants, bas
   }
 
   await run(`
-    INSERT INTO european_draws (season, competition_code, phase, draw_data)
-    VALUES (?, ?, ?, ?)
-  `, [SEASON, competitionCode, phaseInfo.phase, JSON.stringify({ roundName: phaseInfo.roundName, participants: pairs })]);
+    INSERT INTO european_draws (user_id, season, competition_code, phase, draw_data)
+    VALUES (?, ?, ?, ?, ?)
+  `, [scopedUserId, SEASON, competitionCode, phaseInfo.phase, JSON.stringify({ roundName: phaseInfo.roundName, participants: pairs })]);
   console.log('EUROPE KNOCKOUT CHECK', {
     competitionCode,
     createdPhase: phaseInfo.phase,
@@ -1119,19 +1162,21 @@ async function createKnockoutRound(competitionCode, phaseInfo, participants, bas
   return true;
 }
 
-async function maybeCreateEuropeanKnockouts(competitionCode, fallbackDay = 0) {
+async function maybeCreateEuropeanKnockouts(userId, competitionCode, fallbackDay = 0) {
+  const scopedUserId = activeUserId(userId);
   const leagueMatches = await get(`
     SELECT COUNT(*) AS total, SUM(CASE WHEN played = 0 THEN 1 ELSE 0 END) AS unplayed, MAX(match_day) AS lastDay
     FROM european_matches
-    WHERE season = ? AND competition_code = ? AND phase = 'league'
-  `, [SEASON, competitionCode]);
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league'
+  `, [scopedUserId, SEASON, competitionCode]);
   if (!leagueMatches?.total || Number(leagueMatches.unplayed || 0) > 0) return false;
 
   const firstPhase = KNOCKOUT_SEQUENCE[0];
-  if (!(await knockoutPhaseCount(competitionCode, firstPhase.phase))) {
-    const standings = await europeanStandings(competitionCode);
+  if (!(await knockoutPhaseCount(scopedUserId, competitionCode, firstPhase.phase))) {
+    const standings = await europeanStandings(scopedUserId, competitionCode);
     const participants = standings.slice(0, firstPhase.size).map(participantFromStanding);
     return createKnockoutRound(
+      scopedUserId,
       competitionCode,
       firstPhase,
       participants,
@@ -1147,22 +1192,22 @@ async function maybeCreateEuropeanKnockouts(competitionCode, fallbackDay = 0) {
     const currentMatches = await all(`
       SELECT *
       FROM european_matches
-      WHERE season = ? AND competition_code = ? AND phase = ?
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ?
       ORDER BY id ASC
-    `, [SEASON, competitionCode, phaseInfo.phase]);
+    `, [scopedUserId, SEASON, competitionCode, phaseInfo.phase]);
     if (!currentMatches.length || currentMatches.some((match) => !match.played)) continue;
-    if (await knockoutPhaseCount(competitionCode, nextPhase.phase)) continue;
+    if (await knockoutPhaseCount(scopedUserId, competitionCode, nextPhase.phase)) continue;
     const winners = currentMatches.map(knockoutWinner);
     const lastDay = Math.max(...currentMatches.map((match) => Number(match.match_day || 0)));
-    return createKnockoutRound(competitionCode, nextPhase, winners, Math.max(lastDay + 7, Number(fallbackDay || 0) + 7), false);
+    return createKnockoutRound(scopedUserId, competitionCode, nextPhase, winners, Math.max(lastDay + 7, Number(fallbackDay || 0) + 7), false);
   }
 
   return false;
 }
 
-async function maybeCreateEuropeanKnockoutsForAll() {
+async function maybeCreateEuropeanKnockoutsForAll(userId = null) {
   for (const code of ['UCL', 'UEL', 'UECL']) {
-    await maybeCreateEuropeanKnockouts(code);
+    await maybeCreateEuropeanKnockouts(userId, code);
   }
 }
 
@@ -1183,34 +1228,35 @@ async function updateEuropeanStandings(match, homeScore, awayScore) {
   const homeWin = homeScore > awayScore;
   const draw = homeScore === awayScore;
   const awayWin = awayScore > homeScore;
-  await ensureStanding({ competitionCode: match.competition_code, teamId: match.home_team_id, europeanTeamId: match.home_european_team_id });
-  await ensureStanding({ competitionCode: match.competition_code, teamId: match.away_team_id, europeanTeamId: match.away_european_team_id });
+  await ensureStanding({ userId: match.user_id, competitionCode: match.competition_code, teamId: match.home_team_id, europeanTeamId: match.home_european_team_id });
+  await ensureStanding({ userId: match.user_id, competitionCode: match.competition_code, teamId: match.away_team_id, europeanTeamId: match.away_european_team_id });
   await run(`
     UPDATE european_standings SET played = played + 1, wins = wins + ?, draws = draws + ?, losses = losses + ?,
       goals_for = goals_for + ?, goals_against = goals_against + ?, points = points + ?
-    WHERE season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
-  `, [homeWin ? 1 : 0, draw ? 1 : 0, awayWin ? 1 : 0, homeScore, awayScore, homeWin ? 3 : draw ? 1 : 0, SEASON, match.competition_code, match.home_team_id, match.home_european_team_id]);
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
+  `, [homeWin ? 1 : 0, draw ? 1 : 0, awayWin ? 1 : 0, homeScore, awayScore, homeWin ? 3 : draw ? 1 : 0, activeUserId(match.user_id), SEASON, match.competition_code, match.home_team_id, match.home_european_team_id]);
   await run(`
     UPDATE european_standings SET played = played + 1, wins = wins + ?, draws = draws + ?, losses = losses + ?,
       goals_for = goals_for + ?, goals_against = goals_against + ?, points = points + ?
-    WHERE season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
-  `, [awayWin ? 1 : 0, draw ? 1 : 0, homeWin ? 1 : 0, awayScore, homeScore, awayWin ? 3 : draw ? 1 : 0, SEASON, match.competition_code, match.away_team_id, match.away_european_team_id]);
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND COALESCE(team_id, 0) = COALESCE(?, 0) AND COALESCE(european_team_id, 0) = COALESCE(?, 0)
+  `, [awayWin ? 1 : 0, draw ? 1 : 0, homeWin ? 1 : 0, awayScore, homeScore, awayWin ? 3 : draw ? 1 : 0, activeUserId(match.user_id), SEASON, match.competition_code, match.away_team_id, match.away_european_team_id]);
 }
 
-async function rebuildEuropeanStandings(competitionCode = null) {
+async function rebuildEuropeanStandings(userId = null, competitionCode = null) {
+  const scopedUserId = activeUserId(userId);
   const codes = competitionCode ? [competitionCode] : ['UCL', 'UEL', 'UECL'];
   for (const code of codes) {
     await run(`
       UPDATE european_standings
       SET played = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0, points = 0
-      WHERE season = ? AND competition_code = ?
-    `, [SEASON, code]);
+      WHERE user_id = ? AND season = ? AND competition_code = ?
+    `, [scopedUserId, SEASON, code]);
     const playedMatches = await all(`
       SELECT *
       FROM european_matches
-      WHERE season = ? AND competition_code = ? AND played = 1
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND played = 1
       ORDER BY match_day ASC, id ASC
-    `, [SEASON, code]);
+    `, [scopedUserId, SEASON, code]);
     for (const match of playedMatches) {
       await updateEuropeanStandings(match, match.home_score, match.away_score);
     }
@@ -1222,18 +1268,20 @@ async function applyEuropeanRewards(match, home, away, homeScore, awayScore) {
     if (side.team.source !== 'local') continue;
     const resultType = getResultType(side.gf, side.ga);
     const amount = resultType === 'win' ? PRIZE[match.competition_code].win : resultType === 'draw' ? PRIZE[match.competition_code].draw : 0;
-    const club = await get('SELECT * FROM clubs WHERE team_id = ?', [side.team.id]);
+    const club = match.user_id
+      ? await get('SELECT * FROM clubs WHERE user_id = ? AND team_id = ?', [match.user_id, side.team.id])
+      : await get('SELECT * FROM clubs WHERE team_id = ?', [side.team.id]);
     if (club && amount) await run('UPDATE clubs SET budget = budget + ?, fans = fans + ? WHERE id = ?', [amount, resultType === 'win' ? 900 : 250, club.id]);
     await run(`
-      INSERT INTO european_awards (season, competition_code, team_id, award_type, amount, description)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [SEASON, match.competition_code, side.team.id, resultType, amount, `${side.team.name} Avrupa maç primi kazandı.`]);
+      INSERT INTO european_awards (user_id, season, competition_code, team_id, award_type, amount, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [activeUserId(match.user_id), SEASON, match.competition_code, side.team.id, resultType, amount, `${side.team.name} Avrupa maç primi kazandı.`]);
   }
 }
 
 async function createEuropeanStories(match, home, away, homeScore, awayScore) {
   const comp = await competition(match.competition_code);
-  const state = await get('SELECT * FROM game_state WHERE id = 1');
+  const state = await careerState(match.user_id);
   for (const side of [{ team: home, opponent: away, gf: homeScore, ga: awayScore }, { team: away, opponent: home, gf: awayScore, ga: homeScore }]) {
     if (side.team.source !== 'local') continue;
     const resultType = getResultType(side.gf, side.ga);
@@ -1267,9 +1315,11 @@ async function createEuropeanStories(match, home, away, homeScore, awayScore) {
   }
 }
 
-async function nextEuropeanMatch(teamId) {
-  await ensureEuropeanSeason(teamId);
-  await maybeCreateEuropeanKnockoutsForAll();
+async function nextEuropeanMatch(userIdOrTeamId, maybeTeamId = null) {
+  const scopedUserId = maybeTeamId === null ? null : activeUserId(userIdOrTeamId);
+  const teamId = maybeTeamId === null ? userIdOrTeamId : maybeTeamId;
+  await ensureEuropeanSeason(scopedUserId, teamId);
+  await maybeCreateEuropeanKnockoutsForAll(scopedUserId);
   return get(`
     SELECT em.*, ec.name AS competition_name, ec.short_name, ec.theme,
       ht.name AS home_name, at.name AS away_name, het.name AS home_european_name, aet.name AS away_european_name
@@ -1279,26 +1329,32 @@ async function nextEuropeanMatch(teamId) {
     LEFT JOIN teams at ON at.id = em.away_team_id
     LEFT JOIN european_teams het ON het.id = em.home_european_team_id
     LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
-    WHERE em.played = 0 AND (em.home_team_id = ? OR em.away_team_id = ?)
+    WHERE em.user_id = ? AND em.played = 0 AND (em.home_team_id = ? OR em.away_team_id = ?)
     ORDER BY em.match_day ASC, em.id ASC LIMIT 1
-  `, [teamId, teamId]);
+  `, [scopedUserId, teamId, teamId]);
 }
 
-async function dueEuropeanMatch(teamId, day) {
-  await ensureEuropeanSeason(teamId);
-  await maybeCreateEuropeanKnockoutsForAll();
+async function dueEuropeanMatch(userIdOrTeamId, maybeTeamId, maybeDay = null) {
+  const scopedUserId = maybeDay === null ? null : activeUserId(userIdOrTeamId);
+  const teamId = maybeDay === null ? userIdOrTeamId : maybeTeamId;
+  const day = maybeDay === null ? maybeTeamId : maybeDay;
+  await ensureEuropeanSeason(scopedUserId, teamId);
+  await maybeCreateEuropeanKnockoutsForAll(scopedUserId);
   return get(`
     SELECT * FROM european_matches
-    WHERE played = 0 AND match_day <= ? AND (home_team_id = ? OR away_team_id = ?)
+    WHERE user_id = ? AND played = 0 AND match_day <= ? AND (home_team_id = ? OR away_team_id = ?)
     ORDER BY match_day ASC, id ASC LIMIT 1
-  `, [day, teamId, teamId]);
+  `, [scopedUserId, day, teamId, teamId]);
 }
 
-async function playDueEuropeanMatch(teamId, day) {
-  await repairEuropeanDuplicateFixtures();
-  const due = await dueEuropeanMatch(teamId, day);
+async function playDueEuropeanMatch(userIdOrTeamId, maybeTeamId, maybeDay = null) {
+  const scopedUserId = maybeDay === null ? null : activeUserId(userIdOrTeamId);
+  const teamId = maybeDay === null ? userIdOrTeamId : maybeTeamId;
+  const day = maybeDay === null ? maybeTeamId : maybeDay;
+  await repairEuropeanDuplicateFixtures(scopedUserId);
+  const due = await dueEuropeanMatch(scopedUserId, teamId, day);
   if (!due) return null;
-  const sameSlot = await all('SELECT * FROM european_matches WHERE played = 0 AND competition_code = ? AND match_day = ? ORDER BY id ASC', [due.competition_code, due.match_day]);
+  const sameSlot = await all('SELECT * FROM european_matches WHERE user_id = ? AND played = 0 AND competition_code = ? AND match_day = ? ORDER BY id ASC', [scopedUserId, due.competition_code, due.match_day]);
   const results = [];
   let featured = null;
   const userMatch = sameSlot.find((match) => match.home_team_id === teamId || match.away_team_id === teamId) || due;
@@ -1311,18 +1367,22 @@ async function playDueEuropeanMatch(teamId, day) {
     const result = await simulateEuropeanBotMatch(match);
     results.push(result);
   }
-  await maybeCreateEuropeanKnockouts(due.competition_code, due.match_day);
-  const state = await get('SELECT * FROM game_state WHERE id = 1');
+  await maybeCreateEuropeanKnockouts(scopedUserId, due.competition_code, due.match_day);
+  const state = await careerState(scopedUserId);
   if (state?.next_match_day >= due.match_day && state.next_match_day - due.match_day < 2) {
     const shiftedDay = due.match_day + 3;
-    await run('UPDATE game_state SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [shiftedDay]);
+    if (scopedUserId) {
+      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [shiftedDay, scopedUserId]);
+    } else {
+      await run('UPDATE game_state SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [shiftedDay]);
+    }
     console.log('CALENDAR CHECK', {
       conflictResolved: true,
       europeanDay: due.match_day,
       shiftedSuperLigDay: shiftedDay
     });
   }
-  const table = await europeanStandings(due.competition_code);
+  const table = await europeanStandings(scopedUserId, due.competition_code);
   const competitionType = COMPETITION_TYPE_BY_CODE[due.competition_code];
   const comp = await competition(due.competition_code);
   return {
@@ -1339,31 +1399,35 @@ async function playDueEuropeanMatch(teamId, day) {
   };
 }
 
-async function europeanStandings(code) {
+async function europeanStandings(userIdOrCode, maybeCode = null) {
+  const scopedUserId = maybeCode === null ? null : activeUserId(userIdOrCode);
+  const code = maybeCode === null ? userIdOrCode : maybeCode;
   return all(`
     SELECT es.*, COALESCE(t.name, et.name) AS name, COALESCE(t.logo_url, et.logo_url) AS logo_url,
       (es.goals_for - es.goals_against) AS goal_difference
     FROM european_standings es
     LEFT JOIN teams t ON t.id = es.team_id
     LEFT JOIN european_teams et ON et.id = es.european_team_id
-    WHERE es.season = ? AND es.competition_code = ?
+    WHERE es.user_id = ? AND es.season = ? AND es.competition_code = ?
     ORDER BY es.points DESC, goal_difference DESC, es.goals_for DESC, name ASC
-  `, [SEASON, code]);
+  `, [scopedUserId, SEASON, code]);
 }
 
-async function europeanOverview(userTeamId = null) {
-  const state = await get('SELECT * FROM game_state WHERE id = 1');
-  const next = userTeamId ? await nextEuropeanMatch(userTeamId) : null;
+async function europeanOverview(userIdOrTeamId = null, maybeTeamId = null) {
+  const scopedUserId = maybeTeamId === null ? null : activeUserId(userIdOrTeamId);
+  const userTeamId = maybeTeamId === null ? userIdOrTeamId : maybeTeamId;
+  const state = await careerState(scopedUserId);
+  const next = userTeamId ? await nextEuropeanMatch(scopedUserId, userTeamId) : null;
   const entries = await all(`
     SELECT ee.*, ec.name AS competition_name, ec.short_name, t.name AS team_name, et.name AS european_team_name
     FROM european_entries ee
     JOIN european_competitions ec ON ec.code = ee.competition_code
     LEFT JOIN teams t ON t.id = ee.team_id
     LEFT JOIN european_teams et ON et.id = ee.european_team_id
-    WHERE ee.season = ?
+    WHERE ee.user_id = ? AND ee.season = ?
     ORDER BY ee.competition_code, ee.id
-  `, [SEASON]);
-  const draws = await all("SELECT * FROM european_draws WHERE competition_code != 'CONFIG' ORDER BY id DESC LIMIT 12");
+  `, [scopedUserId, SEASON]);
+  const draws = await all("SELECT * FROM european_draws WHERE user_id = ? AND competition_code != 'CONFIG' ORDER BY id DESC LIMIT 12", [scopedUserId]);
   return {
     season: SEASON,
     state,

@@ -28,13 +28,13 @@ function withDisplayDate(match) {
 router.post('/match/play', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    await ensureEuropeanSeason(club.team_id);
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
     const state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
-    const europeDue = await dueEuropeanMatch(club.team_id, state.current_day);
-    const nextEurope = await nextEuropeanMatch(club.team_id);
+    const europeDue = await dueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
+    const nextEurope = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, nextEurope?.match_day || nextLeagueDay);
     const nextMatchDebug = nextEurope && nextEurope.match_day < nextLeagueDay
@@ -52,7 +52,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     }
     const leagueDue = !leagueFinished && state.current_day >= state.next_match_day;
     if (europeDue && (leagueFinished || !leagueDue || europeDue.match_day < state.next_match_day)) {
-      const europeanResult = await playDueEuropeanMatch(club.team_id, state.current_day);
+      const europeanResult = await playDueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
       return res.json(europeanResult);
     }
     if (leagueFinished && nextEurope) {
@@ -103,7 +103,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         LIMIT 12
       `, [req.session.userId, club.team_id, club.team_id])
     ]);
-    await ensureEuropeanSeason(club.team_id);
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
     const totalLeagueWeeks = leagueWeeksForTeamCount(teams.length);
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const europeMatches = await all(`
@@ -116,10 +116,10 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
       LEFT JOIN teams at ON at.id = em.away_team_id
       LEFT JOIN european_teams het ON het.id = em.home_european_team_id
       LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
-      WHERE em.home_team_id = ? OR em.away_team_id = ?
+      WHERE em.user_id = ? AND (em.home_team_id = ? OR em.away_team_id = ?)
       ORDER BY em.match_day ASC, em.id ASC
       LIMIT 24
-    `, [club.team_id, club.team_id]);
+    `, [req.session.userId, club.team_id, club.team_id]);
 
     const upcoming = [];
     for (let offset = 0; offset < 8; offset += 1) {

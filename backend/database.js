@@ -66,6 +66,7 @@ async function createSchema() {
       week INTEGER NOT NULL DEFAULT 1,
       standings_json TEXT NOT NULL DEFAULT '[]',
       matches_json TEXT NOT NULL DEFAULT '{"matches":[],"events":[],"ratings":[]}',
+      europe_json TEXT NOT NULL DEFAULT '{"entries":[],"matches":[],"standings":[],"draws":[],"history":[],"awards":[],"snapshots":[]}',
       is_active INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -458,6 +459,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       team_id INTEGER,
@@ -474,6 +476,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_matches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       phase TEXT NOT NULL,
@@ -508,6 +511,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_standings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       team_id INTEGER,
@@ -526,6 +530,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_draws (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       phase TEXT NOT NULL,
@@ -537,6 +542,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       team_id INTEGER,
@@ -554,6 +560,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS european_awards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       season INTEGER NOT NULL DEFAULT 2025,
       competition_code TEXT NOT NULL,
       team_id INTEGER,
@@ -567,6 +574,7 @@ async function createSchema() {
   await run(`
     CREATE TABLE IF NOT EXISTS squad_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       club_id INTEGER,
       team_id INTEGER,
       week INTEGER NOT NULL DEFAULT 1,
@@ -630,6 +638,14 @@ async function createSchema() {
   await ensureColumn('matches', 'tactical_summary', 'TEXT');
   await ensureColumn('matches', 'man_of_match', 'TEXT');
   await ensureColumn('teams', 'prestige', 'INTEGER NOT NULL DEFAULT 50');
+  await ensureColumn('career_saves', 'europe_json', 'TEXT NOT NULL DEFAULT \'{"entries":[],"matches":[],"standings":[],"draws":[],"history":[],"awards":[],"snapshots":[]}\'');
+  await ensureColumn('european_entries', 'user_id', 'INTEGER');
+  await ensureColumn('european_matches', 'user_id', 'INTEGER');
+  await ensureColumn('european_standings', 'user_id', 'INTEGER');
+  await ensureColumn('european_draws', 'user_id', 'INTEGER');
+  await ensureColumn('european_history', 'user_id', 'INTEGER');
+  await ensureColumn('european_awards', 'user_id', 'INTEGER');
+  await ensureColumn('squad_snapshots', 'user_id', 'INTEGER');
 }
 
 async function ensureColumn(table, column, definition) {
@@ -762,13 +778,58 @@ async function collectCareerSnapshot(userId) {
   const state = await getCareerState(userId);
   const standings = await all('SELECT team_id, points, wins, draws, losses, goals_for, goals_against, form FROM league_standings WHERE user_id = ? ORDER BY team_id', [userId]);
   const matches = await all('SELECT * FROM matches WHERE user_id = ? ORDER BY id ASC', [userId]);
+  const europeData = await collectEuropeSnapshot(userId);
   const matchIds = matches.map((match) => match.id);
-  if (!matchIds.length) return { state, standings, matchData: { matches: [], events: [], ratings: [] } };
+  if (!matchIds.length) return { state, standings, matchData: { matches: [], events: [], ratings: [] }, europeData };
 
   const placeholders = matchIds.map(() => '?').join(',');
   const events = await all(`SELECT * FROM match_events WHERE match_id IN (${placeholders}) ORDER BY match_id, minute, id`, matchIds);
   const ratings = await all(`SELECT * FROM match_player_ratings WHERE match_id IN (${placeholders}) ORDER BY match_id, id`, matchIds);
-  return { state, standings, matchData: { matches, events, ratings } };
+  return { state, standings, matchData: { matches, events, ratings }, europeData };
+}
+
+async function collectEuropeSnapshot(userId) {
+  return {
+    entries: await all('SELECT * FROM european_entries WHERE user_id = ? ORDER BY id ASC', [userId]),
+    matches: await all('SELECT * FROM european_matches WHERE user_id = ? ORDER BY id ASC', [userId]),
+    standings: await all('SELECT * FROM european_standings WHERE user_id = ? ORDER BY id ASC', [userId]),
+    draws: await all("SELECT * FROM european_draws WHERE user_id = ? AND competition_code != 'CONFIG' ORDER BY id ASC", [userId]),
+    history: await all('SELECT * FROM european_history WHERE user_id = ? ORDER BY id ASC', [userId]),
+    awards: await all('SELECT * FROM european_awards WHERE user_id = ? ORDER BY id ASC', [userId]),
+    snapshots: await all('SELECT * FROM squad_snapshots WHERE user_id = ? ORDER BY id ASC', [userId])
+  };
+}
+
+async function insertSnapshotRows(table, rows) {
+  for (const row of rows || []) {
+    const copy = { ...row };
+    delete copy.id;
+    const columns = Object.keys(copy);
+    if (!columns.length) continue;
+    const placeholders = columns.map(() => '?').join(', ');
+    await run(
+      `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
+      columns.map((column) => copy[column])
+    );
+  }
+}
+
+async function restoreEuropeSnapshot(userId, europeData) {
+  await run('DELETE FROM european_awards WHERE user_id = ?', [userId]);
+  await run('DELETE FROM european_history WHERE user_id = ?', [userId]);
+  await run('DELETE FROM european_draws WHERE user_id = ?', [userId]);
+  await run('DELETE FROM european_matches WHERE user_id = ?', [userId]);
+  await run('DELETE FROM european_standings WHERE user_id = ?', [userId]);
+  await run('DELETE FROM european_entries WHERE user_id = ?', [userId]);
+  await run('DELETE FROM squad_snapshots WHERE user_id = ?', [userId]);
+
+  await insertSnapshotRows('european_entries', europeData.entries);
+  await insertSnapshotRows('european_standings', europeData.standings);
+  await insertSnapshotRows('european_matches', europeData.matches);
+  await insertSnapshotRows('european_draws', europeData.draws);
+  await insertSnapshotRows('european_history', europeData.history);
+  await insertSnapshotRows('european_awards', europeData.awards);
+  await insertSnapshotRows('squad_snapshots', europeData.snapshots);
 }
 
 async function saveCurrentCareer(userId) {
@@ -780,7 +841,7 @@ async function saveCurrentCareer(userId) {
   await run(`
     UPDATE career_saves
     SET team_id = ?, name = ?, current_day = ?, next_match_day = ?, week = ?,
-      standings_json = ?, matches_json = ?, updated_at = CURRENT_TIMESTAMP
+      standings_json = ?, matches_json = ?, europe_json = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND user_id = ?
   `, [
     club?.team_id || active.team_id,
@@ -790,6 +851,7 @@ async function saveCurrentCareer(userId) {
     snapshot.state.week,
     JSON.stringify(snapshot.standings),
     JSON.stringify(snapshot.matchData),
+    JSON.stringify(snapshot.europeData),
     active.id,
     userId
   ]);
@@ -805,8 +867,8 @@ async function ensureInitialCareerSave(userId) {
   const snapshot = await collectCareerSnapshot(userId);
   const result = await run(`
     INSERT INTO career_saves
-      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, is_active)
-    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1)
+      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, europe_json, is_active)
+    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `, [
     userId,
     club?.team_id || 1,
@@ -815,7 +877,8 @@ async function ensureInitialCareerSave(userId) {
     snapshot.state.next_match_day,
     snapshot.state.week,
     JSON.stringify(snapshot.standings),
-    JSON.stringify(snapshot.matchData)
+    JSON.stringify(snapshot.matchData),
+    JSON.stringify(snapshot.europeData)
   ]);
   return get('SELECT * FROM career_saves WHERE id = ?', [result.id]);
 }
@@ -874,6 +937,7 @@ async function restoreCareerSave(userId, saveId) {
   }
 
   const matchData = parseJson(career.matches_json, { matches: [], events: [], ratings: [] });
+  const europeData = parseJson(career.europe_json, { entries: [], matches: [], standings: [], draws: [], history: [], awards: [], snapshots: [] });
   const idMap = new Map();
   for (const match of matchData.matches || []) {
     const inserted = await run(`
@@ -914,6 +978,8 @@ async function restoreCareerSave(userId, saveId) {
     `, [matchId, rating.player_id, rating.team_id, rating.rating, rating.goals, rating.assists, rating.yellow_cards, rating.red_cards, rating.injured]);
   }
 
+  await restoreEuropeSnapshot(userId, europeData);
+
   await run('UPDATE career_saves SET is_active = 0 WHERE user_id = ?', [userId]);
   await run('UPDATE career_saves SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', [saveId, userId]);
   return { ...career, team_name: team?.name || career.name };
@@ -944,8 +1010,8 @@ async function createCareerSave(userId, teamId, name) {
   const snapshot = await collectCareerSnapshot(userId);
   const result = await run(`
     INSERT INTO career_saves
-      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, is_active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      (user_id, slot_number, team_id, name, current_day, next_match_day, week, standings_json, matches_json, europe_json, is_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `, [
     userId,
     slotNumber,
@@ -955,7 +1021,8 @@ async function createCareerSave(userId, teamId, name) {
     snapshot.state.next_match_day,
     snapshot.state.week,
     JSON.stringify(snapshot.standings),
-    JSON.stringify(snapshot.matchData)
+    JSON.stringify(snapshot.matchData),
+    JSON.stringify(snapshot.europeData)
   ]);
   return get('SELECT * FROM career_saves WHERE id = ?', [result.id]);
 }
@@ -969,6 +1036,12 @@ async function resetCareerProgress(userId = null) {
     await run('DELETE FROM match_player_ratings WHERE match_id IN (SELECT id FROM matches WHERE user_id = ?)', [userId]);
     await run('DELETE FROM match_events WHERE match_id IN (SELECT id FROM matches WHERE user_id = ?)', [userId]);
     await run('DELETE FROM matches WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_awards WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_history WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_draws WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_matches WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_standings WHERE user_id = ?', [userId]);
+    await run('DELETE FROM european_entries WHERE user_id = ?', [userId]);
     await run('DELETE FROM league_standings WHERE user_id = ?', [userId]);
     await run('UPDATE career_states SET current_day = 1, next_match_day = 7, week = 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [userId]);
     await ensureCareerForUser(userId);

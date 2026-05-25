@@ -21,8 +21,8 @@ router.use(requireAuth);
 router.get('/europe/overview', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    await ensureEuropeanSeason(club.team_id);
-    res.json(await europeanOverview(club.team_id));
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
+    res.json(await europeanOverview(req.session.userId, club.team_id));
   } catch (error) {
     next(error);
   }
@@ -31,8 +31,8 @@ router.get('/europe/overview', async (req, res, next) => {
 router.post('/europe/setup', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    await ensureEuropeanSeason(club.team_id);
-    res.json(await europeanOverview(club.team_id));
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
+    res.json(await europeanOverview(req.session.userId, club.team_id));
   } catch (error) {
     next(error);
   }
@@ -41,7 +41,7 @@ router.post('/europe/setup', async (req, res, next) => {
 router.get('/europe/next', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    res.json(await nextEuropeanMatch(club.team_id));
+    res.json(await nextEuropeanMatch(req.session.userId, club.team_id));
   } catch (error) {
     next(error);
   }
@@ -50,7 +50,7 @@ router.get('/europe/next', async (req, res, next) => {
 router.get('/europe/standings/:code', async (req, res, next) => {
   try {
     const code = String(req.params.code || 'UCL').toUpperCase();
-    res.json(await europeanStandings(code));
+    res.json(await europeanStandings(req.session.userId, code));
   } catch (error) {
     next(error);
   }
@@ -71,10 +71,10 @@ router.get('/europe/matches', async (req, res, next) => {
       LEFT JOIN teams at ON at.id = em.away_team_id
       LEFT JOIN european_teams het ON het.id = em.home_european_team_id
       LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
-      WHERE em.home_team_id = ? OR em.away_team_id = ?
+      WHERE em.user_id = ? AND (em.home_team_id = ? OR em.away_team_id = ?)
       ORDER BY em.match_day ASC, em.id ASC
       LIMIT 40
-    `, [club.team_id, club.team_id]);
+    `, [req.session.userId, club.team_id, club.team_id]);
     res.json(rows);
   } catch (error) {
     next(error);
@@ -83,7 +83,7 @@ router.get('/europe/matches', async (req, res, next) => {
 
 router.get('/europe/draws', async (req, res, next) => {
   try {
-    const draws = await all("SELECT * FROM european_draws WHERE competition_code != 'CONFIG' ORDER BY id DESC LIMIT 20");
+    const draws = await all("SELECT * FROM european_draws WHERE user_id = ? AND competition_code != 'CONFIG' ORDER BY id DESC LIMIT 20", [req.session.userId]);
     res.json(draws.map((row) => ({ ...row, draw_data: JSON.parse(row.draw_data || '[]') })));
   } catch (error) {
     next(error);
