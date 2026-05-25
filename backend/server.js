@@ -21,6 +21,8 @@ const { FORMATIONS } = require('./utils/tacticEngine');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
+const frontendPath = path.join(__dirname, '..', 'frontend');
+const publicGameUrl = process.env.FRONTEND_URL || 'https://sage-mooncake-f3b67a.netlify.app';
 
 app.set('trust proxy', 1);
 app.use(cors({ origin: true, credentials: true }));
@@ -41,7 +43,13 @@ app.use(
   })
 );
 
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+if (process.env.RENDER) {
+  app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
+    res.redirect(302, publicGameUrl);
+  });
+} else {
+  app.use(express.static(frontendPath));
+}
 
 app.use('/api', authRoutes);
 app.use('/api', teamRoutes);
@@ -58,9 +66,11 @@ app.use('/api/league', leagueRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/training', trainingRoutes);
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
-});
+if (!process.env.RENDER) {
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+}
 
 app.use((err, req, res, next) => {
   console.error(err);
