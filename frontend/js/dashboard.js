@@ -1,6 +1,7 @@
 let activeDashboardTab = 'general';
 let dashboardCache = null;
 let isAdvancingWeek = false;
+let dashboardDrawAutoShown = '';
 
 function competitionLabel(type) {
   if (type === 'champions_league') return 'Şampiyonlar Ligi';
@@ -163,6 +164,75 @@ function renderDashboardCalendar() {
   `).join('') : '<div class="empty">Yaklaşan maç yok.</div>';
 }
 
+function dashboardDrawStorageKey(draw) {
+  const teamId = dashboardCache?.data?.club?.team_id || dashboardCache?.calendar?.club?.team_id || 'team';
+  return `tacticore_draw_seen_${teamId}_${draw.id}_${draw.day}`;
+}
+
+function currentDashboardDraw() {
+  const currentDay = Number(dashboardCache?.state?.current_day || 1);
+  return (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
+    match.competitionType === 'europe_draw' &&
+    match.drawRevealed &&
+    currentDay === Number(match.day || 0)
+  );
+}
+
+function showDashboardDrawAnimation(draw) {
+  if (!draw?.drawFixtures?.length) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'draw-animation-overlay';
+  overlay.innerHTML = `
+    <div class="draw-animation-panel">
+      <div class="draw-animation-head">
+        <span class="badge">${draw.competitionLabel}</span>
+        <h1>Kura Gunu</h1>
+        <p>${draw.drawFixtures.length} maclik fikstur sirayla aciklaniyor.</p>
+      </div>
+      <div class="draw-paper-grid">
+        ${draw.drawFixtures.map((fixture) => `
+          <article class="draw-paper" data-paper="${fixture.sequence}">
+            <span>${fixture.sequence}. Mac</span>
+            <strong>${fixture.opponentName}</strong>
+            <small>${fixture.venue} - ${formatSeasonDate(fixture.matchDate, `Gun ${fixture.matchDay}`)}</small>
+          </article>
+        `).join('')}
+      </div>
+      <div class="actions">
+        <button class="btn green" id="startDashboardDrawAnimation" type="button">Kurayi baslat</button>
+        <button class="btn secondary" id="closeDashboardDrawAnimation" type="button" hidden>Tamam</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const papers = [...overlay.querySelectorAll('.draw-paper')];
+  const startButton = overlay.querySelector('#startDashboardDrawAnimation');
+  const closeButton = overlay.querySelector('#closeDashboardDrawAnimation');
+  let index = 0;
+  startButton.addEventListener('click', () => {
+    startButton.disabled = true;
+    startButton.textContent = 'Kura cekiliyor...';
+    const timer = setInterval(() => {
+      papers[index]?.classList.add('revealed');
+      index += 1;
+      if (index >= papers.length) {
+        clearInterval(timer);
+        startButton.hidden = true;
+        closeButton.hidden = false;
+        localStorage.setItem(dashboardDrawStorageKey(draw), '1');
+      }
+    }, 720);
+  });
+  closeButton.addEventListener('click', () => overlay.remove());
+}
+
+function showDueDashboardDraw() {
+  const draw = currentDashboardDraw();
+  if (!draw || localStorage.getItem(dashboardDrawStorageKey(draw)) || dashboardDrawAutoShown === draw.id) return;
+  dashboardDrawAutoShown = draw.id;
+  setTimeout(() => showDashboardDrawAnimation(draw), 350);
+}
+
 function renderEuropeWeek(state, europe) {
   const card = byId('europeWeekCard');
   if (!card) return;
@@ -204,19 +274,22 @@ function renderDashboardPitch(lineup = []) {
 }
 
 function updateGameState(state, nextOpponent) {
-  const today = formatSeasonDate(state.current_date, `Gün ${state.current_day}`);
+  const dueDraw = currentDashboardDraw();
+  const today = formatSeasonDate(state.current_date, `Gun ${state.current_day}`);
   const nextMatchDay = state.next_fixture_day || state.next_match_day;
   const nextMatchSource = state.next_match_competition_type !== 'super_lig'
     ? state.next_european_match?.match_date
     : state.next_match_date;
-  const nextMatch = formatSeasonDate(nextMatchSource, `Gün ${nextMatchDay}`);
+  const nextMatch = formatSeasonDate(nextMatchSource, `Gun ${nextMatchDay}`);
   const isMatchDay = state.matchAvailable;
-  byId('gameState').textContent = `${today}. ${isMatchDay ? 'Maç günü geldi.' : `Sıradaki maç: ${nextMatch}.`}`;
+  byId('gameState').textContent = dueDraw
+    ? `${today}. Kura gunu geldi.`
+    : `${today}. ${isMatchDay ? 'Mac gunu geldi.' : `Siradaki mac: ${nextMatch}.`}`;
   byId('nextMatchCard').innerHTML = `
     <article class="event">
-      <strong>${competitionLabel(state.next_match_competition_type)}</strong><br>
-      ${nextOpponent || 'Rakip hazırlanıyor.'}<br>
-      <span class="muted">${nextMatch}</span>
+      <strong>${dueDraw ? 'Kura gunu' : competitionLabel(state.next_match_competition_type)}</strong><br>
+      ${dueDraw ? (dueDraw.label || 'Rakipler aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
+      <span class="muted">${dueDraw ? formatSeasonDate(dueDraw.date, `Gun ${dueDraw.day}`) : nextMatch}</span>
     </article>
   `;
   byId('goMatch').style.display = isMatchDay ? 'inline-flex' : 'none';
@@ -240,7 +313,10 @@ async function advance(days) {
   try {
     const state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
     dashboardCache.state = state;
+    const calendar = await api.request('/api/calendar').catch(() => null);
+    if (calendar) dashboardCache.calendar = calendar;
     renderDashboard();
+    showDueDashboardDraw();
   } catch (error) {
     byId('gameState').textContent = error.message;
     byId('goMatch').style.display = 'inline-flex';
@@ -288,6 +364,7 @@ async function loadDashboard() {
   if (leagueResult.status === 'fulfilled') dashboardCache.league = leagueResult.value;
   if (calendarResult.status === 'fulfilled') dashboardCache.calendar = calendarResult.value;
   renderDashboard();
+  showDueDashboardDraw();
 }
 
 document.addEventListener('click', (event) => {
