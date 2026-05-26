@@ -458,7 +458,8 @@ function updatePostMatchOverlay() {
   button.textContent = 'Tamam';
   byId('startNextSeason')?.addEventListener('click', async () => {
     try {
-      await api.request('/api/game/next-season', { method: 'POST' });
+      const result = await api.request('/api/game/next-season', { method: 'POST' });
+      showXpToast(result.xpAward);
       window.location.href = '/dashboard.html';
     } catch (error) {
       byId('postOverlayContent').innerHTML += `<div class="event">${error.message}</div>`;
@@ -469,6 +470,7 @@ function updatePostMatchOverlay() {
 
 function onMatchFinished(matchResult) {
   postMatchResult = matchResult;
+  showXpToast(matchResult.xpAward);
   isPostMatchVisible = true;
   currentMatch = matchResult.featured?.match || null;
   activeScreen = 'post_match';

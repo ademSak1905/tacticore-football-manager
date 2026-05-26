@@ -7,6 +7,7 @@ const { ensureDailyFeed, combinedFeed } = require('../utils/feedEngine');
 const { simulateAiTransfers } = require('../utils/transferEngine');
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
 const { leagueWeeksForTeamCount } = require('../utils/matchEngine');
+const { awardSeasonXp, incrementSeasonCount } = require('../utils/managerEngine');
 const {
   buildSeasonPlan,
   parseSeasonPlan,
@@ -189,6 +190,7 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
     }
     const state = await getCareerState(req.session.userId);
     const currentDay = Number(state?.current_day || 1);
+    const seasonXpAward = await awardSeasonXp(req.session.userId);
     const nextStartDay = 1;
     const firstMatchDay = leagueMatchDay(1);
     const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
@@ -214,6 +216,7 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
       firstMatchDay,
       req.session.userId
     ]);
+    await incrementSeasonCount(req.session.userId);
     await ensureCareerForUser(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
     console.log('SEASON RESET CHECK', {
@@ -221,7 +224,7 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
       newCurrentDay: nextStartDay,
       newNextMatchDay: firstMatchDay
     });
-    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: firstMatchDay, week: 1, seasonPlan: plan });
+    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: firstMatchDay, week: 1, seasonPlan: plan, xpAward: seasonXpAward });
   } catch (error) {
     next(error);
   }

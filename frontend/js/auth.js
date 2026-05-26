@@ -50,6 +50,7 @@ function setMessage(text, type = 'info') {
 
 const SHELL_NAV_ITEMS = [
   ['dashboard', '/dashboard.html', 'Dashboard'],
+  ['manager', '/manager.html', 'Menajerim'],
   ['squad', '/squad.html', 'Kadro'],
   ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
   ['calendar', '/calendar.html', 'Takvim'],
@@ -60,12 +61,44 @@ const SHELL_NAV_ITEMS = [
   ['economy', '/economy.html', 'Ekonomi']
 ];
 
+function managerXpText(manager) {
+  if (!manager) return 'Lv. 1 Menajer';
+  return `Lv. ${manager.level} Menajer`;
+}
+
+function updateManagerWidget(manager) {
+  const widget = byId('managerXpWidget');
+  if (!widget || !manager) return;
+  widget.innerHTML = `
+    <span>${managerXpText(manager)}</span>
+    <strong>${manager.currentXp} / ${manager.nextXp} XP</strong>
+    <em>${manager.lastXpGain ? `+${manager.lastXpGain} XP` : 'XP hazır'}</em>
+  `;
+}
+
+function showXpToast(award) {
+  if (!award || !award.gained) return;
+  document.querySelector('.xp-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = 'xp-toast';
+  toast.innerHTML = `
+    <strong>+${award.gained} XP kazandın</strong>
+    <span>${award.reason || 'Menajer gelişimi'}</span>
+    ${award.levelUp ? `<em>Seviye atladın: Lv. ${award.profile?.level || ''}</em>` : ''}
+  `;
+  document.body.appendChild(toast);
+  updateManagerWidget(award.profile);
+  setTimeout(() => toast.classList.add('show'), 40);
+  setTimeout(() => toast.remove(), 4200);
+}
+
 async function requireAuth() {
   try {
     const session = await api.request('/api/me');
     const badge = byId('userBadge');
     if (badge && session.club) badge.textContent = session.club.name;
     localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
+    updateManagerWidget(session.manager);
     return session;
   } catch (error) {
     window.location.href = '/login.html';
@@ -76,6 +109,16 @@ async function requireAuth() {
 function wireShell(activePage) {
   const sidebar = byId('sidebar');
   const button = byId('menuButton');
+  const topbar = document.querySelector('.topbar');
+  if (topbar && !byId('managerXpWidget')) {
+    const logout = byId('logoutButton');
+    const widget = document.createElement('a');
+    widget.id = 'managerXpWidget';
+    widget.className = 'manager-xp-widget';
+    widget.href = '/manager.html';
+    widget.innerHTML = '<span>Lv. 1 Menajer</span><strong>0 / 500 XP</strong><em>XP hazır</em>';
+    topbar.insertBefore(widget, logout || null);
+  }
   const nav = sidebar?.querySelector('.nav');
   if (nav) {
     nav.innerHTML = SHELL_NAV_ITEMS.map(([page, href, label]) => `

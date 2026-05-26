@@ -13,6 +13,7 @@ const {
   restoreCareerSave,
   seedGalatasaraySon16Demo
 } = require('../database');
+const { ensureManagerProfile, getManagerProfile } = require('../utils/managerEngine');
 
 const router = express.Router();
 
@@ -66,6 +67,11 @@ router.post('/register', async (req, res, next) => {
       55
     ]);
     await ensureInitialCareerSave(user.id);
+    await ensureManagerProfile(user.id);
+    await run(`
+      INSERT INTO news_feed (day, category, title, summary, template_key, team_id)
+      VALUES (1, 'club', 'Yeni teknik direktör göreve başladı', ?, 'manager_signed', ?)
+    `, [`${selectedTeam.name}, yeni teknik direktörü ${username}'i resmen açıkladı.`, selectedTeam.id]);
 
     req.session.userId = user.id;
     res.status(201).json({ id: user.id, username, email, clubName: selectedTeam.name, teamId: selectedTeam.id });
@@ -89,6 +95,12 @@ router.post('/career/new', requireAuth, async (req, res, next) => {
 
     const clubName = cleanText(req.body.clubName || selectedTeam.name);
     const career = await createCareerSave(req.session.userId, selectedTeam.id, clubName);
+    await ensureManagerProfile(req.session.userId);
+    const user = await get('SELECT username FROM users WHERE id = ?', [req.session.userId]);
+    await run(`
+      INSERT INTO news_feed (day, category, title, summary, template_key, team_id)
+      VALUES (1, 'club', 'Yeni teknik direktör göreve başladı', ?, 'manager_signed', ?)
+    `, [`${selectedTeam.name}, yeni teknik direktörü ${user?.username || 'menajer'}'i resmen açıkladı.`, selectedTeam.id]);
     const club = await clubModel.getByUserId(req.session.userId);
     await run('DELETE FROM tactics WHERE club_id = ?', [club.id]);
     await run('INSERT INTO tactics (club_id, formation, mentality, pressing, passing_style, tempo) VALUES (?, ?, ?, ?, ?, ?)', [
@@ -139,6 +151,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     req.session.userId = user.id;
+    await ensureManagerProfile(user.id);
     res.json({ id: user.id, username: user.username, email: user.email });
   } catch (error) {
     next(error);
@@ -156,7 +169,9 @@ router.get('/me', async (req, res, next) => {
   try {
     if (!req.session.userId) return res.status(401).json({ message: 'Oturum bulunamadı.' });
     const club = await clubModel.getByUserId(req.session.userId);
-    res.json({ userId: req.session.userId, club });
+    const user = await get('SELECT username, email FROM users WHERE id = ?', [req.session.userId]);
+    const manager = await getManagerProfile(req.session.userId);
+    res.json({ userId: req.session.userId, user, club, manager });
   } catch (error) {
     next(error);
   }

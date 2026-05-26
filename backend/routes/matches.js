@@ -6,6 +6,7 @@ const { seasonDate, withSeasonDates, leagueMatchDay } = require('../utils/season
 const { all, get, run, getCareerState } = require('../database');
 const { createMatchStories } = require('../utils/feedEngine');
 const { ensureEuropeanSeason, dueEuropeanMatch, playDueEuropeanMatch, nextEuropeanMatch } = require('../utils/europeEngine');
+const { awardMatchXp } = require('../utils/managerEngine');
 
 const router = express.Router();
 const EUROPE_TYPE_BY_CODE = {
@@ -58,6 +59,8 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     const leagueDue = !leagueFinished && state.current_day >= state.next_match_day;
     if (europeDue && (leagueFinished || !leagueDue || europeDue.match_day < state.next_match_day)) {
       const europeanResult = await playDueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
+      const xpAward = await awardMatchXp(req.session.userId, club, europeanResult);
+      if (xpAward) europeanResult.xpAward = xpAward;
       const stateAfterEurope = await getCareerState(req.session.userId);
       const leagueFinishedAfterEurope = Number(stateAfterEurope.week || 1) > totalLeagueWeeks;
       const nextEuropeAfterMatch = await nextEuropeanMatch(req.session.userId, club.team_id);
@@ -83,6 +86,8 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
         result.seasonSummary = null;
       }
     }
+    const xpAward = await awardMatchXp(req.session.userId, club, result);
+    if (xpAward) result.xpAward = xpAward;
     await createMatchStories(result, club.team_id, req.session.userId);
     res.json(result);
   } catch (error) {

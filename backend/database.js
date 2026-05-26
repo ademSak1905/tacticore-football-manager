@@ -200,6 +200,46 @@ async function createSchema() {
   `);
 
   await run(`
+    CREATE TABLE IF NOT EXISTS manager_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      manager_name TEXT NOT NULL,
+      total_xp INTEGER NOT NULL DEFAULT 0,
+      last_xp_gain INTEGER NOT NULL DEFAULT 0,
+      seasons INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS manager_xp_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      event_key TEXT NOT NULL,
+      amount INTEGER NOT NULL DEFAULT 0,
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, event_key),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS manager_achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      achievement_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      unlocked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, achievement_key),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS teams (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
@@ -1333,8 +1373,9 @@ async function initDatabase() {
   await backfillSeasonPlans();
   await seedTransferMarket();
   await seedGalatasaraySon16Demo();
-  const users = await all('SELECT id FROM users');
+  const users = await all('SELECT id, username FROM users');
   for (const user of users) {
+    await run('INSERT OR IGNORE INTO manager_profiles (user_id, manager_name) VALUES (?, ?)', [user.id, user.username]);
     await ensureCareerForUser(user.id);
     await ensureInitialCareerSave(user.id);
   }

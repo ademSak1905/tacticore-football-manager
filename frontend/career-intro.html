@@ -37,20 +37,21 @@
         </div>
       </section>
     </main>
-    <script src="/js/auth.js?v=20260525-season-start"></script>
+    <script src="/js/auth.js?v=20260526-manager"></script>
     <script>
       (async () => {
         try {
           const session = await requireAuth();
           const plan = await api.request('/api/game/season-plan').catch(() => null);
           const club = session.club || {};
+          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direktör';
           byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
           byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
           byId('introText').textContent = plan
-            ? `Lig hedefi: ${plan.league?.label || 'Orta sira'} - Transfer butcesi: ${money(plan.transferBudget)}`
-            : 'Yonetim yeni sezon planini hazirladi.';
-          byId('signatureClub').textContent = club.name || 'TactiCore';
-          byId('introNews').textContent = `${club.name || 'Kulup'} tesislerinde imza toreni tamamlandi.`;
+            ? `${managerName} icin lig hedefi: ${plan.league?.label || 'Orta sira'} - Transfer butcesi: ${money(plan.transferBudget)}`
+            : `${managerName} yeni sezon planini yonetimle paylasti.`;
+          byId('signatureClub').textContent = managerName;
+          byId('introNews').textContent = `${club.name || 'Kulup'}, yeni teknik direktoru ${managerName}'i resmen acikladi.`;
           byId('continueIntro').addEventListener('click', async () => {
             await api.request('/api/game/season-plan/seen', { method: 'POST' }).catch(() => {});
             localStorage.removeItem('tacticorePendingIntro');

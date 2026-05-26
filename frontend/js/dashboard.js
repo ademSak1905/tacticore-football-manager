@@ -300,7 +300,8 @@ function updateGameState(state, nextOpponent) {
   byId('nextWeek').style.display = isMatchDay ? 'none' : 'inline-flex';
   byId('nextWeek').disabled = isMatchDay;
   byId('dashboardNextSeason')?.addEventListener('click', async () => {
-    await api.request('/api/game/next-season', { method: 'POST' });
+    const result = await api.request('/api/game/next-season', { method: 'POST' });
+    showXpToast(result.xpAward);
     window.location.reload();
   });
 }
@@ -469,7 +470,8 @@ async function showSeasonReview() {
   `, () => api.request('/api/game/season-review/seen', { method: 'POST' }));
   byId('nextSeasonFromReview')?.addEventListener('click', async () => {
     await api.request('/api/game/season-review/seen', { method: 'POST' });
-    await api.request('/api/game/next-season', { method: 'POST' });
+    const result = await api.request('/api/game/next-season', { method: 'POST' });
+    showXpToast(result.xpAward);
     window.location.reload();
   });
   return true;
