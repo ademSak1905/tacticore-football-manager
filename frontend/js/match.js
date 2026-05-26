@@ -185,7 +185,16 @@ function renderMatchStatsStep(data) {
 
 function renderLeagueTable(data) {
   const userTeamId = Number(data.userTeamId || currentTeamId);
-  const rows = data.table || [];
+  const rows = [...(data.table || [])].sort((a, b) => {
+    const pointsDiff = Number(b.points || 0) - Number(a.points || 0);
+    if (pointsDiff) return pointsDiff;
+    const goalDiffA = Number(a.goal_difference ?? ((a.goals_for || 0) - (a.goals_against || 0)));
+    const goalDiffB = Number(b.goal_difference ?? ((b.goals_for || 0) - (b.goals_against || 0)));
+    if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+    const goalsForDiff = Number(b.goals_for || 0) - Number(a.goals_for || 0);
+    if (goalsForDiff) return goalsForDiff;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+  });
   const isEuropeanTable = data.european || ['champions_league', 'europa_league', 'conference_league'].includes(data.standingsCompetition || data.competitionType);
   return `
     <div class="table-wrap">

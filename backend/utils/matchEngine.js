@@ -512,7 +512,8 @@ async function playLeagueRound(userTeamId, userId) {
   const currentWeek = Number(state.week || 1);
   const totalWeeks = leagueWeeksForTeamCount(teams.length);
   const existingTable = async () => all(`
-    SELECT t.*, COALESCE(ls.points, 0) AS points, COALESCE(ls.wins, 0) AS wins,
+    SELECT t.id, t.name, t.short_name, t.logo_url, t.city, t.stadium, t.overall,
+      COALESCE(ls.points, 0) AS points, COALESCE(ls.wins, 0) AS wins,
       COALESCE(ls.draws, 0) AS draws, COALESCE(ls.losses, 0) AS losses,
       COALESCE(ls.goals_for, 0) AS goals_for, COALESCE(ls.goals_against, 0) AS goals_against,
       COALESCE(ls.form, '') AS form,
@@ -520,7 +521,10 @@ async function playLeagueRound(userTeamId, userId) {
       (COALESCE(ls.goals_for, 0) - COALESCE(ls.goals_against, 0)) AS goal_difference
     FROM teams t
     LEFT JOIN league_standings ls ON ls.team_id = t.id AND ls.user_id = ?
-    ORDER BY points DESC, goal_difference DESC, goals_for DESC, t.name ASC
+    ORDER BY COALESCE(ls.points, 0) DESC,
+      (COALESCE(ls.goals_for, 0) - COALESCE(ls.goals_against, 0)) DESC,
+      COALESCE(ls.goals_for, 0) DESC,
+      t.name ASC
   `, [userId]);
 
   if (currentWeek > totalWeeks) {
