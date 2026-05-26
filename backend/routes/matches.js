@@ -1,7 +1,7 @@
 ﻿const express = require('express');
 const clubModel = require('../models/clubModel');
 const matchModel = require('../models/matchModel');
-const { playLeagueRound, getLeaguePairingsForWeek, leagueWeeksForTeamCount } = require('../utils/matchEngine');
+const { playLeagueRound, getLeaguePairingsForWeek, leagueWeeksForTeamCount, buildSeasonSummary } = require('../utils/matchEngine');
 const { seasonDate, withSeasonDates, leagueMatchDay } = require('../utils/seasonCalendar');
 const { all, get, run, getCareerState } = require('../database');
 const { createMatchStories } = require('../utils/feedEngine');
@@ -58,6 +58,14 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     const leagueDue = !leagueFinished && state.current_day >= state.next_match_day;
     if (europeDue && (leagueFinished || !leagueDue || europeDue.match_day < state.next_match_day)) {
       const europeanResult = await playDueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
+      const stateAfterEurope = await getCareerState(req.session.userId);
+      const leagueFinishedAfterEurope = Number(stateAfterEurope.week || 1) > totalLeagueWeeks;
+      const nextEuropeAfterMatch = await nextEuropeanMatch(req.session.userId, club.team_id);
+      if (leagueFinishedAfterEurope && !nextEuropeAfterMatch && europeanResult) {
+        const table = await clubModel.table(req.session.userId);
+        europeanResult.seasonComplete = true;
+        europeanResult.seasonSummary = buildSeasonSummary(table, club.team_id, totalLeagueWeeks);
+      }
       return res.json(europeanResult);
     }
     if (leagueFinished && nextEurope) {
@@ -67,6 +75,14 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     result.competitionType = 'super_lig';
     result.standingsCompetition = 'super_lig';
     result.shownStandingsCompetition = 'super_lig';
+    if (result.seasonComplete) {
+      const nextEuropeAfterLeague = await nextEuropeanMatch(req.session.userId, club.team_id);
+      if (nextEuropeAfterLeague) {
+        result.leagueSeasonComplete = true;
+        result.seasonComplete = false;
+        result.seasonSummary = null;
+      }
+    }
     await createMatchStories(result, club.team_id, req.session.userId);
     res.json(result);
   } catch (error) {

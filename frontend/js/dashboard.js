@@ -174,7 +174,8 @@ function currentDashboardDraw() {
   return (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
-    currentDay === Number(match.day || 0)
+    currentDay >= Number(match.day || 0) &&
+    (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
   );
 }
 
@@ -525,14 +526,9 @@ async function showSeasonReviewDetailed() {
       <small>Taraftar: ${verdict.fanSatisfaction || 50}/100 - Itibar: ${verdict.reputationChange || '0'} - Kovulma riski: ${verdict.sackRisk || 'Yok'}</small>
     </article>
     <div class="actions">
-      <button class="btn secondary" id="seasonDetailsButton" type="button">Detaylari Gor</button>
-      <button class="btn secondary" data-season-close type="button">Dashboard'a Don</button>
       <button class="btn green" id="nextSeasonFromReview" type="button">Yeni sezona gec</button>
     </div>
   `, () => api.request('/api/game/season-review/seen', { method: 'POST' }));
-  byId('seasonDetailsButton')?.addEventListener('click', () => {
-    document.querySelector('.season-modal-panel')?.classList.toggle('expanded');
-  });
   byId('nextSeasonFromReview')?.addEventListener('click', async () => {
     await api.request('/api/game/season-review/seen', { method: 'POST' });
     await api.request('/api/game/next-season', { method: 'POST' });

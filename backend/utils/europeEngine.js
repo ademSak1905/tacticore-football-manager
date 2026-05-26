@@ -169,34 +169,34 @@ async function resetEuropeanSeasonIfNeeded() {
 }
 
 async function repairEuropeanCalendarBacklog(userId = null) {
-  const scopedUserId = activeUserId(userId);
-  const state = await careerState(scopedUserId);
-  if (!state?.current_day) return;
-  const staleDays = await all(`
-    SELECT DISTINCT match_day
-    FROM european_matches
-    WHERE user_id = ? AND season = ? AND played = 0 AND match_day < ?
-    ORDER BY match_day ASC
-  `, [scopedUserId, SEASON, state.current_day]);
-  if (!staleDays.length) return;
+  // Geciken Avrupa maclari ileri tasinmaz. Eski mantik kura gununu de ileri
+  // kaciriyordu; mac tarihi gecmisteyse oyuncu direkt o maci oynayabilmeli.
+  return { userId: activeUserId(userId), repaired: 0 };
+}
 
-  let targetDay = Math.max(Number(state.next_match_day || state.current_day) + 3, Number(state.current_day) + 3);
-  const repairs = [];
-  for (const row of staleDays) {
-    await run(`
-      UPDATE european_matches
-      SET match_day = ?, match_date = ?
-      WHERE user_id = ? AND season = ? AND played = 0 AND match_day = ?
-    `, [targetDay, seasonDate(targetDay), scopedUserId, SEASON, row.match_day]);
-    repairs.push({ from: row.match_day, to: targetDay });
-    targetDay += 7;
+async function repairEuropeanKnockoutTiming(userId = null) {
+  const scopedUserId = activeUserId(userId);
+  for (const competitionCode of ['UCL', 'UEL', 'UECL']) {
+    for (const phaseInfo of KNOCKOUT_SEQUENCE) {
+      const baseDay = KNOCKOUT_DAYS[competitionCode]?.[phaseInfo.phase];
+      if (!baseDay) continue;
+      const matches = await all(`
+        SELECT id, leg, match_day
+        FROM european_matches
+        WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ? AND played = 0
+        ORDER BY leg ASC, id ASC
+      `, [scopedUserId, SEASON, competitionCode, phaseInfo.phase]);
+      for (const match of matches) {
+        const targetDay = baseDay + (Number(match.leg || 1) === 2 ? KNOCKOUT_SECOND_LEG_GAP : 0);
+        if (Number(match.match_day || 0) === targetDay) continue;
+        await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [
+          targetDay,
+          seasonDate(targetDay),
+          match.id
+        ]);
+      }
+    }
   }
-  console.log('CALENDAR CHECK', {
-    repairedStaleEuropeanMatches: true,
-    currentDay: state.current_day,
-    nextSuperLigDay: state.next_match_day,
-    repairs
-  });
 }
 
 async function repairEuropeanScheduleTiming(userId = null) {
@@ -627,6 +627,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
   if (existing?.count) {
     await ensureEuropeanLeagueFixtureCount(scopedUserId);
     await repairEuropeanScheduleTiming(scopedUserId);
+    await repairEuropeanKnockoutTiming(scopedUserId);
     for (const comp of ['UCL', 'UEL', 'UECL']) await scheduleExternalLeagueFixtures(scopedUserId, comp);
     await repairEuropeanDuplicateFixtures(scopedUserId);
     await repairEuropeanCalendarBacklog(scopedUserId);
@@ -772,6 +773,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
 
   await repairEuropeanDuplicateFixtures(scopedUserId);
   await repairEuropeanScheduleTiming(scopedUserId);
+  await repairEuropeanKnockoutTiming(scopedUserId);
   await repairEuropeanCalendarBacklog(scopedUserId);
   await repairEuropeanDuplicateFixtures(scopedUserId);
   return { ready: true, created: true, userTeamId };

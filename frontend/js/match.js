@@ -172,8 +172,6 @@ function renderSeasonSummary(data) {
       </div>
       <p class="event">Gelecek sezona geçince lig puanları sıfırlanır, kadron ve kulübün korunur.</p>
       <div class="actions">
-        <button id="seasonDetailsFromMatch" class="btn secondary" type="button">Detayları Gör</button>
-        <button id="returnDashboardFromSeason" class="btn secondary" type="button">Dashboard'a Dön</button>
         <button id="startNextSeason" class="btn green" type="button">Yeni Sezona Geç</button>
       </div>
     </div>
@@ -454,7 +452,9 @@ function updatePostMatchOverlay() {
   overlay.hidden = false;
   content.innerHTML = renderPostMatchScreen();
   content.scrollTop = 0;
-  button.hidden = false;
+  const steps = getPostMatchSteps();
+  const isSeasonStep = steps[postStep] === 'season';
+  button.hidden = isSeasonStep;
   button.textContent = 'Tamam';
   byId('startNextSeason')?.addEventListener('click', async () => {
     try {
@@ -463,12 +463,6 @@ function updatePostMatchOverlay() {
     } catch (error) {
       byId('postOverlayContent').innerHTML += `<div class="event">${error.message}</div>`;
     }
-  });
-  byId('returnDashboardFromSeason')?.addEventListener('click', () => {
-    window.location.href = '/dashboard.html';
-  });
-  byId('seasonDetailsFromMatch')?.addEventListener('click', () => {
-    content.querySelector('.season-finale')?.classList.toggle('expanded');
   });
   button.focus();
 }
