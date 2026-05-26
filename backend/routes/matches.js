@@ -122,10 +122,9 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     `, [req.session.userId, club.team_id, club.team_id]);
 
     const upcoming = [];
-    for (let offset = 0; offset < 14; offset += 1) {
-      const week = state.week + offset;
+    for (let week = Number(state.week || 1); week <= totalLeagueWeeks; week += 1) {
       if (week > totalLeagueWeeks) continue;
-      const day = state.next_match_day + offset * 7;
+      const day = Number(state.next_match_day || 7) + (week - Number(state.week || 1)) * 7;
       const fixtures = getLeaguePairingsForWeek(teams, week).map(([home, away]) => ({
         home,
         away,
@@ -137,7 +136,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         day,
         date: seasonDate(day),
         competitionType: 'super_lig',
-        matchAvailable: offset === 0 && state.current_day >= state.next_match_day,
+        matchAvailable: week === Number(state.week || 1) && state.current_day >= state.next_match_day,
         userFixture,
         fixtures
       });
@@ -182,7 +181,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         drawRevealed,
         label: `${match.short_name} ${match.round_name}`
       };
-    });
+    }).filter((match) => match.drawRevealed || match.played);
     const drawGroups = new Map();
     for (const match of europeMatches.filter((item) => item.phase !== 'league' || item.played || item.match_day >= state.current_day - 90)) {
       const key = `${match.competition_code}_${match.phase}_${match.round_name}`;
