@@ -2,7 +2,7 @@
 const bcrypt = require('bcryptjs');
 const clubModel = require('../models/clubModel');
 const { all, get, run, getCareerState, ensureCareerForUser } = require('../database');
-const { seasonDate, withSeasonDates } = require('../utils/seasonCalendar');
+const { seasonDate, withSeasonDates, leagueMatchDay } = require('../utils/seasonCalendar');
 const { ensureDailyFeed, combinedFeed } = require('../utils/feedEngine');
 const { simulateAiTransfers } = require('../utils/transferEngine');
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
@@ -86,9 +86,14 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
-    const state = await getCareerState(req.session.userId);
+    let state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
+    const expectedLeagueDay = leagueMatchDay(state.week || 1);
+    if (Number(state.next_match_day || 0) !== expectedLeagueDay && Number(state.week || 1) <= totalLeagueWeeks) {
+      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
+      state = await getCareerState(req.session.userId);
+    }
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
@@ -125,9 +130,14 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const days = Number(req.body.days) === 7 ? 7 : 1;
     const club = await clubModel.getByUserId(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
-    const currentState = await getCareerState(req.session.userId);
+    let currentState = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
+    const expectedLeagueDay = leagueMatchDay(currentState.week || 1);
+    if (Number(currentState.next_match_day || 0) !== expectedLeagueDay && Number(currentState.week || 1) <= totalLeagueWeeks) {
+      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
+      currentState = await getCareerState(req.session.userId);
+    }
     const leagueFinished = Number(currentState.week || 1) > totalLeagueWeeks;
     const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : currentState.next_match_day;
@@ -179,10 +189,21 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
     }
     const state = await getCareerState(req.session.userId);
     const currentDay = Number(state?.current_day || 1);
-    const nextStartDay = Math.max(currentDay + 14, Number(state?.next_match_day || currentDay) + 14);
+    const nextStartDay = 1;
+    const firstMatchDay = leagueMatchDay(1);
     const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
     const plan = buildSeasonPlan(team || club);
     await run('DELETE FROM league_standings WHERE user_id = ?', [req.session.userId]);
+    await run('DELETE FROM match_player_ratings WHERE match_id IN (SELECT id FROM matches WHERE user_id = ?)', [req.session.userId]);
+    await run('DELETE FROM match_events WHERE match_id IN (SELECT id FROM matches WHERE user_id = ?)', [req.session.userId]);
+    await run('DELETE FROM matches WHERE user_id = ?', [req.session.userId]);
+    await run('DELETE FROM european_matches WHERE user_id = ?', [req.session.userId]);
+    await run('DELETE FROM european_standings WHERE user_id = ?', [req.session.userId]);
+    await run('DELETE FROM european_entries WHERE user_id = ?', [req.session.userId]);
+    await run("DELETE FROM european_draws WHERE user_id = ? AND competition_code != 'CONFIG'", [req.session.userId]);
+    await run('DELETE FROM european_awards WHERE user_id = ?', [req.session.userId]);
+    await run('DELETE FROM european_history WHERE user_id = ?', [req.session.userId]);
+    await run('UPDATE players SET age = age + 1, contract_until = MAX(2025, contract_until - 1), injured = 0, stamina = MIN(99, stamina + 8), morale = MIN(99, morale + 5) WHERE team_id = ?', [club.team_id]);
     await run(`UPDATE clubs
       SET currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?, season_intro_seen = 0,
         season_summary_seen = 0, points = 0, wins = 0, draws = 0, losses = 0,
@@ -190,16 +211,17 @@ router.post('/game/next-season', requireAuth, async (req, res, next) => {
       WHERE user_id = ?`, [plan.transferBudget, plan.salaryBudget, JSON.stringify(plan), req.session.userId]);
     await run('UPDATE career_states SET current_day = ?, next_match_day = ?, week = 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [
       nextStartDay,
-      nextStartDay + 7,
+      firstMatchDay,
       req.session.userId
     ]);
     await ensureCareerForUser(req.session.userId);
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
     console.log('SEASON RESET CHECK', {
       previousDay: currentDay,
       newCurrentDay: nextStartDay,
-      newNextMatchDay: nextStartDay + 7
+      newNextMatchDay: firstMatchDay
     });
-    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: nextStartDay + 7, week: 1, seasonPlan: plan });
+    res.json({ message: 'Yeni sezon başladı.', current_day: nextStartDay, next_match_day: firstMatchDay, week: 1, seasonPlan: plan });
   } catch (error) {
     next(error);
   }
@@ -283,10 +305,29 @@ router.get('/game/season-review', requireAuth, async (req, res, next) => {
     const table = await clubModel.table(req.session.userId);
     const rank = table.findIndex((item) => item.id === club.team_id) + 1;
     const leagueRow = table.find((item) => item.id === club.team_id) || {};
+    const user = await get('SELECT username FROM users WHERE id = ?', [req.session.userId]);
+    const homeAway = await get(`
+      SELECT
+        SUM(CASE WHEN home_club_id = ? THEN 1 ELSE 0 END) AS home_played,
+        SUM(CASE WHEN home_club_id = ? AND home_score > away_score THEN 1 ELSE 0 END) AS home_wins,
+        SUM(CASE WHEN home_club_id = ? AND home_score = away_score THEN 1 ELSE 0 END) AS home_draws,
+        SUM(CASE WHEN home_club_id = ? AND home_score < away_score THEN 1 ELSE 0 END) AS home_losses,
+        SUM(CASE WHEN away_club_id = ? THEN 1 ELSE 0 END) AS away_played,
+        SUM(CASE WHEN away_club_id = ? AND away_score > home_score THEN 1 ELSE 0 END) AS away_wins,
+        SUM(CASE WHEN away_club_id = ? AND away_score = home_score THEN 1 ELSE 0 END) AS away_draws,
+        SUM(CASE WHEN away_club_id = ? AND away_score < home_score THEN 1 ELSE 0 END) AS away_losses
+      FROM matches
+      WHERE user_id = ? AND (home_club_id = ? OR away_club_id = ?)
+    `, [club.team_id, club.team_id, club.team_id, club.team_id, club.team_id, club.team_id, club.team_id, club.team_id, req.session.userId, club.team_id, club.team_id]);
     const leaders = await all(`
       SELECT p.name,
         COALESCE(SUM(r.goals), 0) AS goals,
-        COALESCE(SUM(r.assists), 0) AS assists
+        COALESCE(SUM(r.assists), 0) AS assists,
+        COUNT(*) AS appearances,
+        AVG(r.rating) AS average_rating,
+        MAX(r.rating) AS best_rating,
+        p.age,
+        p.overall
       FROM match_player_ratings r
       JOIN players p ON p.id = r.player_id
       JOIN matches m ON m.id = r.match_id
@@ -297,12 +338,34 @@ router.get('/game/season-review', requireAuth, async (req, res, next) => {
     `, [req.session.userId, club.team_id]);
     const topScorer = leaders.find((item) => Number(item.goals) > 0) || leaders[0] || null;
     const topAssist = [...leaders].sort((a, b) => Number(b.assists || 0) - Number(a.assists || 0))[0] || null;
+    const bestRated = [...leaders].sort((a, b) => Number(b.average_rating || 0) - Number(a.average_rating || 0))[0] || null;
+    const mostAppearances = [...leaders].sort((a, b) => Number(b.appearances || 0) - Number(a.appearances || 0))[0] || null;
+    const bestYoung = [...leaders].filter((item) => Number(item.age || 99) <= 23).sort((a, b) => Number(b.average_rating || 0) - Number(a.average_rating || 0))[0] || null;
+    const worstRated = [...leaders].filter((item) => Number(item.appearances || 0) >= 3).sort((a, b) => Number(a.average_rating || 0) - Number(b.average_rating || 0))[0] || null;
+    const transfers = await all(`
+      SELECT th.*, p.name AS player_name
+      FROM transfer_history th
+      LEFT JOIN players p ON p.id = th.player_id
+      WHERE th.from_team_id = ? OR th.to_team_id = ?
+      ORDER BY th.day ASC, th.id ASC
+    `, [club.team_id, club.team_id]);
+    const incoming = transfers.filter((item) => Number(item.to_team_id) === Number(club.team_id));
+    const outgoing = transfers.filter((item) => Number(item.from_team_id) === Number(club.team_id));
+    const totalSpent = incoming.reduce((sum, item) => sum + Number(item.price || 0), 0);
+    const totalIncome = outgoing.reduce((sum, item) => sum + Number(item.price || 0), 0);
     const leagueEvaluation = evaluateLeague(plan, rank);
     const uclEvaluation = evaluateChampionsLeague(plan, await championsLeagueResult(req.session.userId, club.team_id));
     const evaluations = [leagueEvaluation, uclEvaluation].filter(Boolean);
     const successCount = evaluations.filter((item) => item.success).length;
+    const verdict = managementVerdict(successCount, evaluations.length);
     res.json({
       seen: Boolean(club.season_summary_seen),
+      season: {
+        year: 2025,
+        teamName: club.name,
+        managerName: user?.username || 'Teknik direktör',
+        leagueName: 'Süper Lig'
+      },
       league: {
         rank,
         points: leagueRow.points || 0,
@@ -310,12 +373,37 @@ router.get('/game/season-review', requireAuth, async (req, res, next) => {
         draws: leagueRow.draws || 0,
         losses: leagueRow.losses || 0,
         goals_for: leagueRow.goals_for || 0,
-        goals_against: leagueRow.goals_against || 0
+        goals_against: leagueRow.goals_against || 0,
+        goal_difference: (leagueRow.goals_for || 0) - (leagueRow.goals_against || 0),
+        home: homeAway || {},
+        away: homeAway || {}
       },
       topScorer: topScorer ? { name: topScorer.name, goals: topScorer.goals || 0 } : null,
       topAssist: topAssist ? { name: topAssist.name, assists: topAssist.assists || 0 } : null,
+      playerPerformance: {
+        bestRated: bestRated ? { name: bestRated.name, rating: Number(bestRated.average_rating || 0).toFixed(1) } : null,
+        mostAppearances: mostAppearances ? { name: mostAppearances.name, appearances: mostAppearances.appearances || 0 } : null,
+        bestYoung: bestYoung ? { name: bestYoung.name, rating: Number(bestYoung.average_rating || 0).toFixed(1) } : null,
+        worstRated: worstRated ? { name: worstRated.name, rating: Number(worstRated.average_rating || 0).toFixed(1) } : null
+      },
+      transfers: {
+        incoming: incoming.map((item) => ({ name: item.player_name || 'Oyuncu', price: item.price || 0 })),
+        outgoing: outgoing.map((item) => ({ name: item.player_name || 'Oyuncu', price: item.price || 0 })),
+        totalSpent,
+        totalIncome,
+        budgetUsed: Math.max(0, totalSpent - totalIncome),
+        bestTransfer: incoming[0] ? { name: incoming[0].player_name || 'Oyuncu', price: incoming[0].price || 0 } : null,
+        worstTransfer: incoming[incoming.length - 1] ? { name: incoming[incoming.length - 1].player_name || 'Oyuncu', price: incoming[incoming.length - 1].price || 0 } : null
+      },
       evaluations,
-      verdict: managementVerdict(successCount, evaluations.length)
+      verdict: {
+        ...verdict,
+        fanSatisfaction: Math.max(20, Math.min(100, 50 + successCount * 18 + (rank <= 4 ? 12 : 0))),
+        mediaComment: successCount >= evaluations.length ? 'Sezon başındaki hedeflerin çoğu başarıldı. Yönetim yeni sezon için güveniyor.' : 'Yönetim daha net bir gelişim bekliyor.',
+        reputationChange: successCount > 0 ? '+5' : '-3',
+        trustStatus: successCount >= evaluations.length ? 'Güven yüksek' : 'Dikkatli takip',
+        sackRisk: verdict.score < 45 ? 'Var' : 'Yok'
+      }
     });
   } catch (error) {
     next(error);

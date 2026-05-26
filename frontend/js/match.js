@@ -171,7 +171,11 @@ function renderSeasonSummary(data) {
         ${(summary.achievements || []).map((item) => `<span>${item}</span>`).join('')}
       </div>
       <p class="event">Gelecek sezona geçince lig puanları sıfırlanır, kadron ve kulübün korunur.</p>
-      <button id="startNextSeason" class="btn" type="button">Gelecek Sezona Geç</button>
+      <div class="actions">
+        <button id="seasonDetailsFromMatch" class="btn secondary" type="button">Detayları Gör</button>
+        <button id="returnDashboardFromSeason" class="btn secondary" type="button">Dashboard'a Dön</button>
+        <button id="startNextSeason" class="btn green" type="button">Yeni Sezona Geç</button>
+      </div>
     </div>
   `;
 }
@@ -184,6 +188,7 @@ function renderMatchStatsStep(data) {
 }
 
 function renderLeagueTable(data) {
+  if (data.knockout && data.knockoutRound) return renderKnockoutRound(data);
   const userTeamId = Number(data.userTeamId || currentTeamId);
   const rows = [...(data.table || [])].sort((a, b) => {
     const pointsDiff = Number(b.points || 0) - Number(a.points || 0);
@@ -213,6 +218,34 @@ function renderLeagueTable(data) {
             <td>${goalDifference}</td>
             <td><strong>${team.points}</strong></td>
           </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderKnockoutRound(data) {
+  const rows = data.knockoutRound || [];
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tur</th><th>Ayak</th><th>Ev</th><th>Skor</th><th>Deplasman</th><th>Toplam/Pen.</th></tr></thead>
+        <tbody>${rows.map((match) => {
+          const aggregate = match.aggregate_home !== null && match.aggregate_home !== undefined
+            ? `${match.aggregate_home}-${match.aggregate_away}`
+            : '-';
+          const penalties = match.penalties_home !== null && match.penalties_home !== undefined
+            ? ` Pen: ${match.penalties_home}-${match.penalties_away}`
+            : '';
+          return `
+            <tr>
+              <td>${match.round_name || '-'}</td>
+              <td>${match.leg || 1}</td>
+              <td>${match.home_name || '-'}</td>
+              <td><strong>${match.played ? `${match.home_score}-${match.away_score}` : '-'}</strong></td>
+              <td>${match.away_name || '-'}</td>
+              <td>${aggregate}${penalties}</td>
+            </tr>`;
         }).join('')}</tbody>
       </table>
     </div>
@@ -430,6 +463,12 @@ function updatePostMatchOverlay() {
     } catch (error) {
       byId('postOverlayContent').innerHTML += `<div class="event">${error.message}</div>`;
     }
+  });
+  byId('returnDashboardFromSeason')?.addEventListener('click', () => {
+    window.location.href = '/dashboard.html';
+  });
+  byId('seasonDetailsFromMatch')?.addEventListener('click', () => {
+    content.querySelector('.season-finale')?.classList.toggle('expanded');
   });
   button.focus();
 }

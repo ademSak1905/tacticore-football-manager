@@ -275,6 +275,7 @@ function renderDashboardPitch(lineup = []) {
 
 function updateGameState(state, nextOpponent) {
   const dueDraw = currentDashboardDraw();
+  const seasonEnded = state.next_match_competition_type === 'season_end';
   const today = formatSeasonDate(state.current_date, `Gun ${state.current_day}`);
   const nextMatchDay = state.next_fixture_day || state.next_match_day;
   const nextMatchSource = state.next_match_competition_type !== 'super_lig'
@@ -284,17 +285,23 @@ function updateGameState(state, nextOpponent) {
   const isMatchDay = state.matchAvailable;
   byId('gameState').textContent = dueDraw
     ? `${today}. Kura gunu geldi.`
+    : seasonEnded ? `${today}. Sezon bitti, yeni sezona gecmelisin.`
     : `${today}. ${isMatchDay ? 'Mac gunu geldi.' : `Siradaki mac: ${nextMatch}.`}`;
   byId('nextMatchCard').innerHTML = `
     <article class="event">
-      <strong>${dueDraw ? 'Kura gunu' : competitionLabel(state.next_match_competition_type)}</strong><br>
-      ${dueDraw ? (dueDraw.label || 'Rakipler aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
+      <strong>${seasonEnded ? 'Sezon tamamlandi' : dueDraw ? 'Kura gunu' : competitionLabel(state.next_match_competition_type)}</strong><br>
+      ${seasonEnded ? 'Sezon ozeti hazir. Yeni sezona gecebilirsin.' : dueDraw ? (dueDraw.label || 'Rakipler aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
       <span class="muted">${dueDraw ? formatSeasonDate(dueDraw.date, `Gun ${dueDraw.day}`) : nextMatch}</span>
+      ${seasonEnded ? '<br><button class="btn green" id="dashboardNextSeason" type="button">Yeni Sezona Gec</button>' : ''}
     </article>
   `;
   byId('goMatch').style.display = isMatchDay ? 'inline-flex' : 'none';
   byId('nextWeek').style.display = isMatchDay ? 'none' : 'inline-flex';
   byId('nextWeek').disabled = isMatchDay;
+  byId('dashboardNextSeason')?.addEventListener('click', async () => {
+    await api.request('/api/game/next-season', { method: 'POST' });
+    window.location.reload();
+  });
 }
 
 async function advance(days) {
@@ -466,6 +473,75 @@ async function showSeasonReview() {
   });
   return true;
 }
+
+async function showSeasonReviewDetailed() {
+  if (dashboardCache?.state?.next_match_competition_type !== 'season_end') return false;
+  const review = await api.request('/api/game/season-review').catch(() => null);
+  if (!review || review.seen) return false;
+  const verdict = review.verdict || {};
+  const perf = review.playerPerformance || {};
+  const transfers = review.transfers || {};
+  openSeasonModal(`
+    <span class="badge">Sezon sonu</span>
+    <h1>Sezon Ozeti</h1>
+    <div class="season-rows">
+      ${modalRows([
+        ['Sezon', review.season?.year],
+        ['Takim', review.season?.teamName],
+        ['Teknik direktor', review.season?.managerName],
+        ['Lig', review.season?.leagueName],
+        ['Lig sirasi', `${review.league.rank}.`],
+        ['Puan', review.league.points],
+        ['Galibiyet / Beraberlik / Maglubiyet', `${review.league.wins} / ${review.league.draws} / ${review.league.losses}`],
+        ['Atilan / yenilen / averaj', `${review.league.goals_for} / ${review.league.goals_against} / ${review.league.goal_difference}`],
+        ['Ic saha', `${review.league.home?.home_wins || 0}G ${review.league.home?.home_draws || 0}B ${review.league.home?.home_losses || 0}M`],
+        ['Deplasman', `${review.league.away?.away_wins || 0}G ${review.league.away?.away_draws || 0}B ${review.league.away?.away_losses || 0}M`],
+        ['En golcu', review.topScorer ? `${review.topScorer.name} (${review.topScorer.goals})` : '-'],
+        ['En cok asist', review.topAssist ? `${review.topAssist.name} (${review.topAssist.assists})` : '-'],
+        ['En yuksek mac puani', perf.bestRated ? `${perf.bestRated.name} (${perf.bestRated.rating})` : '-'],
+        ['En cok forma', perf.mostAppearances ? `${perf.mostAppearances.name} (${perf.mostAppearances.appearances})` : '-'],
+        ['En iyi genc', perf.bestYoung ? `${perf.bestYoung.name} (${perf.bestYoung.rating})` : '-'],
+        ['En dusuk performans', perf.worstRated ? `${perf.worstRated.name} (${perf.worstRated.rating})` : '-'],
+        ['Gelen oyuncular', transfers.incoming?.length ? transfers.incoming.map((item) => item.name).join(', ') : '-'],
+        ['Giden oyuncular', transfers.outgoing?.length ? transfers.outgoing.map((item) => item.name).join(', ') : '-'],
+        ['Transfer harcama / gelir', `${money(transfers.totalSpent || 0)} / ${money(transfers.totalIncome || 0)}`],
+        ['En iyi transfer', transfers.bestTransfer?.name],
+        ['En kotu transfer', transfers.worstTransfer?.name]
+      ])}
+    </div>
+    <div class="season-evaluations">
+      ${(review.evaluations || []).map((item) => `
+        <article class="${item.success ? 'success' : 'fail'}">
+          <span>${item.target}</span>
+          <strong>${item.result}</strong>
+          <em>${item.success ? 'Basarili' : 'Basarisiz'}</em>
+        </article>
+      `).join('')}
+    </div>
+    <article class="verdict-card">
+      <span>Yonetim puani: ${verdict.score || 0}</span>
+      <strong>${verdict.label || 'Ortalama sezon'}</strong>
+      <p>${verdict.mediaComment || verdict.note || ''}</p>
+      <small>Taraftar: ${verdict.fanSatisfaction || 50}/100 - Itibar: ${verdict.reputationChange || '0'} - Kovulma riski: ${verdict.sackRisk || 'Yok'}</small>
+    </article>
+    <div class="actions">
+      <button class="btn secondary" id="seasonDetailsButton" type="button">Detaylari Gor</button>
+      <button class="btn secondary" data-season-close type="button">Dashboard'a Don</button>
+      <button class="btn green" id="nextSeasonFromReview" type="button">Yeni sezona gec</button>
+    </div>
+  `, () => api.request('/api/game/season-review/seen', { method: 'POST' }));
+  byId('seasonDetailsButton')?.addEventListener('click', () => {
+    document.querySelector('.season-modal-panel')?.classList.toggle('expanded');
+  });
+  byId('nextSeasonFromReview')?.addEventListener('click', async () => {
+    await api.request('/api/game/season-review/seen', { method: 'POST' });
+    await api.request('/api/game/next-season', { method: 'POST' });
+    window.location.reload();
+  });
+  return true;
+}
+
+showSeasonReview = showSeasonReviewDetailed;
 
 async function showSeasonScreens() {
   if (await showSeasonReview()) return;

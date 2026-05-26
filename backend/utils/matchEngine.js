@@ -1,6 +1,6 @@
 const { run, get, all, getCareerState, ensureCareerForUser } = require('../database');
 const { calculateTeamStrength } = require('./overallCalculator');
-const { seasonDate } = require('./seasonCalendar');
+const { seasonDate, leagueMatchDay } = require('./seasonCalendar');
 const {
   normalizeTactic,
   createAiTactic,
@@ -54,11 +54,25 @@ async function lineupForTeam(teamId) {
     SELECT p.*, l.position_slot
     FROM lineups l
     JOIN players p ON p.id = l.player_id
-    WHERE l.team_id = ? AND p.team_id = l.team_id
+    WHERE l.team_id = ? AND p.team_id = l.team_id AND p.injured = 0
     ORDER BY l.y_position DESC, l.x_position ASC
   `, [teamId]);
-  if (rows.length >= 11) return rows;
-  return all('SELECT *, position AS position_slot FROM players WHERE team_id = ? ORDER BY is_starting_eleven DESC, overall DESC LIMIT 11', [teamId]);
+  if (rows.length === 11) return rows;
+  const starters = await all(`
+    SELECT *, position AS position_slot
+    FROM players
+    WHERE team_id = ? AND injured = 0 AND is_starting_eleven = 1 AND lineup_role = 'starter'
+    ORDER BY overall DESC
+    LIMIT 11
+  `, [teamId]);
+  if (starters.length === 11) return starters;
+  return all(`
+    SELECT *, position AS position_slot
+    FROM players
+    WHERE team_id = ? AND injured = 0
+    ORDER BY is_starting_eleven DESC, CASE lineup_role WHEN 'starter' THEN 0 WHEN 'substitute' THEN 1 ELSE 2 END, overall DESC
+    LIMIT 11
+  `, [teamId]);
 }
 
 async function tacticForTeam(team, scoreDiff = 0) {
@@ -546,7 +560,7 @@ async function playLeagueRound(userTeamId, userId) {
   const results = [];
   let featured = null;
   for (const [home, away] of pairList) {
-    const result = await playPair(userId, home, away, state.next_match_day);
+    const result = await playPair(userId, home, away, leagueMatchDay(currentWeek));
     results.push(result);
     if (home.id === userTeamId || away.id === userTeamId) featured = result;
   }
@@ -555,7 +569,7 @@ async function playLeagueRound(userTeamId, userId) {
   const seasonComplete = currentWeek >= totalWeeks;
   await run('UPDATE career_states SET week = ?, next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [
     seasonComplete ? totalWeeks + 1 : currentWeek + 1,
-    seasonComplete ? state.next_match_day : state.next_match_day + 7,
+    seasonComplete ? leagueMatchDay(currentWeek) : leagueMatchDay(currentWeek + 1),
     userId
   ]);
   return {

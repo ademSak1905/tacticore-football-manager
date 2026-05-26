@@ -48,11 +48,12 @@ router.post('/lineup', requireAuth, async (req, res, next) => {
     if (allSelected.some((id) => !ownedIds.has(id))) return res.status(403).json({ message: 'Sadece kendi oyuncularinizi secebilirsiniz.' });
 
     await playerModel.resetLineup(club.id);
+    await run('DELETE FROM lineups WHERE team_id = ?', [club.team_id]);
     for (const id of starterIds) {
-      await run("UPDATE players SET lineup_role = 'starter' WHERE id = ? AND club_id = ?", [id, club.id]);
+      await run("UPDATE players SET lineup_role = 'starter', is_starting_eleven = 1 WHERE id = ? AND team_id = ?", [id, club.team_id]);
     }
     for (const id of substituteIds.slice(0, 7)) {
-      if (!starterIds.includes(id)) await run("UPDATE players SET lineup_role = 'substitute' WHERE id = ? AND club_id = ?", [id, club.id]);
+      if (!starterIds.includes(id)) await run("UPDATE players SET lineup_role = 'substitute', is_starting_eleven = 0 WHERE id = ? AND team_id = ?", [id, club.team_id]);
     }
 
     res.json({ message: 'Kadro kaydedildi.' });

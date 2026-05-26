@@ -7,20 +7,21 @@ const { QUALIFICATION_RULES } = require('../seed/uefaSeed');
 const SEASON = 2025;
 const WIN_ONLY_WORDS = ['3 puan', 'galibiyet', 'zafer', 'kazandı', 'kutladı'];
 const EURO_DAYS = {
-  UCL: [48, 55, 97, 118, 166, 195, 202, 223],
-  UEL: [20, 41, 62, 83, 104, 125],
-  UECL: [27, 48, 69, 90, 111, 132]
+  UCL: [24, 31, 66, 87, 136, 165, 172, 193],
+  UEL: [17, 45, 73, 101, 129, 157],
+  UECL: [21, 49, 77, 105, 133, 161]
 };
 const QUALIFYING_DAYS = {
-  UCL: [45, 52],
-  UEL: [15, 19],
-  UECL: [22, 26]
+  UCL: [10, 17],
+  UEL: [8, 15],
+  UECL: [12, 19]
 };
 const KNOCKOUT_DAYS = {
-  UCL: { round_of_16: 237, quarter_final: 258, semi_final: 279, final: 303 },
-  UEL: { round_of_16: 216, quarter_final: 258, semi_final: 286, final: 300 },
-  UECL: { round_of_16: 223, quarter_final: 265, semi_final: 293, final: 299 }
+  UCL: { round_of_16: 207, quarter_final: 242, semi_final: 270, final: 303 },
+  UEL: { round_of_16: 207, quarter_final: 242, semi_final: 270, final: 300 },
+  UECL: { round_of_16: 214, quarter_final: 249, semi_final: 277, final: 299 }
 };
+const KNOCKOUT_SECOND_LEG_GAP = 7;
 const PRIZE = {
   UCL: { win: 2800000, draw: 930000, participation: 18000000, round: 11000000 },
   UEL: { win: 900000, draw: 300000, participation: 4300000, round: 2500000 },
@@ -736,6 +737,36 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
       INSERT INTO european_draws (user_id, season, competition_code, phase, draw_data)
       VALUES (?, ?, ?, 'league_stage', ?)
     `, [scopedUserId, SEASON, comp, JSON.stringify(drawRows.filter((row) => row.competition === comp))]);
+    for (const entry of localEntrants.filter((item) => normalizeEntryStage(item.entry_stage) === 'league_phase')) {
+      const localTeam = await get('SELECT * FROM teams WHERE id = ?', [entry.team_id]);
+      const opponents = drawRows
+        .filter((row) => row.competition === comp && row.team_id === entry.team_id && row.opponent_european_team_id)
+        .map((row) => euroOpponents.find((opponent) => opponent.european_team_id === row.opponent_european_team_id))
+        .filter(Boolean)
+        .slice(0, 8);
+      const opponentNames = [];
+      for (const opponent of opponents) {
+        const team = await get('SELECT name FROM european_teams WHERE id = ?', [opponent.european_team_id]);
+        if (team?.name) opponentNames.push(team.name);
+      }
+      await run(`
+        INSERT INTO news_feed (day, category, title, summary, template_key, team_id)
+        VALUES (?, 'europe', ?, ?, 'ucl_group_draw', ?)
+      `, [
+        Math.max(1, days[0] - 7),
+        `${comp === 'UCL' ? 'Şampiyonlar Ligi' : comp} grup kuraları çekildi`,
+        `${localTeam?.name || 'Takım'} için rakipler belli oldu: ${opponentNames.join(', ') || 'fikstür UEFA tarafından açıklandı'}.`,
+        entry.team_id
+      ]);
+      await run(`
+        INSERT INTO social_posts (day, type, author, content, template_key, category, team_id)
+        VALUES (?, 'social', 'UEFA Haber Merkezi', ?, 'ucl_group_draw_social', 'europe', ?)
+      `, [
+        Math.max(1, days[0] - 7),
+        `${localTeam?.name || 'Takım'} için Şampiyonlar Ligi grup/lig aşaması kurası çekildi. Rakipler: ${opponentNames.slice(0, 4).join(', ') || 'belli oldu'}.`,
+        entry.team_id
+      ]);
+    }
     await scheduleExternalLeagueFixtures(scopedUserId, comp);
   }
 
@@ -776,7 +807,7 @@ function syntheticEuropeanPlayers(team) {
 
 async function playersForTeamEntity(team) {
   if (team.source !== 'local') return syntheticEuropeanPlayers(team);
-  const players = await all('SELECT * FROM players WHERE team_id = ? ORDER BY lineup_role = "starter" DESC, overall DESC LIMIT 18', [team.id]);
+  const players = await lineupForTeam(team.id);
   return players.length ? players : syntheticEuropeanPlayers(team);
 }
 
@@ -795,6 +826,7 @@ function weightedPick(players, positions = null, skill = 'overall') {
 function pickPlayerForEvent(players, eventType) {
   if (eventType === 'goal') return weightedPick(players, ['FWD', 'MID'], 'shooting');
   if (eventType === 'assist') return weightedPick(players, ['MID', 'FWD'], 'passing');
+  if (eventType === 'attack') return weightedPick(players, ['FWD', 'MID'], 'pace');
   if (eventType === 'save') return players.find((player) => player.position === 'GK') || weightedPick(players);
   if (eventType === 'defense') return weightedPick(players, ['DEF', 'MID'], 'defending');
   return weightedPick(players);
@@ -955,8 +987,11 @@ async function simulateEuropeanMatch(match) {
   if (match.phase === 'qualifying' && match.leg === 2) {
     await settleQualifyingTie(match, home, away, homeScore, awayScore);
   }
+  if (['round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
+    await settleKnockoutTie(match, home, away, homeScore, awayScore);
+  }
 
-  await updateEuropeanStandings(match, homeScore, awayScore);
+  if (match.phase === 'league') await updateEuropeanStandings(match, homeScore, awayScore);
   await applyEuropeanRewards(match, home, away, homeScore, awayScore);
   await createEuropeanStories(match, home, away, homeScore, awayScore);
 
@@ -1040,8 +1075,11 @@ async function simulateEuropeanBotMatch(match) {
   if (match.phase === 'qualifying' && match.leg === 2) {
     await settleQualifyingTie(match, home, away, homeScore, awayScore);
   }
+  if (['round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
+    await settleKnockoutTie(match, home, away, homeScore, awayScore);
+  }
 
-  await updateEuropeanStandings(match, homeScore, awayScore);
+  if (match.phase === 'league') await updateEuropeanStandings(match, homeScore, awayScore);
   await applyEuropeanRewards(match, home, away, homeScore, awayScore);
   await createEuropeanStories(match, home, away, homeScore, awayScore);
 
@@ -1174,6 +1212,67 @@ async function settleQualifyingTie(match, home, away, homeScore, awayScore) {
   }
 }
 
+async function settleKnockoutTie(match, home, away, homeScore, awayScore) {
+  if (match.phase === 'final') {
+    let penaltiesHome = null;
+    let penaltiesAway = null;
+    if (homeScore === awayScore) {
+      penaltiesHome = rand(3, 6);
+      penaltiesAway = rand(3, 6);
+      if (penaltiesHome === penaltiesAway) penaltiesHome += 1;
+    }
+    await run('UPDATE european_matches SET aggregate_home = ?, aggregate_away = ?, penalties_home = ?, penalties_away = ? WHERE id = ?', [
+      homeScore,
+      awayScore,
+      penaltiesHome,
+      penaltiesAway,
+      match.id
+    ]);
+    return;
+  }
+  if (Number(match.leg || 1) !== 2) return;
+  const firstLeg = await get(`
+    SELECT * FROM european_matches
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ? AND round_name = ? AND leg = 1
+      AND ((home_team_id = ? OR away_team_id = ? OR home_european_team_id = ? OR away_european_team_id = ?)
+      AND (home_team_id = ? OR away_team_id = ? OR home_european_team_id = ? OR away_european_team_id = ?))
+    ORDER BY id DESC LIMIT 1
+  `, [
+    activeUserId(match.user_id),
+    SEASON,
+    match.competition_code,
+    match.phase,
+    match.round_name,
+    home.team_id || null,
+    home.team_id || null,
+    home.european_team_id || null,
+    home.european_team_id || null,
+    away.team_id || null,
+    away.team_id || null,
+    away.european_team_id || null,
+    away.european_team_id || null
+  ]);
+  if (!firstLeg) return;
+  const firstHomeKey = participantKey(firstLeg, 'home');
+  const currentHomeKey = participantKey(match, 'home');
+  const homeAggregate = homeScore + (firstHomeKey === currentHomeKey ? firstLeg.home_score : firstLeg.away_score);
+  const awayAggregate = awayScore + (firstHomeKey === currentHomeKey ? firstLeg.away_score : firstLeg.home_score);
+  let penaltiesHome = null;
+  let penaltiesAway = null;
+  if (homeAggregate === awayAggregate) {
+    penaltiesHome = rand(3, 6);
+    penaltiesAway = rand(3, 6);
+    if (penaltiesHome === penaltiesAway) penaltiesHome += 1;
+  }
+  await run('UPDATE european_matches SET aggregate_home = ?, aggregate_away = ?, penalties_home = ?, penalties_away = ? WHERE id = ?', [
+    homeAggregate,
+    awayAggregate,
+    penaltiesHome,
+    penaltiesAway,
+    match.id
+  ]);
+}
+
 function participantFromStanding(row) {
   return {
     teamId: row.team_id || null,
@@ -1190,6 +1289,12 @@ function participantFromMatch(match, side) {
 }
 
 function knockoutWinner(match) {
+  if (match.aggregate_home !== null && match.aggregate_home !== undefined && Number(match.aggregate_home) !== Number(match.aggregate_away)) {
+    return Number(match.aggregate_home) > Number(match.aggregate_away) ? participantFromMatch(match, 'home') : participantFromMatch(match, 'away');
+  }
+  if (match.penalties_home !== null && match.penalties_home !== undefined && Number(match.penalties_home) !== Number(match.penalties_away)) {
+    return Number(match.penalties_home) > Number(match.penalties_away) ? participantFromMatch(match, 'home') : participantFromMatch(match, 'away');
+  }
   if (Number(match.home_score) > Number(match.away_score)) return participantFromMatch(match, 'home');
   if (Number(match.away_score) > Number(match.home_score)) return participantFromMatch(match, 'away');
   const homePower = Number(match.home_score || 0) + Math.random();
@@ -1226,6 +1331,7 @@ async function createKnockoutRound(userId, competitionCode, phaseInfo, participa
 
   for (let index = 0; index < pairs.length; index += 1) {
     const [home, away] = pairs[index];
+    const twoLegged = phaseInfo.phase !== 'final';
     await run(`
       INSERT INTO european_matches
         (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
@@ -1243,6 +1349,26 @@ async function createKnockoutRound(userId, competitionCode, phaseInfo, participa
       home.europeanTeamId,
       away.europeanTeamId
     ]);
+    if (twoLegged) {
+      const secondLegDay = matchDay + KNOCKOUT_SECOND_LEG_GAP;
+      await run(`
+        INSERT INTO european_matches
+          (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+        VALUES (?, ?, ?, ?, ?, 2, ?, ?, ?, ?, ?, ?)
+      `, [
+        scopedUserId,
+        SEASON,
+        competitionCode,
+        phaseInfo.phase,
+        phaseInfo.roundName,
+        secondLegDay,
+        seasonDate(secondLegDay),
+        away.teamId,
+        home.teamId,
+        away.europeanTeamId,
+        home.europeanTeamId
+      ]);
+    }
   }
 
   await run(`
@@ -1294,7 +1420,10 @@ async function maybeCreateEuropeanKnockouts(userId, competitionCode, fallbackDay
     `, [scopedUserId, SEASON, competitionCode, phaseInfo.phase]);
     if (!currentMatches.length || currentMatches.some((match) => !match.played)) continue;
     if (await knockoutPhaseCount(scopedUserId, competitionCode, nextPhase.phase)) continue;
-    const winners = currentMatches.map(knockoutWinner);
+    const decisiveMatches = phaseInfo.phase === 'final'
+      ? currentMatches
+      : currentMatches.filter((match) => Number(match.leg || 1) === 2);
+    const winners = decisiveMatches.map(knockoutWinner);
     const lastDay = Math.max(...currentMatches.map((match) => Number(match.match_day || 0)));
     return createKnockoutRound(scopedUserId, competitionCode, nextPhase, winners, Math.max(lastDay + 7, Number(fallbackDay || 0) + 7), false);
   }
@@ -1444,6 +1573,35 @@ async function dueEuropeanMatch(userIdOrTeamId, maybeTeamId, maybeDay = null) {
   `, [scopedUserId, day, teamId, teamId]);
 }
 
+async function knockoutRoundRows(userId, competitionCode, phase) {
+  const rows = await all(`
+    SELECT em.*, COALESCE(ht.name, het.name) AS home_name, COALESCE(at.name, aet.name) AS away_name
+    FROM european_matches em
+    LEFT JOIN teams ht ON ht.id = em.home_team_id
+    LEFT JOIN teams at ON at.id = em.away_team_id
+    LEFT JOIN european_teams het ON het.id = em.home_european_team_id
+    LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
+    WHERE em.user_id = ? AND em.season = ? AND em.competition_code = ? AND em.phase = ?
+    ORDER BY em.match_day ASC, em.id ASC
+  `, [activeUserId(userId), SEASON, competitionCode, phase]);
+  return rows.map((row) => ({
+    id: row.id,
+    round_name: row.round_name,
+    leg: row.leg,
+    home_name: row.home_name,
+    away_name: row.away_name,
+    home_score: row.home_score,
+    away_score: row.away_score,
+    aggregate_home: row.aggregate_home,
+    aggregate_away: row.aggregate_away,
+    penalties_home: row.penalties_home,
+    penalties_away: row.penalties_away,
+    played: Boolean(row.played),
+    match_date: row.match_date,
+    match_day: row.match_day
+  }));
+}
+
 async function playDueEuropeanMatch(userIdOrTeamId, maybeTeamId, maybeDay = null) {
   const scopedUserId = maybeDay === null ? null : activeUserId(userIdOrTeamId);
   const teamId = maybeDay === null ? userIdOrTeamId : maybeTeamId;
@@ -1479,16 +1637,20 @@ async function playDueEuropeanMatch(userIdOrTeamId, maybeTeamId, maybeDay = null
       shiftedSuperLigDay: shiftedDay
     });
   }
-  const table = await europeanStandings(scopedUserId, due.competition_code);
+  const isKnockout = !['league', 'qualifying'].includes(due.phase);
+  const table = isKnockout ? [] : await europeanStandings(scopedUserId, due.competition_code);
+  const knockoutRound = isKnockout ? await knockoutRoundRows(scopedUserId, due.competition_code, due.phase) : null;
   const competitionType = COMPETITION_TYPE_BY_CODE[due.competition_code];
   const comp = await competition(due.competition_code);
   return {
     european: true,
+    knockout: isKnockout,
     competitionType,
     standingsCompetition: competitionType,
     shownStandingsCompetition: competitionType,
-    standingsTitle: `${comp?.short_name || 'Avrupa'} puan durumu`,
+    standingsTitle: isKnockout ? `${comp?.short_name || 'Avrupa'} ${due.round_name}` : `${comp?.short_name || 'Avrupa'} puan durumu`,
     tableCompetitionCode: due.competition_code,
+    knockoutRound,
     featured,
     results,
     table,

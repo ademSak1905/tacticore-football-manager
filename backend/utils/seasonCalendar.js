@@ -1,4 +1,6 @@
-const SEASON_START = new Date(Date.UTC(2025, 7, 1));
+const SEASON_START = new Date(Date.UTC(2025, 8, 1));
+const FIRST_LEAGUE_MATCH_DAY = 7;
+const LEAGUE_MATCH_INTERVAL = 8;
 
 function seasonDate(day) {
   const safeDay = Math.max(1, Number(day) || 1);
@@ -15,7 +17,14 @@ function withSeasonDates(state) {
   };
 }
 
+function leagueMatchDay(week = 1) {
+  return FIRST_LEAGUE_MATCH_DAY + (Math.max(1, Number(week) || 1) - 1) * LEAGUE_MATCH_INTERVAL;
+}
+
 module.exports = {
   seasonDate,
-  withSeasonDates
+  withSeasonDates,
+  leagueMatchDay,
+  FIRST_LEAGUE_MATCH_DAY,
+  LEAGUE_MATCH_INTERVAL
 };

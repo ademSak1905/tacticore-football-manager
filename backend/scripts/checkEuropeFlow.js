@@ -96,19 +96,18 @@ async function main() {
 
     await maybeCreateEuropeanKnockoutsForAll(userA);
     const expected = [
-      ['round_of_16', 8],
-      ['quarter_final', 4],
-      ['semi_final', 2],
+      ['round_of_16', 16],
+      ['quarter_final', 8],
+      ['semi_final', 4],
       ['final', 1]
     ];
-    if (await phaseCount(userA, 'round_of_16') !== 8) throw new Error('Son 16 eslesmeleri eksik.');
+    if (await phaseCount(userA, 'round_of_16') !== 16) throw new Error('Son 16 eslesmeleri eksik.');
     for (const [phase, count] of expected.slice(0, -1)) {
       await markPhasePlayed(userA, phase);
       await maybeCreateEuropeanKnockoutsForAll(userA);
       const next = expected[expected.findIndex((item) => item[0] === phase) + 1];
       if ((await phaseCount(userA, next[0])) !== next[1]) throw new Error(`${next[0]} eslesmeleri eksik.`);
       if ((await phaseCount(userB, next[0])) !== 0) throw new Error('Avrupa eleme turlari baska kullaniciya karisti.');
-      if ((await phaseCount(userA, next[0])) !== count / 2) throw new Error(`${next[0]} mac sayisi hatali.`);
     }
 
     const firstSave = await ensureInitialCareerSave(userA);

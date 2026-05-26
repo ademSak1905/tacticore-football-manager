@@ -2,8 +2,8 @@
 const clubModel = require('../models/clubModel');
 const matchModel = require('../models/matchModel');
 const { playLeagueRound, getLeaguePairingsForWeek, leagueWeeksForTeamCount } = require('../utils/matchEngine');
-const { seasonDate, withSeasonDates } = require('../utils/seasonCalendar');
-const { all, get, getCareerState } = require('../database');
+const { seasonDate, withSeasonDates, leagueMatchDay } = require('../utils/seasonCalendar');
+const { all, get, run, getCareerState } = require('../database');
 const { createMatchStories } = require('../utils/feedEngine');
 const { ensureEuropeanSeason, dueEuropeanMatch, playDueEuropeanMatch, nextEuropeanMatch } = require('../utils/europeEngine');
 
@@ -29,9 +29,14 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
-    const state = await getCareerState(req.session.userId);
+    let state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
+    const expectedLeagueDay = leagueMatchDay(state.week || 1);
+    if (Number(state.next_match_day || 0) !== expectedLeagueDay && Number(state.week || 1) <= totalLeagueWeeks) {
+      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
+      state = await getCareerState(req.session.userId);
+    }
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const europeDue = await dueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
     const nextEurope = await nextEuropeanMatch(req.session.userId, club.team_id);
@@ -90,7 +95,7 @@ router.get('/matches', requireAuth, async (req, res, next) => {
 router.get('/calendar', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    const [state, teams, pastMatches] = await Promise.all([
+    let [state, teams, pastMatches] = await Promise.all([
       getCareerState(req.session.userId),
       all('SELECT id, name, short_name, logo_url FROM teams ORDER BY id ASC'),
       all(`
@@ -105,6 +110,11 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     ]);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
     const totalLeagueWeeks = leagueWeeksForTeamCount(teams.length);
+    const expectedLeagueDay = leagueMatchDay(state.week || 1);
+    if (Number(state.next_match_day || 0) !== expectedLeagueDay && Number(state.week || 1) <= totalLeagueWeeks) {
+      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
+      state = await getCareerState(req.session.userId);
+    }
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const europeMatches = await all(`
       SELECT em.*, ec.short_name, ec.theme,
@@ -124,7 +134,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     const upcoming = [];
     for (let week = Number(state.week || 1); week <= totalLeagueWeeks; week += 1) {
       if (week > totalLeagueWeeks) continue;
-      const day = Number(state.next_match_day || 7) + (week - Number(state.week || 1)) * 7;
+      const day = leagueMatchDay(week);
       const fixtures = getLeaguePairingsForWeek(teams, week).map(([home, away]) => ({
         home,
         away,

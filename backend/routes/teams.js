@@ -43,7 +43,7 @@ router.get('/teams/:id/lineup', async (req, res, next) => {
       SELECT l.*, p.name, p.position, p.overall, p.stamina, p.morale
       FROM lineups l
       JOIN players p ON p.id = l.player_id
-      WHERE l.team_id = ?
+      WHERE l.team_id = ? AND p.team_id = l.team_id AND p.injured = 0
       ORDER BY l.y_position DESC, l.x_position ASC
     `, [req.params.id]);
     if (!lineup.length && team) {
