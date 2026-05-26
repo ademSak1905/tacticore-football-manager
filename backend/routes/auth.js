@@ -10,7 +10,8 @@ const {
   ensureInitialCareerSave,
   listCareerSaves,
   createCareerSave,
-  restoreCareerSave
+  restoreCareerSave,
+  seedGalatasaraySon16Demo
 } = require('../database');
 
 const router = express.Router();
@@ -128,6 +129,9 @@ router.post('/login', async (req, res, next) => {
   try {
     const login = cleanText(req.body.login || req.body.username || req.body.email);
     const password = String(req.body.password || '').trim();
+    if (login === 'gs_son16' && password === 'galatasaray16') {
+      await seedGalatasaraySon16Demo();
+    }
     const user = await userModel.findByLogin(login);
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {

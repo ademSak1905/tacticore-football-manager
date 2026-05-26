@@ -1384,5 +1384,6 @@ module.exports = {
   saveCurrentCareer,
   restoreCareerSave,
   createCareerSave,
-  ensureInitialCareerSave
+  ensureInitialCareerSave,
+  seedGalatasaraySon16Demo
 };
