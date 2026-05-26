@@ -1208,8 +1208,11 @@ async function resetCareerProgress(userId = null) {
 }
 
 async function seedGalatasaraySon16Demo() {
-  const username = 'gs_son16';
-  const email = 'gs_son16@tacticore.demo';
+  const oldDemo = await get("SELECT id FROM users WHERE username = 'gs_son16'");
+  if (oldDemo?.id) await run('DELETE FROM users WHERE id = ?', [oldDemo.id]);
+
+  const username = 'gs_temiz_son16';
+  const email = 'gs_temiz_son16@tacticore.demo';
   const passwordHash = await bcrypt.hash('galatasaray16', 12);
   const team = await get("SELECT * FROM teams WHERE name = 'Galatasaray' LIMIT 1");
   if (!team) return;
@@ -1261,7 +1264,7 @@ async function seedGalatasaraySon16Demo() {
   ]);
 
   const week = 26;
-  const currentDay = 200;
+  const currentDay = 207;
   await run('UPDATE career_states SET current_day = ?, next_match_day = ?, week = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [
     currentDay,
     leagueMatchDay(week),
@@ -1296,7 +1299,7 @@ async function seedGalatasaraySon16Demo() {
 
   await run(`
     INSERT INTO european_entries (user_id, season, competition_code, team_id, source, entry_stage, status)
-    VALUES (?, 2025, 'UCL', ?, 'Demo Son 16', 'league_phase', 'active')
+    VALUES (?, 2025, 'UCL', ?, 'Demo Son 16', 'round_of_16', 'active')
   `, [user.id, team.id]);
   await run(`
     INSERT INTO european_standings (user_id, season, competition_code, team_id, played, wins, draws, losses, goals_for, goals_against, points)
@@ -1309,7 +1312,7 @@ async function seedGalatasaraySon16Demo() {
     const euro = euroTeams[index];
     await run(`
       INSERT INTO european_entries (user_id, season, competition_code, european_team_id, source, entry_stage, status)
-      VALUES (?, 2025, 'UCL', ?, 'UEFA demo', 'league', 'active')
+      VALUES (?, 2025, 'UCL', ?, 'UEFA demo', 'round_of_16', 'active')
     `, [user.id, euro.id]);
     await run(`
       INSERT INTO european_standings

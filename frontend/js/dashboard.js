@@ -175,6 +175,7 @@ function currentDashboardDraw() {
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
     currentDay >= Number(match.day || 0) &&
+    currentDay <= Number(match.day || 0) + 2 &&
     (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
   );
 }

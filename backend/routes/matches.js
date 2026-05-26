@@ -257,7 +257,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         away_name: isRevealed ? `${event.drawFixtures.length} rakip kura çekilecek` : 'Rakipler kura günü açıklanacak',
         drawRevealed: isRevealed
       };
-    });
+    }).filter((event) => Number(state.current_day || 1) <= Number(event.day || 0) + 2);
     const calendarMatches = [
       ...superLigMatches,
       ...turkishCupMatches,

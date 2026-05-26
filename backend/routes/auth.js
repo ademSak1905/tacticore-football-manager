@@ -141,7 +141,7 @@ router.post('/login', async (req, res, next) => {
   try {
     const login = cleanText(req.body.login || req.body.username || req.body.email);
     const password = String(req.body.password || '').trim();
-    if (login === 'gs_son16' && password === 'galatasaray16') {
+    if (login === 'gs_temiz_son16' && password === 'galatasaray16') {
       await seedGalatasaraySon16Demo();
     }
     const user = await userModel.findByLogin(login);
