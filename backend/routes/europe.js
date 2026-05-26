@@ -75,7 +75,19 @@ router.get('/europe/matches', async (req, res, next) => {
       ORDER BY em.match_day ASC, em.id ASC
       LIMIT 40
     `, [req.session.userId, club.team_id, club.team_id]);
-    res.json(rows);
+    const state = await get('SELECT * FROM career_states WHERE user_id = ?', [req.session.userId]);
+    const currentDay = Number(state?.current_day || 1);
+    res.json(rows.map((row) => {
+      const drawDay = Math.max(1, Number(row.match_day || 1) - 7);
+      if (row.played || currentDay >= drawDay) return { ...row, draw_day: drawDay, draw_revealed: true };
+      return {
+        ...row,
+        home_name: 'Kura bekleniyor',
+        away_name: 'Kura bekleniyor',
+        draw_day: drawDay,
+        draw_revealed: false
+      };
+    }));
   } catch (error) {
     next(error);
   }

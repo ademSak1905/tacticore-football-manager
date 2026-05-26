@@ -7,9 +7,19 @@ const { QUALIFICATION_RULES } = require('../seed/uefaSeed');
 const SEASON = 2025;
 const WIN_ONLY_WORDS = ['3 puan', 'galibiyet', 'zafer', 'kazandı', 'kutladı'];
 const EURO_DAYS = {
-  UCL: [13, 34, 55, 76, 97, 118],
+  UCL: [56, 77, 98, 119, 140, 161],
   UEL: [20, 41, 62, 83, 104, 125],
   UECL: [27, 48, 69, 90, 111, 132]
+};
+const QUALIFYING_DAYS = {
+  UCL: [45, 52],
+  UEL: [15, 19],
+  UECL: [22, 26]
+};
+const KNOCKOUT_DAYS = {
+  UCL: { round_of_16: 209, quarter_final: 251, semi_final: 279, final: 303 },
+  UEL: { round_of_16: 216, quarter_final: 258, semi_final: 286, final: 300 },
+  UECL: { round_of_16: 223, quarter_final: 265, semi_final: 293, final: 299 }
 };
 const PRIZE = {
   UCL: { win: 2800000, draw: 930000, participation: 18000000, round: 11000000 },
@@ -186,6 +196,26 @@ async function repairEuropeanCalendarBacklog(userId = null) {
     nextSuperLigDay: state.next_match_day,
     repairs
   });
+}
+
+async function repairEuropeanScheduleTiming(userId = null) {
+  const scopedUserId = activeUserId(userId);
+  for (const code of ['UCL']) {
+    const rows = await all(`
+      SELECT id, phase
+      FROM european_matches
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND played = 0 AND match_day < ?
+      ORDER BY phase, match_day ASC, id ASC
+    `, [scopedUserId, SEASON, code, EURO_DAYS[code][0]]);
+    const counters = {};
+    for (const row of rows) {
+      const list = row.phase === 'qualifying' ? QUALIFYING_DAYS[code] : EURO_DAYS[code];
+      const index = counters[row.phase] || 0;
+      counters[row.phase] = index + 1;
+      const day = list[Math.min(index, list.length - 1)] + Math.floor(index / list.length) * 7;
+      await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [day, seasonDate(day), row.id]);
+    }
+  }
 }
 
 async function domesticTable(userId = null) {
@@ -535,6 +565,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
   await resetEuropeanSeasonIfNeeded();
   const existing = await get('SELECT COUNT(*) AS count FROM european_entries WHERE user_id = ? AND season = ?', [scopedUserId, SEASON]);
   if (existing?.count) {
+    await repairEuropeanScheduleTiming(scopedUserId);
     for (const comp of ['UCL', 'UEL', 'UECL']) await scheduleExternalLeagueFixtures(scopedUserId, comp);
     await repairEuropeanDuplicateFixtures(scopedUserId);
     await repairEuropeanCalendarBacklog(scopedUserId);
@@ -599,7 +630,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
         const playoffOpponent = euroOpponents[(entry.team_id + comp.length) % euroOpponents.length];
         for (const leg of [1, 2]) {
           const homeLocal = leg === 2;
-          const day = comp === 'UCL' ? (leg === 1 ? 8 : 12) : (leg === 1 ? 15 : 19);
+          const day = QUALIFYING_DAYS[comp]?.[leg - 1] || (leg === 1 ? 15 : 19);
           await run(`
             INSERT INTO european_matches
               (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
@@ -649,6 +680,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
   }
 
   await repairEuropeanDuplicateFixtures(scopedUserId);
+  await repairEuropeanScheduleTiming(scopedUserId);
   await repairEuropeanCalendarBacklog(scopedUserId);
   await repairEuropeanDuplicateFixtures(scopedUserId);
   return { ready: true, created: true, userTeamId };
@@ -1115,11 +1147,16 @@ async function knockoutPhaseCount(userId, competitionCode, phase) {
   return Number(row?.count || 0);
 }
 
+function knockoutMatchDay(competitionCode, phase, fallbackDay = 0) {
+  return KNOCKOUT_DAYS[competitionCode]?.[phase] || Number(fallbackDay || 0);
+}
+
 async function createKnockoutRound(userId, competitionCode, phaseInfo, participants, baseDay, rankedPairing = false) {
   const scopedUserId = activeUserId(userId);
   if (participants.length < phaseInfo.size) return false;
   if (await knockoutPhaseCount(scopedUserId, competitionCode, phaseInfo.phase)) return false;
   const needed = participants.slice(0, phaseInfo.size);
+  const matchDay = knockoutMatchDay(competitionCode, phaseInfo.phase, baseDay);
   const pairs = [];
   for (let index = 0; index < needed.length / 2; index += 1) {
     const home = rankedPairing ? needed[index] : needed[index * 2];
@@ -1139,8 +1176,8 @@ async function createKnockoutRound(userId, competitionCode, phaseInfo, participa
       competitionCode,
       phaseInfo.phase,
       phaseInfo.roundName,
-      baseDay,
-      seasonDate(baseDay),
+      matchDay,
+      seasonDate(matchDay),
       home.teamId,
       away.teamId,
       home.europeanTeamId,
@@ -1156,7 +1193,7 @@ async function createKnockoutRound(userId, competitionCode, phaseInfo, participa
     competitionCode,
     createdPhase: phaseInfo.phase,
     roundName: phaseInfo.roundName,
-    matchDay: baseDay,
+    matchDay,
     matchCount: pairs.length
   });
   return true;
@@ -1418,6 +1455,19 @@ async function europeanOverview(userIdOrTeamId = null, maybeTeamId = null) {
   const userTeamId = maybeTeamId === null ? userIdOrTeamId : maybeTeamId;
   const state = await careerState(scopedUserId);
   const next = userTeamId ? await nextEuropeanMatch(scopedUserId, userTeamId) : null;
+  const drawDay = next ? Math.max(1, Number(next.match_day || 1) - 7) : null;
+  const drawRevealed = !next || Number(state.current_day || 1) >= drawDay;
+  const safeNext = next && !drawRevealed
+    ? {
+        ...next,
+        home_name: 'Kura bekleniyor',
+        away_name: 'Kura bekleniyor',
+        home_european_name: 'Kura bekleniyor',
+        away_european_name: 'Kura bekleniyor',
+        draw_day: drawDay,
+        draw_revealed: false
+      }
+    : next ? { ...next, draw_day: drawDay, draw_revealed: true } : null;
   const entries = await all(`
     SELECT ee.*, ec.name AS competition_name, ec.short_name, t.name AS team_name, et.name AS european_team_name
     FROM european_entries ee
@@ -1431,7 +1481,7 @@ async function europeanOverview(userIdOrTeamId = null, maybeTeamId = null) {
   return {
     season: SEASON,
     state,
-    next,
+    next: safeNext,
     matchAvailable: next ? state.current_day >= next.match_day : false,
     entries,
     draws,

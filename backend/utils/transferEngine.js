@@ -139,8 +139,13 @@ async function evaluateOffer({ player, buyerTeam, offerPrice, wageOffer, signing
 async function completeTransfer({ player, club, price, category, wageOffer = 0, signingBonus = 0, loanFee = 0, buyOption = 0, sellOnPercent = 0 }) {
   const fromTeamId = player.team_id || null;
   const totalCost = price + signingBonus + loanFee;
+  const [fromTeam, toTeam] = await Promise.all([
+    fromTeamId ? get('SELECT id, name, logo_url FROM teams WHERE id = ?', [fromTeamId]) : null,
+    get('SELECT id, name, logo_url FROM teams WHERE id = ?', [club.team_id])
+  ]);
   await run('UPDATE clubs SET budget = budget - ? WHERE id = ?', [totalCost, club.id]);
   if (fromTeamId) await run('UPDATE teams SET budget = budget + ? WHERE id = ?', [price, fromTeamId]);
+  await run('DELETE FROM lineups WHERE player_id = ?', [player.id]);
   await run(`
     UPDATE players
     SET team_id = ?, club_id = NULL, salary = ?, lineup_role = 'reserve', is_starting_eleven = 0,
@@ -154,6 +159,17 @@ async function completeTransfer({ player, club, price, category, wageOffer = 0, 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', (SELECT current_day FROM game_state WHERE id = 1))
   `, [player.id, fromTeamId, club.team_id, category, price, wageOffer || player.salary, signingBonus, loanFee, buyOption, sellOnPercent]);
   await createTransferStory({ teamId: club.team_id, playerId: player.id, category, status: 'completed', price });
+  return {
+    playerId: player.id,
+    playerName: player.name,
+    position: player.position,
+    overall: player.overall,
+    price,
+    wage: wageOffer || player.salary,
+    fromTeamName: fromTeam?.name || 'Serbest oyuncu',
+    toTeamName: toTeam?.name || 'Yeni kulüp',
+    toTeamLogo: toTeam?.logo_url || null
+  };
 }
 
 async function negotiateTransfer(club, body = {}) {
@@ -200,7 +216,7 @@ async function negotiateTransfer(club, body = {}) {
     };
   }
 
-  await completeTransfer({
+  const transfer = await completeTransfer({
     player,
     club,
     price: offerPrice,
@@ -211,7 +227,7 @@ async function negotiateTransfer(club, body = {}) {
     buyOption,
     sellOnPercent
   });
-  return { status: 'accepted', message: `${player.name} kulübünüze katıldı.`, decision_score: decision.score };
+  return { status: 'accepted', message: `${player.name} kulübünüze katıldı.`, decision_score: decision.score, transfer };
 }
 
 async function simulateAiTransfers(excludeTeamId = null) {
@@ -233,6 +249,7 @@ async function simulateAiTransfers(excludeTeamId = null) {
     const price = askingPrice(player, category);
     await run('UPDATE teams SET budget = budget - ? WHERE id = ?', [price, team.id]);
     if (player.team_id) await run('UPDATE teams SET budget = budget + ? WHERE id = ?', [price, player.team_id]);
+    await run('DELETE FROM lineups WHERE player_id = ?', [player.id]);
     await run("UPDATE players SET team_id = ?, transfer_status = 'normal', happiness = 72, playing_time = 44 WHERE id = ?", [team.id, player.id]);
     await run(`
       INSERT INTO transfer_history (player_id, from_team_id, to_team_id, category, price, wage, status, day)

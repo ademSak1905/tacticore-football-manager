@@ -54,7 +54,7 @@ async function lineupForTeam(teamId) {
     SELECT p.*, l.position_slot
     FROM lineups l
     JOIN players p ON p.id = l.player_id
-    WHERE l.team_id = ?
+    WHERE l.team_id = ? AND p.team_id = l.team_id
     ORDER BY l.y_position DESC, l.x_position ASC
   `, [teamId]);
   if (rows.length >= 11) return rows;
@@ -250,6 +250,7 @@ function simulateMinuteMatch(home, away, homeLineup, awayLineup, homeBase, awayB
         else liveAway += 1;
         goals.push({ player: shooter, assist, team });
         events.push(event(minute, 'goal', `${chanceText(team, shooter, opponent, model, 'goal')} Asist: ${assist?.name || 'asistsiz'}.`, true, {
+          score_side: sideHome ? 'home' : 'away',
           team_id: team.id,
           team_name: team.name,
           scorer_id: shooter.id,
@@ -321,6 +322,7 @@ function simulateMinuteMatch(home, away, homeLineup, awayLineup, homeBase, awayB
     }
     goals.push({ player: scorer, assist, team });
     events.push(event(minute, 'goal', `${chanceText(team, scorer, opponent, model, 'goal')} Asist: ${assist?.name || 'asistsiz'}.`, true, {
+      score_side: sideHome ? 'home' : 'away',
       team_id: team.id,
       team_name: team.name,
       scorer_id: scorer.id,
@@ -382,11 +384,24 @@ function simulateMinuteMatch(home, away, homeLineup, awayLineup, homeBase, awayB
   }
   events.push(event(90, 'commentary', `Maç bitti. Skor: ${home.name} ${liveHome} - ${liveAway} ${away.name}.`, false, { home_score: liveHome, away_score: liveAway }));
 
+  const sortedEvents = events.sort((a, b) => a.minute - b.minute);
+  let chronologicalHome = 0;
+  let chronologicalAway = 0;
+  for (const item of sortedEvents) {
+    if (item.event_type === 'goal') {
+      const side = item.score_side || (Number(item.team_id) === Number(home.id) ? 'home' : 'away');
+      if (side === 'home') chronologicalHome += 1;
+      if (side === 'away') chronologicalAway += 1;
+    }
+    item.home_score = chronologicalHome;
+    item.away_score = chronologicalAway;
+  }
+
   return {
     homeGoals: liveHome,
     awayGoals: liveAway,
     stats,
-    events: events.sort((a, b) => a.minute - b.minute),
+    events: sortedEvents,
     goals,
     models: { homeModel, awayModel }
   };

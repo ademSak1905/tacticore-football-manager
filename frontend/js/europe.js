@@ -48,7 +48,10 @@ function renderOverview(data) {
   for (const draw of data.draws) {
     try {
       const rows = JSON.parse(draw.draw_data || '[]').slice(0, 8);
-      for (const item of rows) drawItems.push({ ...item, competition: draw.competition_code });
+      for (const item of rows) {
+        const revealDay = Math.max(1, Number(item.day || 1) - 7);
+        drawItems.push({ ...item, competition: draw.competition_code, revealDay, revealed: Number(data.state?.current_day || 1) >= revealDay });
+      }
     } catch {}
   }
   byId('drawCards').innerHTML = drawItems.length ? drawItems.slice(0, 12).map((item) => `

@@ -160,26 +160,51 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         label: `Süper Lig Hafta ${round.week}`
       }));
     const turkishCupMatches = [];
-    const europeanCalendarMatches = europeMatches.map((match) => ({
-      id: `europe_${match.id}`,
-      competitionType: EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code,
-      competitionLabel: match.short_name,
-      week: null,
-      day: match.match_day,
-      date: match.match_date,
-      home_name: match.home_name,
-      away_name: match.away_name,
-      homeTeamId: match.home_team_id || match.home_european_team_id,
-      awayTeamId: match.away_team_id || match.away_european_team_id,
-      home_score: match.home_score,
-      away_score: match.away_score,
-      played: Boolean(match.played),
-      isUserMatch: true,
-      label: `${match.short_name} ${match.round_name}`
-    }));
+    const europeanCalendarMatches = europeMatches.map((match) => {
+      const type = EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code;
+      const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
+      const drawRevealed = Boolean(match.played) || Number(state.current_day || 1) >= drawDay;
+      return {
+        id: `europe_${match.id}`,
+        competitionType: type,
+        competitionLabel: match.short_name,
+        week: null,
+        day: match.match_day,
+        date: match.match_date,
+        home_name: drawRevealed ? match.home_name : 'Kura bekleniyor',
+        away_name: drawRevealed ? match.away_name : 'Kura bekleniyor',
+        homeTeamId: match.home_team_id || match.home_european_team_id,
+        awayTeamId: match.away_team_id || match.away_european_team_id,
+        home_score: match.home_score,
+        away_score: match.away_score,
+        played: Boolean(match.played),
+        isUserMatch: true,
+        drawRevealed,
+        label: `${match.short_name} ${match.round_name}`
+      };
+    });
+    const europeanDrawEvents = europeMatches
+      .filter((match) => !match.played)
+      .map((match) => {
+        const day = Math.max(1, Number(match.match_day || 1) - 7);
+        return {
+          id: `europe_draw_${match.id}`,
+          competitionType: 'europe_draw',
+          competitionLabel: match.short_name,
+          week: null,
+          day,
+          date: seasonDate(day),
+          home_name: 'UEFA kura merkezi',
+          away_name: Number(state.current_day || 1) >= day ? `${match.home_name} - ${match.away_name}` : 'Rakipler kura günü açıklanacak',
+          played: false,
+          isUserMatch: true,
+          label: `${match.short_name} kura günü`
+        };
+      });
     const calendarMatches = [
       ...superLigMatches,
       ...turkishCupMatches,
+      ...europeanDrawEvents,
       ...europeanCalendarMatches
     ].sort((a, b) => a.day - b.day);
     const next5Matches = [

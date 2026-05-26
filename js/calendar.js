@@ -12,6 +12,7 @@ function formatSeasonDate(value, fallback = '-') {
 }
 
 function competitionLabel(type, fallback = '') {
+  if (type === 'europe_draw') return 'Kura günü';
   if (type === 'super_lig') return 'Süper Lig';
   if (type === 'turkish_cup') return 'Türkiye Kupası';
   if (type === 'champions_league') return 'Şampiyonlar Ligi';
@@ -21,7 +22,7 @@ function competitionLabel(type, fallback = '') {
 }
 
 function isEuropeType(type) {
-  return ['champions_league', 'europa_league', 'conference_league'].includes(type);
+  return ['champions_league', 'europa_league', 'conference_league', 'europe_draw'].includes(type);
 }
 
 function filteredCalendarMatches() {
@@ -37,7 +38,7 @@ function renderCalendarMatches() {
     button.classList.toggle('active', button.dataset.calendarFilter === activeCalendarFilter);
   });
   byId('calendarMatches').innerHTML = rows.length ? rows.map((match) => `
-    <article class="calendar-card ${match.isUserMatch ? 'live-week' : ''} ${isEuropeType(match.competitionType) ? 'europe-fixture' : ''}">
+    <article class="calendar-card ${match.isUserMatch ? 'live-week' : ''} ${isEuropeType(match.competitionType) ? 'europe-fixture' : ''} ${match.competitionType === 'europe_draw' ? 'draw-day-card' : ''}">
       <div class="calendar-head">
         <div>
           <strong>${competitionLabel(match.competitionType, match.competitionLabel)}</strong>
@@ -47,7 +48,7 @@ function renderCalendarMatches() {
       </div>
       <div class="fixture-row ${match.isUserMatch ? 'user-fixture' : ''}">
         <span>${match.home_name || '-'}</span>
-        <strong>${match.played ? `${match.home_score} - ${match.away_score}` : 'vs'}</strong>
+        <strong>${match.competitionType === 'europe_draw' ? 'KURA' : match.played ? `${match.home_score} - ${match.away_score}` : 'vs'}</strong>
         <span>${match.away_name || '-'}</span>
       </div>
     </article>

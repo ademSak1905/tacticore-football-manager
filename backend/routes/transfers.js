@@ -45,6 +45,7 @@ router.post('/sell', async (req, res, next) => {
 
     const price = Math.round(player.market_value * 0.82);
     await run('UPDATE clubs SET budget = budget + ? WHERE id = ?', [price, club.id]);
+    await run('DELETE FROM lineups WHERE player_id = ?', [player.id]);
     await run("UPDATE players SET team_id = NULL, club_id = NULL, is_starting_eleven = 0, lineup_role = 'reserve' WHERE id = ? AND team_id = ?", [player.id, club.team_id]);
     await run('INSERT INTO transfers (player_id, from_club_id, to_club_id, price) VALUES (?, ?, NULL, ?)', [player.id, club.id, price]);
     await run(`
