@@ -1,5 +1,6 @@
 let calendarData = null;
 let activeCalendarFilter = 'all';
+let drawAutoShown = false;
 
 function formatSeasonDate(value, fallback = '-') {
   if (!value) return fallback;
@@ -32,6 +33,62 @@ function filteredCalendarMatches() {
   return rows.filter((match) => match.competitionType === activeCalendarFilter);
 }
 
+function drawStorageKey(draw) {
+  return `tacticore_draw_seen_${calendarData?.club?.team_id || 'team'}_${draw.id}_${draw.day}`;
+}
+
+function drawById(id) {
+  return (calendarData?.calendarMatches || []).find((match) => match.id === id && match.competitionType === 'europe_draw');
+}
+
+function showDrawAnimation(draw) {
+  if (!draw?.drawFixtures?.length) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'draw-animation-overlay';
+  overlay.innerHTML = `
+    <div class="draw-animation-panel">
+      <div class="draw-animation-head">
+        <span class="badge">${draw.competitionLabel}</span>
+        <h1>Kura Günü</h1>
+        <p>${draw.drawFixtures.length} maçlık fikstür sırayla açıklanıyor.</p>
+      </div>
+      <div class="draw-paper-grid">
+        ${draw.drawFixtures.map((fixture) => `
+          <article class="draw-paper" data-paper="${fixture.sequence}">
+            <span>${fixture.sequence}. Maç</span>
+            <strong>${fixture.opponentName}</strong>
+            <small>${fixture.venue} - ${formatSeasonDate(fixture.matchDate, `Gün ${fixture.matchDay}`)}</small>
+          </article>
+        `).join('')}
+      </div>
+      <div class="actions">
+        <button class="btn green" id="startDrawAnimation" type="button">Kurayı başlat</button>
+        <button class="btn secondary" id="closeDrawAnimation" type="button" hidden>Tamam</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const papers = [...overlay.querySelectorAll('.draw-paper')];
+  const startButton = overlay.querySelector('#startDrawAnimation');
+  const closeButton = overlay.querySelector('#closeDrawAnimation');
+  let index = 0;
+  startButton.addEventListener('click', () => {
+    startButton.disabled = true;
+    startButton.textContent = 'Kura çekiliyor...';
+    const timer = setInterval(() => {
+      papers[index]?.classList.add('revealed');
+      index += 1;
+      if (index >= papers.length) {
+        clearInterval(timer);
+        startButton.hidden = true;
+        closeButton.hidden = false;
+        localStorage.setItem(drawStorageKey(draw), '1');
+      }
+    }, 720);
+  });
+  closeButton.addEventListener('click', () => overlay.remove());
+}
+
 function renderCalendarMatches() {
   const rows = filteredCalendarMatches();
   document.querySelectorAll('[data-calendar-filter]').forEach((button) => {
@@ -51,6 +108,7 @@ function renderCalendarMatches() {
         <strong>${match.competitionType === 'europe_draw' ? 'KURA' : match.played ? `${match.home_score} - ${match.away_score}` : 'vs'}</strong>
         <span>${match.away_name || '-'}</span>
       </div>
+      ${match.competitionType === 'europe_draw' && match.drawRevealed ? `<button class="btn green" data-draw-id="${match.id}" type="button">Kurayı izle</button>` : ''}
     </article>
   `).join('') : '<div class="empty">Bu filtrede maç yok.</div>';
 }
@@ -71,6 +129,17 @@ async function loadCalendar() {
   ].map(([label, value]) => `<article class="stat-card"><span class="muted">${label}</span><strong>${value}</strong></article>`).join('');
 
   renderCalendarMatches();
+  if (!drawAutoShown) {
+    drawAutoShown = true;
+    const currentDay = Number(data.state.current_day || 1);
+    const dueDraw = (data.calendarMatches || []).find((match) =>
+      match.competitionType === 'europe_draw' &&
+      match.drawRevealed &&
+      currentDay >= Number(match.day || 0) &&
+      !localStorage.getItem(drawStorageKey(match))
+    );
+    if (dueDraw) setTimeout(() => showDrawAnimation(dueDraw), 450);
+  }
 
   byId('pastCalendar').innerHTML = data.pastMatches.length ? data.pastMatches.map((match) => `
     <article class="calendar-card">
@@ -89,6 +158,13 @@ document.addEventListener('click', (event) => {
   if (!filter) return;
   activeCalendarFilter = filter.dataset.calendarFilter;
   renderCalendarMatches();
+});
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-draw-id]');
+  if (!button) return;
+  const draw = drawById(button.dataset.drawId);
+  if (draw) showDrawAnimation(draw);
 });
 
 loadCalendar().catch((error) => {

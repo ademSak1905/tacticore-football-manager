@@ -342,6 +342,75 @@ select {
   opacity: 0.78;
 }
 
+.draw-animation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 5, 14, 0.86);
+  backdrop-filter: blur(10px);
+}
+
+.draw-animation-panel {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(255, 210, 26, 0.46);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 210, 26, 0.16), transparent 35%),
+    linear-gradient(145deg, rgba(2, 13, 31, 0.98), rgba(4, 28, 63, 0.98));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.6);
+}
+
+.draw-animation-head h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(38px, 6vw, 64px);
+}
+
+.draw-paper-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.draw-paper {
+  min-height: 148px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(73, 143, 255, 0.32);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(3, 19, 45, 0.94), rgba(2, 8, 19, 0.96));
+  transform: rotateY(78deg) scale(0.92);
+  opacity: 0.38;
+  filter: blur(2px) brightness(0.72);
+  transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease, border-color 0.45s ease;
+}
+
+.draw-paper.revealed {
+  transform: rotateY(0) scale(1);
+  opacity: 1;
+  filter: blur(0) brightness(1);
+  border-color: rgba(255, 210, 26, 0.58);
+}
+
+.draw-paper span,
+.draw-paper small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.draw-paper strong {
+  color: var(--yellow);
+  font-size: 22px;
+}
+
 @keyframes drawReveal {
   0% { transform: rotateY(70deg) scale(0.94); filter: brightness(0.8); }
   60% { transform: rotateY(-8deg) scale(1.02); filter: brightness(1.2); }

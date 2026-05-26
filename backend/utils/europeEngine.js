@@ -7,7 +7,7 @@ const { QUALIFICATION_RULES } = require('../seed/uefaSeed');
 const SEASON = 2025;
 const WIN_ONLY_WORDS = ['3 puan', 'galibiyet', 'zafer', 'kazandı', 'kutladı'];
 const EURO_DAYS = {
-  UCL: [56, 77, 98, 119, 140, 161],
+  UCL: [48, 55, 97, 118, 166, 195, 202, 223],
   UEL: [20, 41, 62, 83, 104, 125],
   UECL: [27, 48, 69, 90, 111, 132]
 };
@@ -17,7 +17,7 @@ const QUALIFYING_DAYS = {
   UECL: [22, 26]
 };
 const KNOCKOUT_DAYS = {
-  UCL: { round_of_16: 209, quarter_final: 251, semi_final: 279, final: 303 },
+  UCL: { round_of_16: 237, quarter_final: 258, semi_final: 279, final: 303 },
   UEL: { round_of_16: 216, quarter_final: 258, semi_final: 286, final: 300 },
   UECL: { round_of_16: 223, quarter_final: 265, semi_final: 293, final: 299 }
 };
@@ -200,20 +200,78 @@ async function repairEuropeanCalendarBacklog(userId = null) {
 
 async function repairEuropeanScheduleTiming(userId = null) {
   const scopedUserId = activeUserId(userId);
+  const localEntrants = await all('SELECT team_id FROM european_entries WHERE user_id = ? AND season = ? AND team_id IS NOT NULL', [scopedUserId, SEASON]);
+  const localTeamIds = localEntrants.map((entry) => Number(entry.team_id)).filter(Boolean);
+  if (!localTeamIds.length) return;
   for (const code of ['UCL']) {
-    const rows = await all(`
-      SELECT id, phase
+    for (const teamId of localTeamIds) {
+      const rows = await all(`
+        SELECT id, phase
+        FROM european_matches
+        WHERE user_id = ? AND season = ? AND competition_code = ? AND played = 0 AND phase IN ('qualifying', 'league')
+          AND (home_team_id = ? OR away_team_id = ?)
+        ORDER BY phase, match_day ASC, id ASC
+      `, [scopedUserId, SEASON, code, teamId, teamId]);
+      const counters = {};
+      for (const row of rows) {
+        const list = row.phase === 'qualifying' ? QUALIFYING_DAYS[code] : EURO_DAYS[code];
+        const index = counters[row.phase] || 0;
+        counters[row.phase] = index + 1;
+        const day = list[Math.min(index, list.length - 1)] + Math.floor(index / list.length) * 7;
+        await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [day, seasonDate(day), row.id]);
+      }
+    }
+  }
+}
+
+async function ensureEuropeanLeagueFixtureCount(userId = null) {
+  const scopedUserId = activeUserId(userId);
+  const competitionCode = 'UCL';
+  const euroOpponents = await all(`
+    SELECT ee.european_team_id, et.overall
+    FROM european_entries ee
+    JOIN european_teams et ON et.id = ee.european_team_id
+    WHERE ee.user_id = ? AND ee.season = ? AND ee.competition_code = ? AND ee.european_team_id IS NOT NULL
+    ORDER BY et.pot ASC, et.overall DESC
+  `, [scopedUserId, SEASON, competitionCode]);
+  if (!euroOpponents.length) return;
+
+  const localEntrants = await all(`
+    SELECT *
+    FROM european_entries
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND team_id IS NOT NULL AND entry_stage IN ('league_phase', 'league')
+  `, [scopedUserId, SEASON, competitionCode]);
+
+  for (const entry of localEntrants) {
+    const existing = await all(`
+      SELECT *
       FROM european_matches
-      WHERE user_id = ? AND season = ? AND competition_code = ? AND played = 0 AND match_day < ?
-      ORDER BY phase, match_day ASC, id ASC
-    `, [scopedUserId, SEASON, code, EURO_DAYS[code][0]]);
-    const counters = {};
-    for (const row of rows) {
-      const list = row.phase === 'qualifying' ? QUALIFYING_DAYS[code] : EURO_DAYS[code];
-      const index = counters[row.phase] || 0;
-      counters[row.phase] = index + 1;
-      const day = list[Math.min(index, list.length - 1)] + Math.floor(index / list.length) * 7;
-      await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [day, seasonDate(day), row.id]);
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league'
+        AND (home_team_id = ? OR away_team_id = ?)
+      ORDER BY match_day ASC, id ASC
+    `, [scopedUserId, SEASON, competitionCode, entry.team_id, entry.team_id]);
+    if (existing.length >= EURO_DAYS[competitionCode].length) continue;
+
+    const used = new Set(existing.map((match) => match.home_european_team_id || match.away_european_team_id).filter(Boolean));
+    const available = euroOpponents.filter((opponent) => !used.has(opponent.european_team_id));
+    for (let i = existing.length; i < EURO_DAYS[competitionCode].length && available.length; i += 1) {
+      const opponent = available.shift();
+      const homeLocal = i % 2 === 0;
+      await run(`
+        INSERT INTO european_matches
+          (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+        VALUES (?, ?, ?, 'league', 'Lig Aşaması', 1, ?, ?, ?, ?, ?, ?)
+      `, [
+        scopedUserId,
+        SEASON,
+        competitionCode,
+        EURO_DAYS[competitionCode][i],
+        seasonDate(EURO_DAYS[competitionCode][i]),
+        homeLocal ? entry.team_id : null,
+        homeLocal ? null : entry.team_id,
+        homeLocal ? null : opponent.european_team_id,
+        homeLocal ? opponent.european_team_id : null
+      ]);
     }
   }
 }
@@ -565,6 +623,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
   await resetEuropeanSeasonIfNeeded();
   const existing = await get('SELECT COUNT(*) AS count FROM european_entries WHERE user_id = ? AND season = ?', [scopedUserId, SEASON]);
   if (existing?.count) {
+    await ensureEuropeanLeagueFixtureCount(scopedUserId);
     await repairEuropeanScheduleTiming(scopedUserId);
     for (const comp of ['UCL', 'UEL', 'UECL']) await scheduleExternalLeagueFixtures(scopedUserId, comp);
     await repairEuropeanDuplicateFixtures(scopedUserId);

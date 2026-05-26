@@ -118,7 +118,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
       LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
       WHERE em.user_id = ? AND (em.home_team_id = ? OR em.away_team_id = ?)
       ORDER BY em.match_day ASC, em.id ASC
-      LIMIT 24
+      LIMIT 40
     `, [req.session.userId, club.team_id, club.team_id]);
 
     const upcoming = [];
@@ -183,24 +183,51 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         label: `${match.short_name} ${match.round_name}`
       };
     });
-    const europeanDrawEvents = europeMatches
-      .filter((match) => !match.played)
-      .map((match) => {
-        const day = Math.max(1, Number(match.match_day || 1) - 7);
-        return {
-          id: `europe_draw_${match.id}`,
-          competitionType: 'europe_draw',
-          competitionLabel: match.short_name,
-          week: null,
-          day,
-          date: seasonDate(day),
-          home_name: 'UEFA kura merkezi',
-          away_name: Number(state.current_day || 1) >= day ? `${match.home_name} - ${match.away_name}` : 'Rakipler kura günü açıklanacak',
-          played: false,
-          isUserMatch: true,
-          label: `${match.short_name} kura günü`
-        };
+    const drawGroups = new Map();
+    for (const match of europeMatches.filter((item) => !item.played)) {
+      const key = `${match.competition_code}_${match.phase}_${match.round_name}`;
+      const type = EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code;
+      const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
+      const existingGroup = drawGroups.get(key) || {
+        id: `europe_draw_${key}`,
+        competitionType: 'europe_draw',
+        sourceCompetitionType: type,
+        competitionLabel: match.short_name,
+        week: null,
+        day: drawDay,
+        date: seasonDate(drawDay),
+        home_name: 'UEFA kura merkezi',
+        away_name: 'Rakipler kura günü açıklanacak',
+        played: false,
+        isUserMatch: true,
+        label: `${match.short_name} ${match.round_name} kura günü`,
+        drawFixtures: []
+      };
+      existingGroup.day = Math.min(existingGroup.day, drawDay);
+      existingGroup.date = seasonDate(existingGroup.day);
+      existingGroup.drawFixtures.push({
+        id: match.id,
+        sequence: existingGroup.drawFixtures.length + 1,
+        matchDay: match.match_day,
+        matchDate: match.match_date,
+        roundName: match.round_name,
+        homeName: match.home_name,
+        awayName: match.away_name,
+        opponentName: match.home_team_id === club.team_id ? match.away_name : match.home_name,
+        venue: match.home_team_id === club.team_id ? 'Ev sahibi' : 'Deplasman'
       });
+      drawGroups.set(key, existingGroup);
+    }
+    const europeanDrawEvents = [...drawGroups.values()].map((event) => {
+      event.drawFixtures.sort((a, b) => a.matchDay - b.matchDay || a.id - b.id);
+      event.drawFixtures = event.drawFixtures.map((item, index) => ({ ...item, sequence: index + 1 }));
+      const isRevealed = Number(state.current_day || 1) >= event.day;
+      return {
+        ...event,
+        away_name: isRevealed ? `${event.drawFixtures.length} rakip kura çekilecek` : 'Rakipler kura günü açıklanacak',
+        drawRevealed: isRevealed
+      };
+    });
     const calendarMatches = [
       ...superLigMatches,
       ...turkishCupMatches,
