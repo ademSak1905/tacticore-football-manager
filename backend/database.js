@@ -1,9 +1,10 @@
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
 const { createPlayerBatch, createMarketPlayers } = require('./utils/generatePlayers');
 const { seedSuperLigData } = require('./seed/superligSeed');
 const { seedEuropeanData } = require('./seed/uefaSeed');
-const { seasonDate } = require('./utils/seasonCalendar');
+const { seasonDate, leagueMatchDay } = require('./utils/seasonCalendar');
 const { buildSeasonPlan, parseSeasonPlan } = require('./utils/seasonPlanning');
 
 const dbPath = path.join(__dirname, 'football_manager.sqlite');
@@ -1166,6 +1167,162 @@ async function resetCareerProgress(userId = null) {
   await run('UPDATE game_state SET current_day = 1, next_match_day = 7, week = 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1');
 }
 
+async function seedGalatasaraySon16Demo() {
+  const username = 'gs_son16';
+  const email = 'gs_son16@tacticore.demo';
+  const passwordHash = await bcrypt.hash('galatasaray16', 12);
+  const team = await get("SELECT * FROM teams WHERE name = 'Galatasaray' LIMIT 1");
+  if (!team) return;
+
+  let user = await get('SELECT * FROM users WHERE username = ?', [username]);
+  if (!user) {
+    const created = await run('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)', [username, email, passwordHash]);
+    user = { id: created.id, username, email };
+  } else {
+    await run('UPDATE users SET email = ?, password_hash = ? WHERE id = ?', [email, passwordHash, user.id]);
+  }
+
+  const plan = buildSeasonPlan(team);
+  let club = await get('SELECT * FROM clubs WHERE user_id = ?', [user.id]);
+  if (!club) {
+    const createdClub = await run(`
+      INSERT INTO clubs
+        (user_id, team_id, name, currency, budget, salary_budget, season_objectives_json, season_intro_seen, season_summary_seen, stadium_capacity, fans)
+      VALUES (?, ?, ?, 'EUR', ?, ?, ?, 1, 0, ?, ?)
+    `, [
+      user.id,
+      team.id,
+      'Galatasaray Son 16 Demo',
+      plan.transferBudget,
+      plan.salaryBudget,
+      JSON.stringify(plan),
+      Math.max(12000, Math.round((team.fans || 54000000) / 1200)),
+      team.fans || 54000000
+    ]);
+    club = { id: createdClub.id };
+  } else {
+    await run(`
+      UPDATE clubs
+      SET team_id = ?, name = ?, currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?,
+        season_intro_seen = 1, season_summary_seen = 0, last_match = NULL
+      WHERE user_id = ?
+    `, [team.id, 'Galatasaray Son 16 Demo', plan.transferBudget, plan.salaryBudget, JSON.stringify(plan), user.id]);
+  }
+
+  await resetCareerProgress(user.id);
+  await run('DELETE FROM tactics WHERE club_id = ?', [club.id]);
+  await run('INSERT INTO tactics (club_id, formation, mentality, pressing, passing_style, tempo) VALUES (?, ?, ?, ?, ?, ?)', [
+    club.id,
+    team.default_formation || '4-2-3-1',
+    'balanced',
+    58,
+    'mixed',
+    58
+  ]);
+
+  const week = 26;
+  const currentDay = 200;
+  await run('UPDATE career_states SET current_day = ?, next_match_day = ?, week = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [
+    currentDay,
+    leagueMatchDay(week),
+    week,
+    user.id
+  ]);
+
+  const teams = await all('SELECT * FROM teams ORDER BY overall DESC, id ASC');
+  for (let index = 0; index < teams.length; index += 1) {
+    const row = teams[index];
+    const played = 25;
+    const isGs = row.id === team.id;
+    const points = isGs ? 58 : Math.max(18, 55 - index * 2);
+    const wins = Math.floor(points / 3);
+    const draws = points % 3;
+    const losses = Math.max(0, played - wins - draws);
+    const goalsFor = isGs ? 62 : Math.max(24, 54 - index);
+    const goalsAgainst = isGs ? 24 : Math.max(20, 28 + index);
+    await run(`
+      UPDATE league_standings
+      SET points = ?, wins = ?, draws = ?, losses = ?, goals_for = ?, goals_against = ?, form = ?
+      WHERE user_id = ? AND team_id = ?
+    `, [points, wins, draws, losses, goalsFor, goalsAgainst, isGs ? 'WWDWW' : 'WLWDW', user.id, row.id]);
+  }
+
+  await run('DELETE FROM european_awards WHERE user_id = ?', [user.id]);
+  await run('DELETE FROM european_history WHERE user_id = ?', [user.id]);
+  await run('DELETE FROM european_draws WHERE user_id = ?', [user.id]);
+  await run('DELETE FROM european_matches WHERE user_id = ?', [user.id]);
+  await run('DELETE FROM european_standings WHERE user_id = ?', [user.id]);
+  await run('DELETE FROM european_entries WHERE user_id = ?', [user.id]);
+
+  await run(`
+    INSERT INTO european_entries (user_id, season, competition_code, team_id, source, entry_stage, status)
+    VALUES (?, 2025, 'UCL', ?, 'Demo Son 16', 'league_phase', 'active')
+  `, [user.id, team.id]);
+  await run(`
+    INSERT INTO european_standings (user_id, season, competition_code, team_id, played, wins, draws, losses, goals_for, goals_against, points)
+    VALUES (?, 2025, 'UCL', ?, 8, 5, 2, 1, 17, 8, 17)
+  `, [user.id, team.id]);
+
+  const euroTeams = await all('SELECT * FROM european_teams ORDER BY overall DESC, pot ASC LIMIT 23');
+  const selected = euroTeams.slice(0, 15);
+  for (let index = 0; index < euroTeams.length; index += 1) {
+    const euro = euroTeams[index];
+    await run(`
+      INSERT INTO european_entries (user_id, season, competition_code, european_team_id, source, entry_stage, status)
+      VALUES (?, 2025, 'UCL', ?, 'UEFA demo', 'league', 'active')
+    `, [user.id, euro.id]);
+    await run(`
+      INSERT INTO european_standings
+        (user_id, season, competition_code, european_team_id, played, wins, draws, losses, goals_for, goals_against, points)
+      VALUES (?, 2025, 'UCL', ?, 8, ?, ?, ?, ?, ?, ?)
+    `, [
+      user.id,
+      euro.id,
+      Math.max(2, 6 - (index % 4)),
+      index % 3,
+      Math.max(0, 2 - (index % 2)),
+      Math.max(9, 18 - index),
+      Math.max(6, 8 + index),
+      Math.max(9, 18 - index)
+    ]);
+  }
+
+  const participants = [
+    { teamId: team.id, europeanTeamId: null, name: team.name },
+    ...selected.map((item) => ({ teamId: null, europeanTeamId: item.id, name: item.name }))
+  ];
+  const pairs = [];
+  for (let index = 0; index < participants.length / 2; index += 1) {
+    pairs.push([participants[index], participants[participants.length - 1 - index]]);
+  }
+  for (const [home, away] of pairs) {
+    await run(`
+      INSERT INTO european_matches
+        (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+      VALUES (?, 2025, 'UCL', 'round_of_16', 'Son 16', 1, 207, ?, ?, ?, ?, ?)
+    `, [user.id, seasonDate(207), home.teamId, away.teamId, home.europeanTeamId, away.europeanTeamId]);
+    await run(`
+      INSERT INTO european_matches
+        (user_id, season, competition_code, phase, round_name, leg, match_day, match_date, home_team_id, away_team_id, home_european_team_id, away_european_team_id)
+      VALUES (?, 2025, 'UCL', 'round_of_16', 'Son 16', 2, 214, ?, ?, ?, ?, ?)
+    `, [user.id, seasonDate(214), away.teamId, home.teamId, away.europeanTeamId, home.europeanTeamId]);
+  }
+  await run(`
+    INSERT INTO european_draws (user_id, season, competition_code, phase, draw_data)
+    VALUES (?, 2025, 'UCL', 'round_of_16', ?)
+  `, [user.id, JSON.stringify({ roundName: 'Son 16', participants: pairs })]);
+  await run(`
+    INSERT INTO news_feed (day, category, title, summary, template_key, team_id)
+    VALUES (?, 'europe', 'Şampiyonlar Ligi Son 16 kurası çekildi', ?, 'demo_son16_draw', ?)
+  `, [currentDay, `Galatasaray Son 16 turunda ${pairs[0][1].name} ile eşleşti. İlk maç ${seasonDate(207)} tarihinde.`, team.id]);
+  await run(`
+    INSERT INTO social_posts (day, type, author, content, template_key, category, team_id)
+    VALUES (?, 'social', 'UEFA Haber Merkezi', ?, 'demo_son16_draw_social', 'europe', ?)
+  `, [currentDay, `Galatasaray için Son 16 kurası çekildi. Rakip: ${pairs[0][1].name}.`, team.id]);
+
+  await ensureInitialCareerSave(user.id);
+}
+
 async function initDatabase() {
   await createSchema();
   await run('INSERT OR IGNORE INTO game_state (id, current_day, next_match_day, week) VALUES (1, 1, 7, 1)');
@@ -1175,6 +1332,7 @@ async function initDatabase() {
   await backfillMatchDays();
   await backfillSeasonPlans();
   await seedTransferMarket();
+  await seedGalatasaraySon16Demo();
   const users = await all('SELECT id FROM users');
   for (const user of users) {
     await ensureCareerForUser(user.id);
