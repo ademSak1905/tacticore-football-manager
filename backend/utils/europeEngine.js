@@ -206,17 +206,18 @@ async function repairEuropeanScheduleTiming(userId = null) {
   for (const code of ['UCL']) {
     for (const teamId of localTeamIds) {
       const rows = await all(`
-        SELECT id, phase
+        SELECT id, phase, played
         FROM european_matches
-        WHERE user_id = ? AND season = ? AND competition_code = ? AND played = 0 AND phase IN ('qualifying', 'league')
+        WHERE user_id = ? AND season = ? AND competition_code = ? AND phase IN ('qualifying', 'league')
           AND (home_team_id = ? OR away_team_id = ?)
-        ORDER BY phase, match_day ASC, id ASC
+        ORDER BY phase, played DESC, match_day ASC, id ASC
       `, [scopedUserId, SEASON, code, teamId, teamId]);
       const counters = {};
       for (const row of rows) {
         const list = row.phase === 'qualifying' ? QUALIFYING_DAYS[code] : EURO_DAYS[code];
         const index = counters[row.phase] || 0;
         counters[row.phase] = index + 1;
+        if (row.played) continue;
         const day = list[Math.min(index, list.length - 1)] + Math.floor(index / list.length) * 7;
         await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [day, seasonDate(day), row.id]);
       }

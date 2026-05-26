@@ -122,7 +122,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     `, [req.session.userId, club.team_id, club.team_id]);
 
     const upcoming = [];
-    for (let offset = 0; offset < 8; offset += 1) {
+    for (let offset = 0; offset < 14; offset += 1) {
       const week = state.week + offset;
       if (week > totalLeagueWeeks) continue;
       const day = state.next_match_day + offset * 7;
@@ -184,7 +184,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
       };
     });
     const drawGroups = new Map();
-    for (const match of europeMatches.filter((item) => !item.played)) {
+    for (const match of europeMatches.filter((item) => item.phase !== 'league' || item.played || item.match_day >= state.current_day - 90)) {
       const key = `${match.competition_code}_${match.phase}_${match.round_name}`;
       const type = EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code;
       const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
