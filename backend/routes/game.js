@@ -160,8 +160,9 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const stopDays = [currentDay + days, nextFixtureDay, nextDrawDay]
       .map((day) => Number(day))
       .filter((day) => Number.isFinite(day) && day > currentDay);
-    const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay;
-    await run('UPDATE career_states SET current_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [targetDay, req.session.userId]);
+    const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay + days;
+    const safeTargetDay = Math.max(currentDay + 1, targetDay);
+    await run('UPDATE career_states SET current_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [safeTargetDay, req.session.userId]);
     const state = await getCareerState(req.session.userId);
     const updatedEuropeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const updatedLeagueFinished = Number(state.week || 1) > totalLeagueWeeks;

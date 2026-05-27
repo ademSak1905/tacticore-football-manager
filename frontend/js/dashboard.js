@@ -352,8 +352,7 @@ async function advance(days) {
   try {
     const previousDay = Number(dashboardCache?.state?.current_day || 0);
     let state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
-    const returnedDay = Number(state.current_day || 0);
-    if (returnedDay <= previousDay && !state.matchAvailable && state.next_match_competition_type !== 'season_end') {
+    for (let retry = 0; retry < 2 && Number(state.current_day || 0) <= previousDay && state.next_match_competition_type !== 'season_end'; retry += 1) {
       state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
     }
     dashboardCache.state = state;
