@@ -174,7 +174,7 @@ function renderDashboardCalendar() {
 function dashboardDrawStorageKey(draw) {
   const teamId = dashboardCache?.data?.club?.team_id || dashboardCache?.calendar?.club?.team_id || 'team';
   const userId = dashboardCache?.session?.userId || 'user';
-  return `tacticore_draw_seen_${userId}_${teamId}_${draw.id}_${draw.day}`;
+  return `tacticore_draw_seen_v2_${userId}_${teamId}_${draw.id}_${draw.day}`;
 }
 
 function isDashboardDrawSeen(draw) {
@@ -183,8 +183,7 @@ function isDashboardDrawSeen(draw) {
 
 function shouldTreatDrawAsNext(draw) {
   const arrivedFromAdvance = draw && dashboardDrawArrivedFromAdvance === Number(draw.day || 0);
-  const waitingAutoOpen = draw && dashboardDrawAutoShown !== draw.id;
-  return arrivedFromAdvance || waitingAutoOpen || !isDashboardDrawSeen(draw);
+  return arrivedFromAdvance || !isDashboardDrawSeen(draw);
 }
 
 function europeCompetitionType(match) {
@@ -209,12 +208,22 @@ function europeMatchOpponent(match) {
 
 function currentDashboardDraw() {
   const currentDay = Number(dashboardCache?.state?.current_day || 1);
-  return (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
+  const calendarDraw = (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
     currentDay === Number(match.day || 0) &&
     (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
   );
+  if (calendarDraw) return calendarDraw;
+  const stateDraw = dashboardCache?.state?.next_draw_event;
+  if (
+    stateDraw?.drawFixtures?.length &&
+    stateDraw.drawRevealed &&
+    currentDay === Number(stateDraw.day || 0)
+  ) {
+    return stateDraw;
+  }
+  return null;
 }
 
 function stateDrawNotice() {
@@ -285,6 +294,8 @@ function showDashboardDrawAnimation(draw) {
 function showDueDashboardDraw() {
   const draw = currentDashboardDraw();
   if (!draw || dashboardDrawAutoShown === draw.id) return;
+  const arrivedFromAdvance = dashboardDrawArrivedFromAdvance === Number(draw.day || 0);
+  if (isDashboardDrawSeen(draw) && !arrivedFromAdvance) return;
   dashboardDrawAutoShown = draw.id;
   dashboardDrawArrivedFromAdvance = null;
   setTimeout(() => showDashboardDrawAnimation(draw), 350);
@@ -393,9 +404,10 @@ async function advance(days) {
   }, 8000);
   try {
     const previousDay = Number(dashboardCache?.state?.current_day || 0);
-    let state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
+    const targetDay = Number(dashboardCache?.state?.next_event_day || dashboardCache?.state?.next_fixture_day || 0);
+    let state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days, targetDay }) });
     for (let retry = 0; retry < 2 && Number(state.current_day || 0) <= previousDay && state.next_match_competition_type !== 'season_end'; retry += 1) {
-      state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
+      state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days, targetDay }) });
     }
     dashboardCache.state = state;
     const calendar = await api.request('/api/calendar').catch(() => null);

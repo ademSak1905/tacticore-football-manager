@@ -17,6 +17,11 @@ const {
 } = require('../utils/seasonPlanning');
 
 const router = express.Router();
+const EUROPE_TYPE_BY_CODE = {
+  UCL: 'champions_league',
+  UEL: 'europa_league',
+  UECL: 'conference_league'
+};
 
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ message: 'Oturum gerekli.' });
@@ -67,21 +72,73 @@ async function makeSocialPosts(day, teamName) {
   if (club?.team_id) await ensureDailyFeed(club.team_id);
 }
 
+async function europeanDrawEvents(userId, teamId) {
+  const matches = await all(`
+    SELECT em.*, ec.short_name, ec.theme,
+      COALESCE(ht.name, het.name) AS home_name,
+      COALESCE(at.name, aet.name) AS away_name
+    FROM european_matches em
+    JOIN european_competitions ec ON ec.code = em.competition_code
+    LEFT JOIN teams ht ON ht.id = em.home_team_id
+    LEFT JOIN teams at ON at.id = em.away_team_id
+    LEFT JOIN european_teams het ON het.id = em.home_european_team_id
+    LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
+    WHERE em.user_id = ?
+      AND em.played = 0
+      AND (em.home_team_id = ? OR em.away_team_id = ?)
+    ORDER BY em.match_day ASC, em.id ASC
+  `, [userId, teamId, teamId]);
+  const groups = new Map();
+  for (const match of matches) {
+    const key = `${match.competition_code}_${match.phase}_${match.round_name}`;
+    const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
+    const existing = groups.get(key) || {
+      id: `europe_draw_${key}`,
+      competitionType: 'europe_draw',
+      sourceCompetitionType: EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code,
+      competitionLabel: match.short_name,
+      day: drawDay,
+      date: seasonDate(drawDay),
+      label: `${match.short_name} ${match.round_name} kura günü`,
+      drawRevealed: false,
+      drawFixtures: []
+    };
+    existing.day = Math.min(existing.day, drawDay);
+    existing.date = seasonDate(existing.day);
+    existing.drawFixtures.push({
+      id: match.id,
+      sequence: existing.drawFixtures.length + 1,
+      matchDay: match.match_day,
+      matchDate: match.match_date,
+      roundName: match.round_name,
+      homeName: match.home_name,
+      awayName: match.away_name,
+      opponentName: Number(match.home_team_id) === Number(teamId) ? match.away_name : match.home_name,
+      venue: Number(match.home_team_id) === Number(teamId) ? 'Ev sahibi' : 'Deplasman'
+    });
+    groups.set(key, existing);
+  }
+  return [...groups.values()].map((event) => {
+    event.drawFixtures.sort((a, b) => Number(a.matchDay || 0) - Number(b.matchDay || 0) || Number(a.id || 0) - Number(b.id || 0));
+    event.drawFixtures = event.drawFixtures.map((fixture, index) => ({ ...fixture, sequence: index + 1 }));
+    return event;
+  }).sort((a, b) => Number(a.day || 0) - Number(b.day || 0));
+}
+
+async function nextEuropeanDrawEvent(userId, teamId, currentDay, beforeDay, includeToday = false) {
+  const startDay = Number(currentDay || 1);
+  const limitDay = Number(beforeDay || Number.MAX_SAFE_INTEGER);
+  const events = await europeanDrawEvents(userId, teamId);
+  return events.find((event) => {
+    const day = Number(event.day || 0);
+    const afterStart = includeToday ? day >= startDay : day > startDay;
+    return afterStart && day < limitDay;
+  }) || null;
+}
+
 async function nextEuropeanDrawDay(userId, teamId, currentDay, beforeDay, includeToday = false) {
-  const drawDayExpr = 'CASE WHEN MIN(em.match_day) - 7 < 1 THEN 1 ELSE MIN(em.match_day) - 7 END';
-  const comparator = includeToday ? '>=' : '>';
-  const row = await get(`
-    SELECT MIN(draw_day) AS day
-    FROM (
-      SELECT ${drawDayExpr} AS draw_day
-      FROM european_matches em
-      WHERE em.user_id = ?
-        AND (em.home_team_id = ? OR em.away_team_id = ?)
-      GROUP BY em.competition_code, em.phase, em.round_name
-    )
-    WHERE draw_day ${comparator} ? AND draw_day < ?
-  `, [userId, teamId, teamId, currentDay, beforeDay]);
-  return row?.day ? Number(row.day) : null;
+  const event = await nextEuropeanDrawEvent(userId, teamId, currentDay, beforeDay, includeToday);
+  return event?.day ? Number(event.day) : null;
 }
 
 router.get('/game/state', requireAuth, async (req, res, next) => {
@@ -100,7 +157,8 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
     const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, europeNext?.match_day || nextLeagueDay);
-    const nextDrawDay = await nextEuropeanDrawDay(req.session.userId, club.team_id, Number(state.current_day || 1), nextFixtureDay, true);
+    const nextDrawEvent = await nextEuropeanDrawEvent(req.session.userId, club.team_id, Number(state.current_day || 1), nextFixtureDay, true);
+    const nextDrawDay = nextDrawEvent?.day || null;
     const drawIsNext = nextDrawDay && nextDrawDay <= nextFixtureDay;
     const nextCompetitionType = drawIsNext
       ? 'europe_draw'
@@ -118,6 +176,7 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
       next_fixture_date: Number.isFinite(nextFixtureDay) && nextFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(nextFixtureDay) : null,
       next_draw_day: nextDrawDay,
       next_draw_date: nextDrawDay ? seasonDate(nextDrawDay) : null,
+      next_draw_event: drawIsNext ? { ...nextDrawEvent, drawRevealed: Number(state.current_day || 1) >= Number(nextDrawDay || 0) } : null,
       next_event_day: drawIsNext ? nextDrawDay : nextFixtureDay,
       next_event_date: drawIsNext ? seasonDate(nextDrawDay) : Number.isFinite(nextFixtureDay) && nextFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(nextFixtureDay) : null,
       next_match_competition_type: nextCompetitionType,
@@ -157,7 +216,9 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
       return res.status(400).json({ message: 'Maç günü geldi. Önce maçını oyna ya da atla, sonra günü ilerletebilirsin.' });
     }
     const currentDay = Number(currentState.current_day || 1);
-    const stopDays = (days === 7 ? [nextDrawDay, nextFixtureDay] : [currentDay + days, nextDrawDay, nextFixtureDay])
+    const requestedTargetDay = Number(req.body.targetDay || req.body.target_day || 0);
+    const requestedStopDay = requestedTargetDay > currentDay && requestedTargetDay <= nextFixtureDay ? requestedTargetDay : null;
+    const stopDays = (days === 7 ? [requestedStopDay, nextDrawDay, nextFixtureDay] : [currentDay + days, requestedStopDay, nextDrawDay, nextFixtureDay])
       .map((day) => Number(day))
       .filter((day) => Number.isFinite(day) && day > currentDay);
     const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay + days;
@@ -168,7 +229,8 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const updatedLeagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const updatedLeagueDay = updatedLeagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const updatedFixtureDay = Math.min(updatedLeagueDay, updatedEuropeNext?.match_day || updatedLeagueDay);
-    const updatedDrawDay = await nextEuropeanDrawDay(req.session.userId, club.team_id, Number(state.current_day || 1), updatedFixtureDay, true);
+    const updatedDrawEvent = await nextEuropeanDrawEvent(req.session.userId, club.team_id, Number(state.current_day || 1), updatedFixtureDay, true);
+    const updatedDrawDay = updatedDrawEvent?.day || null;
     const updatedDrawIsNext = updatedDrawDay && updatedDrawDay <= updatedFixtureDay;
     const updatedCompetitionType = updatedDrawIsNext
       ? 'europe_draw'
@@ -183,6 +245,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
       next_fixture_date: Number.isFinite(updatedFixtureDay) && updatedFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(updatedFixtureDay) : null,
       next_draw_day: updatedDrawDay,
       next_draw_date: updatedDrawDay ? seasonDate(updatedDrawDay) : null,
+      next_draw_event: updatedDrawIsNext ? { ...updatedDrawEvent, drawRevealed: Number(state.current_day || 1) >= Number(updatedDrawDay || 0) } : null,
       next_event_day: updatedDrawIsNext ? updatedDrawDay : updatedFixtureDay,
       next_event_date: updatedDrawIsNext ? seasonDate(updatedDrawDay) : Number.isFinite(updatedFixtureDay) && updatedFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(updatedFixtureDay) : null,
       next_match_competition_type: updatedCompetitionType,
