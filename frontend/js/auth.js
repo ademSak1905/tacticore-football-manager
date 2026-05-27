@@ -51,6 +51,7 @@ function setMessage(text, type = 'info') {
 const SHELL_NAV_ITEMS = [
   ['dashboard', '/dashboard.html', 'Dashboard'],
   ['manager', '/manager.html', 'Menajerim'],
+  ['messages', '/messages.html', 'Mesajlar'],
   ['squad', '/squad.html', 'Kadro'],
   ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
   ['calendar', '/calendar.html', 'Takvim'],
@@ -92,6 +93,35 @@ function showXpToast(award) {
   setTimeout(() => toast.remove(), 4200);
 }
 
+function showMessageToast(count) {
+  if (!count || window.location.pathname.endsWith('/messages.html')) return;
+  document.querySelector('.message-toast')?.remove();
+  const toast = document.createElement('a');
+  toast.className = 'message-toast';
+  toast.href = '/messages.html';
+  toast.innerHTML = `<strong>Yeni mesaj</strong><span>${count} okunmamış bildirimin var.</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 40);
+  setTimeout(() => toast.remove(), 4200);
+}
+
+async function refreshMessageBadge() {
+  try {
+    const { count } = await api.request('/api/messages/unread-count');
+    document.querySelectorAll('[data-message-badge]').forEach((badge) => {
+      badge.hidden = !count;
+      badge.textContent = count > 9 ? '9+' : String(count);
+    });
+    document.querySelectorAll('[data-page="messages"]').forEach((link) => {
+      link.classList.toggle('has-unread', Boolean(count));
+    });
+    const previousRaw = localStorage.getItem('tacticoreUnreadMessages');
+    const previous = previousRaw === null ? null : Number(previousRaw || 0);
+    if (previous !== null && count > previous) showMessageToast(count);
+    localStorage.setItem('tacticoreUnreadMessages', String(count || 0));
+  } catch {}
+}
+
 async function requireAuth() {
   try {
     const session = await api.request('/api/me');
@@ -99,6 +129,7 @@ async function requireAuth() {
     if (badge && session.club) badge.textContent = session.club.name;
     localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
     updateManagerWidget(session.manager);
+    refreshMessageBadge();
     return session;
   } catch (error) {
     window.location.href = '/login.html';
@@ -122,7 +153,10 @@ function wireShell(activePage) {
   const nav = sidebar?.querySelector('.nav');
   if (nav) {
     nav.innerHTML = SHELL_NAV_ITEMS.map(([page, href, label]) => `
-      <a data-page="${page}" href="${href}" class="${page === activePage ? 'active' : ''}">${label}</a>
+      <a data-page="${page}" href="${href}" class="${page === activePage ? 'active' : ''}">
+        <span class="nav-label">${label}</span>
+        ${page === 'messages' ? '<span class="nav-badge" data-message-badge hidden></span>' : ''}
+      </a>
     `).join('');
   }
 

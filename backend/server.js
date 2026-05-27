@@ -17,6 +17,7 @@ const teamRoutes = require('./routes/teams');
 const gameRoutes = require('./routes/game');
 const europeRoutes = require('./routes/europe');
 const managerRoutes = require('./routes/manager');
+const messageRoutes = require('./routes/messages');
 const { FORMATIONS } = require('./utils/tacticEngine');
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api', teamRoutes);
 app.use('/api', gameRoutes);
 app.use('/api', europeRoutes);
 app.use('/api', managerRoutes);
+app.use('/api', messageRoutes);
 app.get('/api/formations', (req, res) => {
   res.json(Object.entries(FORMATIONS).map(([id, item]) => ({ id, ...item })));
 });

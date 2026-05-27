@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mesajlar | TactiCore</title>
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <button id="menuButton" class="btn secondary menu-btn">Menü</button>
+      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kulüp</span></div>
+      <button id="logoutButton" class="btn secondary">Çıkış</button>
+    </header>
+    <div class="layout">
+      <aside id="sidebar" class="sidebar"><nav class="nav"></nav></aside>
+      <main class="content">
+        <section class="page-title">
+          <div>
+            <h1>Mesajlar</h1>
+            <p class="muted">Yönetim, oyuncular, sağlık ekibi, scoutlar ve transfer bildirimleri.</p>
+          </div>
+          <button id="markAllRead" class="btn secondary" type="button">Tümünü okundu yap</button>
+        </section>
+
+        <section id="messageSummary" class="grid stats"></section>
+
+        <section class="message-filters" id="messageFilters"></section>
+
+        <section class="inbox-layout">
+          <div class="card inbox-list-card">
+            <div class="inbox-list-head">
+              <h2>Gelen kutusu</h2>
+              <span id="unreadText" class="badge"></span>
+            </div>
+            <div id="messageList" class="message-list"></div>
+          </div>
+          <div class="card inbox-detail-card" id="messageDetail"></div>
+        </section>
+        <p id="message" class="message"></p>
+      </main>
+    </div>
+    <script src="/js/auth.js?v=20260527-inbox"></script>
+    <script src="/js/messages.js?v=20260527-inbox"></script>
+  </body>
+</html>

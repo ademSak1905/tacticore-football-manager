@@ -116,8 +116,39 @@ function renderGeneralDashboard() {
   `;
   updateGameState(state, nextOpponent);
   renderEuropeWeek(state, europe);
+  renderDashboardInbox();
   byId('currencySelect').value = data.club.currency || localStorage.getItem('tacticoreCurrency') || 'EUR';
   renderDashboardPitch(lineupData.lineup);
+}
+
+function renderDashboardInbox() {
+  const card = byId('dashboardInboxCard');
+  if (!card) return;
+  const inbox = dashboardCache?.inbox;
+  const messages = (inbox?.messages || []).slice(0, 3);
+  if (!messages.length) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  card.innerHTML = `
+    <div class="inbox-dashboard-head">
+      <div>
+        <span class="badge">Gelen kutusu</span>
+        <h2>Yeni mesajlar</h2>
+      </div>
+      <a class="btn secondary" href="/messages.html">Mesajlara git</a>
+    </div>
+    <div class="inbox-dashboard-list">
+      ${messages.map((item) => `
+        <article class="inbox-dashboard-item ${item.priority === 'urgent' ? 'urgent' : ''}">
+          <span class="message-category ${item.category === 'management' ? 'gold' : item.category === 'health' || item.category === 'discipline' ? 'red' : item.category === 'player' ? 'green' : 'blue'}">${item.category === 'management' ? 'Yönetim' : item.category === 'health' ? 'Sakatlık' : item.category === 'discipline' ? 'Ceza' : item.category === 'player' ? 'Oyuncu' : item.category === 'scout' ? 'Scout' : 'Transfer'}</span>
+          <strong>${item.title}</strong>
+          <span>${item.summary}</span>
+        </article>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderDashboardLeague() {
@@ -448,7 +479,8 @@ async function loadDashboard() {
     europe: null,
     league: [],
     calendar: { next5Matches: [] },
-    lineupData: { lineup: [] }
+    lineupData: { lineup: [] },
+    inbox: { messages: [], unreadCount: 0 }
   };
   renderDashboard();
   showSeasonScreens();
@@ -457,13 +489,15 @@ async function loadDashboard() {
     api.request(`/api/teams/${data.club.team_id}/lineup`),
     api.request('/api/europe/overview'),
     api.request('/api/league/table'),
-    api.request('/api/calendar')
+    api.request('/api/calendar'),
+    api.request('/api/messages?limit=3&unreadOnly=1')
   ]);
-  const [lineupResult, europeResult, leagueResult, calendarResult] = detailResults;
+  const [lineupResult, europeResult, leagueResult, calendarResult, inboxResult] = detailResults;
   if (lineupResult.status === 'fulfilled') dashboardCache.lineupData = lineupResult.value;
   if (europeResult.status === 'fulfilled') dashboardCache.europe = europeResult.value;
   if (leagueResult.status === 'fulfilled') dashboardCache.league = leagueResult.value;
   if (calendarResult.status === 'fulfilled') dashboardCache.calendar = calendarResult.value;
+  if (inboxResult.status === 'fulfilled') dashboardCache.inbox = inboxResult.value;
   renderDashboard();
   showDueDashboardDraw();
 }
