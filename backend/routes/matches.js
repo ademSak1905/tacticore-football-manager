@@ -43,7 +43,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     const nextEurope = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, nextEurope?.match_day || nextLeagueDay);
-    const nextMatchDebug = nextEurope && nextEurope.match_day < nextLeagueDay
+    const nextMatchDebug = nextEurope && nextEurope.match_day <= nextLeagueDay
       ? { competitionType: EUROPE_TYPE_BY_CODE[nextEurope.competition_code] || nextEurope.competition_code, date: seasonDate(nextEurope.match_day), match_day: nextEurope.match_day }
       : leagueFinished
         ? { competitionType: 'season_end', date: null, match_day: null }
@@ -57,7 +57,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
       return res.status(400).json({ message: `Maç tarihi ${seasonDate(nextFixtureDay)}. Önce takvimi ilerletmelisiniz.` });
     }
     const leagueDue = !leagueFinished && state.current_day >= state.next_match_day;
-    if (europeDue && (leagueFinished || !leagueDue || europeDue.match_day < state.next_match_day)) {
+    if (europeDue && (leagueFinished || !leagueDue || europeDue.match_day <= state.next_match_day)) {
       const europeanResult = await playDueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
       const xpAward = await awardMatchXp(req.session.userId, club, europeanResult);
       if (xpAward) europeanResult.xpAward = xpAward;
@@ -299,7 +299,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     const nextDrawEvent = europeanDrawEvents.find((event) => Number(event.day || 0) >= Number(state.current_day || 1) && Number(event.day || 0) <= nextFixtureDay);
     const nextCompetitionType = nextDrawEvent
       ? 'europe_draw'
-      : nextEuropean && nextEuropean.match_day < nextLeagueDay
+      : nextEuropean && nextEuropean.match_day <= nextLeagueDay
       ? EUROPE_TYPE_BY_CODE[nextEuropean.competition_code] || nextEuropean.competition_code
       : leagueFinished ? 'season_end' : 'super_lig';
     console.log('CALENDAR CHECK', {

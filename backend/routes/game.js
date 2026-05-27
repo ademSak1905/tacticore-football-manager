@@ -84,7 +84,6 @@ async function europeanDrawEvents(userId, teamId) {
     LEFT JOIN european_teams het ON het.id = em.home_european_team_id
     LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
     WHERE em.user_id = ?
-      AND em.played = 0
       AND (em.home_team_id = ? OR em.away_team_id = ?)
     ORDER BY em.match_day ASC, em.id ASC
   `, [userId, teamId, teamId]);
@@ -162,7 +161,7 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
     const drawIsNext = nextDrawDay && nextDrawDay <= nextFixtureDay;
     const nextCompetitionType = drawIsNext
       ? 'europe_draw'
-      : europeNext && europeNext.match_day < nextLeagueDay
+      : europeNext && europeNext.match_day <= nextLeagueDay
       ? (europeNext.competition_code === 'UCL' ? 'champions_league' : europeNext.competition_code === 'UEL' ? 'europa_league' : 'conference_league')
       : leagueFinished ? 'season_end' : 'super_lig';
     console.log('NEXT MATCH CHECK', {
@@ -234,7 +233,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const updatedDrawIsNext = updatedDrawDay && updatedDrawDay <= updatedFixtureDay;
     const updatedCompetitionType = updatedDrawIsNext
       ? 'europe_draw'
-      : updatedEuropeNext && updatedEuropeNext.match_day < updatedLeagueDay
+      : updatedEuropeNext && updatedEuropeNext.match_day <= updatedLeagueDay
       ? (updatedEuropeNext.competition_code === 'UCL' ? 'champions_league' : updatedEuropeNext.competition_code === 'UEL' ? 'europa_league' : 'conference_league')
       : updatedLeagueFinished ? 'season_end' : 'super_lig';
     await ensureDailyFeed(club.team_id);
