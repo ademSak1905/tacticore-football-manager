@@ -157,7 +157,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
       return res.status(400).json({ message: 'Maç günü geldi. Önce maçını oyna ya da atla, sonra günü ilerletebilirsin.' });
     }
     const currentDay = Number(currentState.current_day || 1);
-    const stopDays = [currentDay + days, nextFixtureDay, nextDrawDay]
+    const stopDays = (days === 7 ? [nextDrawDay, nextFixtureDay] : [currentDay + days, nextDrawDay, nextFixtureDay])
       .map((day) => Number(day))
       .filter((day) => Number.isFinite(day) && day > currentDay);
     const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay + days;
