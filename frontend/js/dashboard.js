@@ -2,6 +2,7 @@ let activeDashboardTab = 'general';
 let dashboardCache = null;
 let isAdvancingWeek = false;
 let dashboardDrawAutoShown = '';
+let dashboardDrawArrivedFromAdvance = null;
 
 function competitionLabel(type) {
   if (type === 'europe_draw') return 'Şampiyonlar Ligi kurası';
@@ -75,7 +76,7 @@ function renderDashboard() {
 function renderGeneralDashboard() {
   const { data, state, europe, lineupData } = dashboardCache;
   const dashboardDraw = currentDashboardDraw();
-  const isDrawNext = state.next_match_competition_type === 'europe_draw' && !isDashboardDrawSeen(dashboardDraw);
+  const isDrawNext = state.next_match_competition_type === 'europe_draw' && shouldTreatDrawAsNext(dashboardDraw);
   const effectiveCompetitionType = effectiveNextCompetitionType(state, isDrawNext);
   const isEuropeNext = ['champions_league', 'europa_league', 'conference_league'].includes(effectiveCompetitionType) && state.next_european_match;
   const nextOpponent = isDrawNext
@@ -180,6 +181,12 @@ function isDashboardDrawSeen(draw) {
   return Boolean(draw && localStorage.getItem(dashboardDrawStorageKey(draw)));
 }
 
+function shouldTreatDrawAsNext(draw) {
+  const arrivedFromAdvance = draw && dashboardDrawArrivedFromAdvance === Number(draw.day || 0);
+  const waitingAutoOpen = draw && dashboardDrawAutoShown !== draw.id;
+  return arrivedFromAdvance || waitingAutoOpen || !isDashboardDrawSeen(draw);
+}
+
 function europeCompetitionType(match) {
   if (match?.competition_code === 'UEL') return 'europa_league';
   if (match?.competition_code === 'UECL') return 'conference_league';
@@ -277,8 +284,9 @@ function showDashboardDrawAnimation(draw) {
 
 function showDueDashboardDraw() {
   const draw = currentDashboardDraw();
-  if (!draw || isDashboardDrawSeen(draw) || dashboardDrawAutoShown === draw.id) return;
+  if (!draw || dashboardDrawAutoShown === draw.id) return;
   dashboardDrawAutoShown = draw.id;
+  dashboardDrawArrivedFromAdvance = null;
   setTimeout(() => showDashboardDrawAnimation(draw), 350);
 }
 
@@ -327,7 +335,7 @@ function renderDashboardPitch(lineup = []) {
 
 function updateGameState(state, nextOpponent) {
   const dueDraw = currentDashboardDraw();
-  const isDrawNext = state.next_match_competition_type === 'europe_draw' && !isDashboardDrawSeen(dueDraw);
+  const isDrawNext = state.next_match_competition_type === 'europe_draw' && shouldTreatDrawAsNext(dueDraw);
   const drawNotice = isDrawNext ? (dueDraw || stateDrawNotice()) : null;
   const effectiveCompetitionType = effectiveNextCompetitionType(state, isDrawNext);
   const isEuropeanNext = ['champions_league', 'europa_league', 'conference_league'].includes(effectiveCompetitionType);
@@ -392,6 +400,9 @@ async function advance(days) {
     dashboardCache.state = state;
     const calendar = await api.request('/api/calendar').catch(() => null);
     if (calendar) dashboardCache.calendar = calendar;
+    if (state.next_match_competition_type === 'europe_draw' && Number(state.current_day || 0) > previousDay) {
+      dashboardDrawArrivedFromAdvance = Number(state.current_day || 0);
+    }
     renderDashboard();
     showDueDashboardDraw();
   } catch (error) {
