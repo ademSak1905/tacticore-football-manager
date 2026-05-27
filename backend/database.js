@@ -45,6 +45,13 @@ async function createSchema() {
   `);
 
   await run(`
+    CREATE TABLE IF NOT EXISTS maintenance_flags (
+      flag_key TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS career_states (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL UNIQUE,
@@ -1207,6 +1214,40 @@ async function resetCareerProgress(userId = null) {
   await run('UPDATE game_state SET current_day = 1, next_match_day = 7, week = 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1');
 }
 
+async function clearAllUserAccountsOnce() {
+  const flagKey = 'clear_all_user_accounts_20260527';
+  const alreadyDone = await get('SELECT flag_key FROM maintenance_flags WHERE flag_key = ?', [flagKey]);
+  if (alreadyDone) return;
+
+  await run('DELETE FROM match_player_ratings WHERE match_id IN (SELECT id FROM matches WHERE user_id IS NOT NULL)');
+  await run('DELETE FROM match_events WHERE match_id IN (SELECT id FROM matches WHERE user_id IS NOT NULL)');
+  await run('DELETE FROM matches WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_awards WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_history WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_draws WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_matches WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_standings WHERE user_id IS NOT NULL');
+  await run('DELETE FROM european_entries WHERE user_id IS NOT NULL');
+  await run('DELETE FROM squad_snapshots WHERE user_id IS NOT NULL');
+  await run('DELETE FROM league_standings WHERE user_id IS NOT NULL');
+  await run('DELETE FROM career_saves');
+  await run('DELETE FROM career_states');
+  await run('DELETE FROM manager_achievements');
+  await run('DELETE FROM manager_xp_events');
+  await run('DELETE FROM manager_profiles');
+  await run('DELETE FROM transfers');
+  await run('DELETE FROM transfer_interest');
+  await run('DELETE FROM training_results');
+  await run('DELETE FROM training');
+  await run('DELETE FROM tactics WHERE club_id IN (SELECT id FROM clubs WHERE user_id IS NOT NULL)');
+  await run('DELETE FROM clubs WHERE user_id IS NOT NULL');
+  await run('DELETE FROM users');
+  await run('DELETE FROM social_posts');
+  await run('DELETE FROM news_feed');
+  await run('DELETE FROM used_templates');
+  await run('INSERT INTO maintenance_flags (flag_key) VALUES (?)', [flagKey]);
+}
+
 async function seedGalatasaraySon16Demo() {
   const oldDemo = await get("SELECT id FROM users WHERE username = 'gs_son16'");
   if (oldDemo?.id) await run('DELETE FROM users WHERE id = ?', [oldDemo.id]);
@@ -1375,7 +1416,7 @@ async function initDatabase() {
   await backfillMatchDays();
   await backfillSeasonPlans();
   await seedTransferMarket();
-  await seedGalatasaraySon16Demo();
+  await clearAllUserAccountsOnce();
   const users = await all('SELECT id, username FROM users');
   for (const user of users) {
     await run('INSERT OR IGNORE INTO manager_profiles (user_id, manager_name) VALUES (?, ?)', [user.id, user.username]);
