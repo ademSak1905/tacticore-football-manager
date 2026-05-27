@@ -27,7 +27,7 @@ function isEuropeType(type) {
 }
 
 function filteredCalendarMatches() {
-  const rows = calendarData?.calendarMatches || [];
+  const rows = (calendarData?.calendarMatches || []).filter((match) => !isSeenDraw(match));
   if (activeCalendarFilter === 'all') return rows;
   if (activeCalendarFilter === 'europe') return rows.filter((match) => isEuropeType(match.competitionType));
   return rows.filter((match) => match.competitionType === activeCalendarFilter);
@@ -35,6 +35,10 @@ function filteredCalendarMatches() {
 
 function drawStorageKey(draw) {
   return `tacticore_draw_seen_${calendarData?.club?.team_id || 'team'}_${draw.id}_${draw.day}`;
+}
+
+function isSeenDraw(match) {
+  return match?.competitionType === 'europe_draw' && localStorage.getItem(drawStorageKey(match));
 }
 
 function drawById(id) {
@@ -86,7 +90,10 @@ function showDrawAnimation(draw) {
       }
     }, 720);
   });
-  closeButton.addEventListener('click', () => overlay.remove());
+  closeButton.addEventListener('click', () => {
+    overlay.remove();
+    renderCalendarMatches();
+  });
 }
 
 function renderCalendarMatches() {

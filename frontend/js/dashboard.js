@@ -174,6 +174,7 @@ function currentDashboardDraw() {
   return (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
+    !localStorage.getItem(dashboardDrawStorageKey(match)) &&
     currentDay >= Number(match.day || 0) &&
     currentDay <= Number(match.day || 0) + 2 &&
     (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
@@ -225,7 +226,10 @@ function showDashboardDrawAnimation(draw) {
       }
     }, 720);
   });
-  closeButton.addEventListener('click', () => overlay.remove());
+  closeButton.addEventListener('click', () => {
+    overlay.remove();
+    renderDashboard();
+  });
 }
 
 function showDueDashboardDraw() {
@@ -250,6 +254,7 @@ function renderEuropeWeek(state, europe) {
   if (state.current_day >= match.match_day - 1) document.body.classList.add(themeClass);
   const home = match.home_name || match.home_european_name || '-';
   const away = match.away_name || match.away_european_name || '-';
+  const isMatchDay = Number(state.current_day || 1) >= Number(match.match_day || 0);
   card.hidden = false;
   card.className = `europe-week-card ${match.theme || 'champions'}`;
   card.innerHTML = `
@@ -259,7 +264,9 @@ function renderEuropeWeek(state, europe) {
       <p>${home} vs ${away}</p>
       <small>${match.round_name || 'Lig Aşaması'} - ${formatSeasonDate(match.match_date, `Gün ${match.match_day}`)}</small>
     </div>
-    <a class="btn green" href="/match.html">${state.current_day >= match.match_day ? 'Avrupa maçına geç' : 'Hazırlan'}</a>
+    ${isMatchDay
+      ? '<a class="btn green" href="/match.html">Avrupa maçına geç</a>'
+      : '<button class="btn secondary" type="button" disabled>Maç günü bekleniyor</button>'}
   `;
 }
 

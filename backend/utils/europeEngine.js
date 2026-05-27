@@ -1679,7 +1679,13 @@ async function europeanOverview(userIdOrTeamId = null, maybeTeamId = null) {
   const userTeamId = maybeTeamId === null ? userIdOrTeamId : maybeTeamId;
   const state = await careerState(scopedUserId);
   const next = userTeamId ? await nextEuropeanMatch(scopedUserId, userTeamId) : null;
-  const drawDay = next ? Math.max(1, Number(next.match_day || 1) - 7) : null;
+  const phaseDraw = next ? await get(`
+    SELECT CASE WHEN MIN(match_day) - 7 < 1 THEN 1 ELSE MIN(match_day) - 7 END AS draw_day
+    FROM european_matches
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ? AND round_name = ?
+      AND (home_team_id = ? OR away_team_id = ?)
+  `, [scopedUserId, SEASON, next.competition_code, next.phase, next.round_name, userTeamId, userTeamId]) : null;
+  const drawDay = next ? Number(phaseDraw?.draw_day || Math.max(1, Number(next.match_day || 1) - 7)) : null;
   const drawRevealed = !next || Number(state.current_day || 1) >= drawDay;
   const safeNext = next && !drawRevealed
     ? {

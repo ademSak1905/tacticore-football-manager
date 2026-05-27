@@ -190,9 +190,17 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         label: `Süper Lig Hafta ${round.week}`
       }));
     const turkishCupMatches = [];
+    const europePhaseDrawDays = new Map();
+    for (const match of europeMatches) {
+      const key = `${match.competition_code}_${match.phase}_${match.round_name}`;
+      const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
+      const currentDrawDay = europePhaseDrawDays.get(key);
+      europePhaseDrawDays.set(key, currentDrawDay ? Math.min(currentDrawDay, drawDay) : drawDay);
+    }
     const europeanCalendarMatches = europeMatches.map((match) => {
       const type = EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code;
-      const drawDay = Math.max(1, Number(match.match_day || 1) - 7);
+      const drawKey = `${match.competition_code}_${match.phase}_${match.round_name}`;
+      const drawDay = europePhaseDrawDays.get(drawKey) || Math.max(1, Number(match.match_day || 1) - 7);
       const drawRevealed = Boolean(match.played) || Number(state.current_day || 1) >= drawDay;
       return {
         id: `europe_${match.id}`,
@@ -257,7 +265,7 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         away_name: isRevealed ? `${event.drawFixtures.length} rakip kura çekilecek` : 'Rakipler kura günü açıklanacak',
         drawRevealed: isRevealed
       };
-    }).filter((event) => Number(state.current_day || 1) <= Number(event.day || 0) + 2);
+    }).filter((event) => Number(state.current_day || 1) <= Number(event.day || 0));
     const calendarMatches = [
       ...superLigMatches,
       ...turkishCupMatches,
