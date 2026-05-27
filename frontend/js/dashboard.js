@@ -328,7 +328,12 @@ async function advance(days) {
     byId('gameState').textContent = 'Hala işleniyor... Render ücretsiz sunucu uyanırken ilk işlem yavaş gelebilir.';
   }, 8000);
   try {
-    const state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
+    const previousDay = Number(dashboardCache?.state?.current_day || 0);
+    let state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
+    const returnedDay = Number(state.current_day || 0);
+    if (returnedDay <= previousDay && !state.matchAvailable && state.next_match_competition_type !== 'season_end') {
+      state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days }) });
+    }
     dashboardCache.state = state;
     const calendar = await api.request('/api/calendar').catch(() => null);
     if (calendar) dashboardCache.calendar = calendar;

@@ -256,16 +256,17 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
       });
       drawGroups.set(key, existingGroup);
     }
+    const currentDay = Number(state.current_day || 1);
     const europeanDrawEvents = [...drawGroups.values()].map((event) => {
       event.drawFixtures.sort((a, b) => a.matchDay - b.matchDay || a.id - b.id);
       event.drawFixtures = event.drawFixtures.map((item, index) => ({ ...item, sequence: index + 1 }));
-      const isRevealed = Number(state.current_day || 1) >= event.day;
+      const isRevealed = currentDay >= event.day;
       return {
         ...event,
         away_name: isRevealed ? `${event.drawFixtures.length} rakip kura çekilecek` : 'Rakipler kura günü açıklanacak',
         drawRevealed: isRevealed
       };
-    });
+    }).filter((event) => currentDay <= Number(event.day || 0));
     const calendarMatches = [
       ...superLigMatches,
       ...turkishCupMatches,
