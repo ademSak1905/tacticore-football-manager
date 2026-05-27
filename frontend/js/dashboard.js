@@ -4,6 +4,7 @@ let isAdvancingWeek = false;
 let dashboardDrawAutoShown = '';
 
 function competitionLabel(type) {
+  if (type === 'europe_draw') return 'Şampiyonlar Ligi kurası';
   if (type === 'champions_league') return 'Şampiyonlar Ligi';
   if (type === 'europa_league') return 'Avrupa Ligi';
   if (type === 'conference_league') return 'Konferans Ligi';
@@ -73,8 +74,11 @@ function renderDashboard() {
 
 function renderGeneralDashboard() {
   const { data, state, europe, lineupData } = dashboardCache;
-  const isEuropeNext = state.next_match_competition_type !== 'super_lig' && state.next_european_match;
-  const nextOpponent = isEuropeNext
+  const isDrawNext = state.next_match_competition_type === 'europe_draw';
+  const isEuropeNext = !isDrawNext && state.next_match_competition_type !== 'super_lig' && state.next_european_match;
+  const nextOpponent = isDrawNext
+    ? 'Şampiyonlar Ligi kurası'
+    : isEuropeNext
     ? `${state.next_european_match.short_name}: ${state.next_european_match.home_name || state.next_european_match.home_european_name} - ${state.next_european_match.away_name || state.next_european_match.away_european_name}`
     : data.nextOpponent;
   const stats = [
@@ -175,10 +179,23 @@ function currentDashboardDraw() {
   return (dashboardCache?.calendar?.calendarMatches || []).find((match) =>
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
-    !localStorage.getItem(dashboardDrawStorageKey(match)) &&
     currentDay === Number(match.day || 0) &&
     (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
   );
+}
+
+function stateDrawNotice() {
+  const state = dashboardCache?.state || {};
+  if (state.next_match_competition_type !== 'europe_draw') return null;
+  return {
+    id: `state_draw_${state.next_draw_day || state.next_event_day || 'today'}`,
+    competitionType: 'europe_draw',
+    competitionLabel: 'Şampiyonlar Ligi',
+    day: state.next_draw_day || state.next_event_day,
+    date: state.next_draw_date || state.next_event_date,
+    label: 'Şampiyonlar Ligi kura günü',
+    drawFixtures: []
+  };
 }
 
 function showDashboardDrawAnimation(draw) {
@@ -234,7 +251,7 @@ function showDashboardDrawAnimation(draw) {
 
 function showDueDashboardDraw() {
   const draw = currentDashboardDraw();
-  if (!draw || localStorage.getItem(dashboardDrawStorageKey(draw)) || dashboardDrawAutoShown === draw.id) return;
+  if (!draw || dashboardDrawAutoShown === draw.id) return;
   dashboardDrawAutoShown = draw.id;
   setTimeout(() => showDashboardDrawAnimation(draw), 350);
 }
@@ -284,23 +301,28 @@ function renderDashboardPitch(lineup = []) {
 
 function updateGameState(state, nextOpponent) {
   const dueDraw = currentDashboardDraw();
+  const drawNotice = dueDraw || stateDrawNotice();
   const seasonEnded = state.next_match_competition_type === 'season_end';
   const today = formatSeasonDate(state.current_date, `Gun ${state.current_day}`);
-  const nextMatchDay = state.next_fixture_day || state.next_match_day;
-  const nextMatchSource = state.next_match_competition_type !== 'super_lig'
+  const isDrawNext = state.next_match_competition_type === 'europe_draw';
+  const drawArrived = isDrawNext && Number(state.current_day || 1) >= Number(state.next_draw_day || state.next_event_day || 0);
+  const nextMatchDay = isDrawNext ? (state.next_draw_day || state.next_event_day) : (state.next_fixture_day || state.next_match_day);
+  const nextMatchSource = isDrawNext
+    ? (state.next_draw_date || state.next_event_date)
+    : state.next_match_competition_type !== 'super_lig'
     ? state.next_european_match?.match_date
     : state.next_match_date;
   const nextMatch = formatSeasonDate(nextMatchSource, `Gun ${nextMatchDay}`);
-  const isMatchDay = state.matchAvailable;
-  byId('gameState').textContent = dueDraw
+  const isMatchDay = !isDrawNext && state.matchAvailable;
+  byId('gameState').textContent = drawArrived
     ? `${today}. Kura gunu geldi.`
     : seasonEnded ? `${today}. Sezon bitti, yeni sezona gecmelisin.`
-    : `${today}. ${isMatchDay ? 'Mac gunu geldi.' : `Siradaki mac: ${nextMatch}.`}`;
+    : `${today}. ${isMatchDay ? 'Mac gunu geldi.' : `${isDrawNext ? 'Siradaki olay' : 'Siradaki mac'}: ${nextMatch}.`}`;
   byId('nextMatchCard').innerHTML = `
     <article class="event">
-      <strong>${seasonEnded ? 'Sezon tamamlandi' : dueDraw ? 'Kura gunu' : competitionLabel(state.next_match_competition_type)}</strong><br>
-      ${seasonEnded ? 'Sezon ozeti hazir. Yeni sezona gecebilirsin.' : dueDraw ? (dueDraw.label || 'Rakipler aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
-      <span class="muted">${dueDraw ? formatSeasonDate(dueDraw.date, `Gun ${dueDraw.day}`) : nextMatch}</span>
+      <strong>${seasonEnded ? 'Sezon tamamlandi' : isDrawNext ? 'Şampiyonlar Ligi kurası' : competitionLabel(state.next_match_competition_type)}</strong><br>
+      ${seasonEnded ? 'Sezon ozeti hazir. Yeni sezona gecebilirsin.' : isDrawNext ? (drawNotice?.label || 'Rakipler kura gunu aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
+      <span class="muted">${isDrawNext ? formatSeasonDate(drawNotice?.date || state.next_draw_date || state.next_event_date, `Gun ${drawNotice?.day || state.next_draw_day || state.next_event_day}`) : nextMatch}</span>
       ${seasonEnded ? '<br><button class="btn green" id="dashboardNextSeason" type="button">Yeni Sezona Gec</button>' : ''}
     </article>
   `;

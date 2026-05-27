@@ -280,6 +280,12 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         day: round.day,
         label: `Süper Lig Hafta ${round.week}`
       })),
+      ...europeanDrawEvents.map((event) => ({
+        competitionType: 'europe_draw',
+        date: event.date,
+        day: event.day,
+        label: event.label
+      })),
       ...europeMatches.filter((match) => !match.played).map((match) => ({
         competitionType: EUROPE_TYPE_BY_CODE[match.competition_code] || match.competition_code,
         date: match.match_date,
@@ -290,7 +296,10 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     const nextEuropean = europeMatches.find((match) => !match.played);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
     const nextFixtureDay = Math.min(nextLeagueDay, nextEuropean?.match_day || nextLeagueDay);
-    const nextCompetitionType = nextEuropean && nextEuropean.match_day < nextLeagueDay
+    const nextDrawEvent = europeanDrawEvents.find((event) => Number(event.day || 0) >= Number(state.current_day || 1) && Number(event.day || 0) <= nextFixtureDay);
+    const nextCompetitionType = nextDrawEvent
+      ? 'europe_draw'
+      : nextEuropean && nextEuropean.match_day < nextLeagueDay
       ? EUROPE_TYPE_BY_CODE[nextEuropean.competition_code] || nextEuropean.competition_code
       : leagueFinished ? 'season_end' : 'super_lig';
     console.log('CALENDAR CHECK', {
@@ -305,6 +314,10 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
         ...withSeasonDates(state),
         next_fixture_day: nextFixtureDay,
         next_fixture_date: Number.isFinite(nextFixtureDay) && nextFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(nextFixtureDay) : null,
+        next_draw_day: nextDrawEvent?.day || null,
+        next_draw_date: nextDrawEvent?.date || null,
+        next_event_day: nextDrawEvent?.day || nextFixtureDay,
+        next_event_date: nextDrawEvent?.date || (Number.isFinite(nextFixtureDay) && nextFixtureDay < Number.MAX_SAFE_INTEGER ? seasonDate(nextFixtureDay) : null),
         next_match_competition_type: nextCompetitionType
       },
       club,
