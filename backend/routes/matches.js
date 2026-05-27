@@ -27,6 +27,42 @@ function withDisplayDate(match) {
   return { ...match, display_date: displayDate };
 }
 
+async function recentMatchesForClub(userId, teamId, limit = 20) {
+  const domesticMatches = await all(`
+    SELECT m.*, h.name AS home_name, h.logo_url AS home_logo, a.name AS away_name, a.logo_url AS away_logo,
+      'super_lig' AS competition_type, 'Süper Lig' AS competition_label
+    FROM matches m
+    JOIN teams h ON h.id = m.home_club_id
+    JOIN teams a ON a.id = m.away_club_id
+    WHERE m.user_id = ? AND m.played = 1 AND (m.home_club_id = ? OR m.away_club_id = ?)
+    ORDER BY m.match_day DESC, m.id DESC
+    LIMIT ?
+  `, [userId, teamId, teamId, limit]);
+  const europeanMatches = await all(`
+    SELECT em.id, em.user_id, em.home_score, em.away_score, em.match_day, em.match_date, em.played,
+      ec.code AS competition_code, ec.short_name AS competition_label,
+      COALESCE(ht.name, het.name) AS home_name,
+      COALESCE(at.name, aet.name) AS away_name,
+      COALESCE(ht.logo_url, het.logo_url) AS home_logo,
+      COALESCE(at.logo_url, aet.logo_url) AS away_logo
+    FROM european_matches em
+    JOIN european_competitions ec ON ec.code = em.competition_code
+    LEFT JOIN teams ht ON ht.id = em.home_team_id
+    LEFT JOIN teams at ON at.id = em.away_team_id
+    LEFT JOIN european_teams het ON het.id = em.home_european_team_id
+    LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
+    WHERE em.user_id = ? AND em.played = 1 AND (em.home_team_id = ? OR em.away_team_id = ?)
+    ORDER BY em.match_day DESC, em.id DESC
+    LIMIT ?
+  `, [userId, teamId, teamId, limit]);
+  return [
+    ...domesticMatches.map((match) => withDisplayDate({ ...match, source: 'league' })),
+    ...europeanMatches.map((match) => withDisplayDate({ ...match, source: 'europe', id: `europe_${match.id}` }))
+  ]
+    .sort((a, b) => Number(b.match_day || 0) - Number(a.match_day || 0))
+    .slice(0, limit);
+}
+
 router.post('/match/play', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
@@ -97,16 +133,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
 router.get('/matches', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    const matches = await all(`
-      SELECT m.*, h.name AS home_name, h.logo_url AS home_logo, a.name AS away_name, a.logo_url AS away_logo
-      FROM matches m
-      JOIN teams h ON h.id = m.home_club_id
-      JOIN teams a ON a.id = m.away_club_id
-      WHERE m.user_id = ? AND (m.home_club_id = ? OR m.away_club_id = ?)
-      ORDER BY m.match_date DESC, m.id DESC
-      LIMIT 20
-    `, [req.session.userId, club.team_id, club.team_id]);
-    res.json(matches.map(withDisplayDate));
+    res.json(await recentMatchesForClub(req.session.userId, club.team_id, 20));
   } catch (error) {
     next(error);
   }
@@ -115,20 +142,12 @@ router.get('/matches', requireAuth, async (req, res, next) => {
 router.get('/calendar', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    let [state, teams, pastMatches] = await Promise.all([
+    let [state, teams] = await Promise.all([
       getCareerState(req.session.userId),
-      all('SELECT id, name, short_name, logo_url FROM teams ORDER BY id ASC'),
-      all(`
-        SELECT m.*, h.name AS home_name, h.logo_url AS home_logo, a.name AS away_name, a.logo_url AS away_logo
-        FROM matches m
-        JOIN teams h ON h.id = m.home_club_id
-        JOIN teams a ON a.id = m.away_club_id
-        WHERE m.user_id = ? AND (m.home_club_id = ? OR m.away_club_id = ?)
-        ORDER BY m.id DESC
-        LIMIT 12
-      `, [req.session.userId, club.team_id, club.team_id])
+      all('SELECT id, name, short_name, logo_url FROM teams ORDER BY id ASC')
     ]);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
+    const pastMatches = await recentMatchesForClub(req.session.userId, club.team_id, 12);
     const totalLeagueWeeks = leagueWeeksForTeamCount(teams.length);
     state = await syncCareerLeagueMatchDay(req.session.userId, club.team_id, state, totalLeagueWeeks);
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;

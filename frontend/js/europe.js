@@ -40,23 +40,10 @@ function renderOverview(data) {
     ['Sıradaki maç', data.next ? formatDate(data.next.match_date, `Gün ${data.next.match_day}`) : '-']
   ].map(([label, value]) => `<article class="stat-card"><span class="muted">${label}</span><strong>${value}</strong></article>`).join('');
 
-  byId('qualificationRules').innerHTML = data.rules.map((rule) => `
-    <div class="event"><strong>${rule.rank}. sıra</strong><br>${rule.competition} - ${rule.label}</div>
-  `).join('');
-
-  const drawItems = [];
-  for (const draw of data.draws) {
-    try {
-      const rows = JSON.parse(draw.draw_data || '[]').slice(0, 8);
-      for (const item of rows) {
-        const revealDay = Math.max(1, Number(item.day || 1) - 7);
-        drawItems.push({ ...item, competition: draw.competition_code, revealDay, revealed: Number(data.state?.current_day || 1) >= revealDay });
-      }
-    } catch {}
-  }
-  byId('drawCards').innerHTML = drawItems.length ? drawItems.slice(0, 12).map((item) => `
-    <article class="draw-card"><span>${item.competition}</span><strong>Takım #${item.team_id}</strong><small>Rakip havuzu #${item.opponent_european_team_id} - Gün ${item.day}</small></article>
-  `).join('') : '<div class="empty">Kura verisi oluşuyor.</div>';
+  byId('qualificationRules').innerHTML = data.rules.map((rule) => {
+    const rankLabel = rule.rank ? `${rule.rank}. sıra` : 'Kupa bileti';
+    return `<div class="event"><strong>${rankLabel}</strong><br>${rule.competition} - ${rule.label}</div>`;
+  }).join('');
 }
 
 async function renderStandings(code = 'UCL') {
@@ -64,7 +51,7 @@ async function renderStandings(code = 'UCL') {
   byId('europeTable').innerHTML = rows.length ? `
     <table><thead><tr><th>#</th><th>Takım</th><th>O</th><th>AV</th><th>P</th><th>Durum</th></tr></thead><tbody>
       ${rows.map((row, index) => {
-        const status = index < 8 ? 'Direkt üst tur' : index < 24 ? 'Play-off' : 'Elendi';
+        const status = index < 8 ? 'Direkt Son 16' : index < 24 ? 'Play-off' : 'Elendi';
         return `<tr><td>${index + 1}</td><td>${row.name}</td><td>${row.played}</td><td>${row.goal_difference}</td><td><strong>${row.points}</strong></td><td>${status}</td></tr>`;
       }).join('')}
     </tbody></table>

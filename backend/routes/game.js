@@ -339,6 +339,7 @@ function uclStageLabel(phase, champion = false) {
   const labels = {
     league: 'Lig asamasi',
     qualifying: 'Eleme',
+    knockout_playoff: 'Play-off',
     round_of_16: 'Son 16',
     quarter_final: 'Ceyrek final',
     semi_final: 'Yari final',
@@ -364,7 +365,7 @@ async function championsLeagueResult(userId, teamId) {
     const goalsAgainst = isHome ? final.away_score : final.home_score;
     return uclStageLabel('final', goalsFor > goalsAgainst);
   }
-  const order = ['league', 'qualifying', 'round_of_16', 'quarter_final', 'semi_final'];
+  const order = ['league', 'qualifying', 'knockout_playoff', 'round_of_16', 'quarter_final', 'semi_final'];
   const reached = matches.reduce((best, match) => (
     order.indexOf(match.phase) > order.indexOf(best) ? match.phase : best
   ), 'league');

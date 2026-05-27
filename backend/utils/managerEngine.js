@@ -142,7 +142,7 @@ async function championsLeagueResult(userId, teamId) {
     const goalsAgainst = isHome ? final.away_score : final.home_score;
     return { stage: goalsFor > goalsAgainst ? 'champion' : 'final', label: goalsFor > goalsAgainst ? 'Şampiyonluk' : 'Final' };
   }
-  const order = ['league', 'round_of_16', 'quarter_final', 'semi_final'];
+  const order = ['league', 'knockout_playoff', 'round_of_16', 'quarter_final', 'semi_final'];
   const reached = matches.reduce((best, match) => (order.indexOf(match.phase) > order.indexOf(best) ? match.phase : best), 'league');
   const labels = { league: 'Lig aşaması', round_of_16: 'Son 16', quarter_final: 'Çeyrek final', semi_final: 'Yarı final' };
   return { stage: reached, label: labels[reached] || 'Katıldı' };

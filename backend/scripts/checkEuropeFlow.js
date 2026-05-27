@@ -91,9 +91,12 @@ async function main() {
     await run("UPDATE european_matches SET played = 1, home_score = 2, away_score = 1 WHERE user_id = ? AND competition_code = 'UCL' AND phase = 'league'", [userA]);
     const standings = await all("SELECT id FROM european_standings WHERE user_id = ? AND competition_code = 'UCL' ORDER BY id ASC", [userA]);
     for (let index = 0; index < standings.length; index += 1) {
-      await run('UPDATE european_standings SET played = 6, points = ?, goals_for = ?, goals_against = ? WHERE id = ?', [60 - index, 20 - (index % 6), index % 5, standings[index].id]);
+      await run('UPDATE european_standings SET played = 8, points = ?, goals_for = ?, goals_against = ? WHERE id = ?', [60 - index, 20 - (index % 6), index % 5, standings[index].id]);
     }
 
+    await maybeCreateEuropeanKnockoutsForAll(userA);
+    if (await phaseCount(userA, 'knockout_playoff') !== 16) throw new Error('Play-off eslesmeleri eksik.');
+    await markPhasePlayed(userA, 'knockout_playoff');
     await maybeCreateEuropeanKnockoutsForAll(userA);
     const expected = [
       ['round_of_16', 16],
@@ -122,6 +125,7 @@ async function main() {
       checks: {
         isolatedUsers: counts.map((row) => ({ userId: row.user_id, matches: row.count })),
         clashShiftedToCareerDay: shifted.next_match_day,
+        playoff: await phaseCount(userA, 'knockout_playoff'),
         roundOf16: await phaseCount(userA, 'round_of_16'),
         quarterFinal: await phaseCount(userA, 'quarter_final'),
         semiFinal: await phaseCount(userA, 'semi_final'),

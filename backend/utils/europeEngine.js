@@ -17,9 +17,9 @@ const QUALIFYING_DAYS = {
   UECL: [12, 19]
 };
 const KNOCKOUT_DAYS = {
-  UCL: { round_of_16: 207, quarter_final: 242, semi_final: 270, final: 303 },
-  UEL: { round_of_16: 207, quarter_final: 242, semi_final: 270, final: 300 },
-  UECL: { round_of_16: 214, quarter_final: 249, semi_final: 277, final: 299 }
+  UCL: { knockout_playoff: 200, round_of_16: 207, quarter_final: 242, semi_final: 270, final: 303 },
+  UEL: { knockout_playoff: 200, round_of_16: 207, quarter_final: 242, semi_final: 270, final: 300 },
+  UECL: { knockout_playoff: 207, round_of_16: 214, quarter_final: 249, semi_final: 277, final: 299 }
 };
 const KNOCKOUT_SECOND_LEG_GAP = 7;
 const PRIZE = {
@@ -40,6 +40,7 @@ const QUALIFICATION_PRIORITY = {
   UECL_league_phase: 15,
   UECL_qualifying: 10
 };
+const PLAYOFF_PHASE = { phase: 'knockout_playoff', roundName: 'Play-Off', size: 16 };
 const KNOCKOUT_SEQUENCE = [
   { phase: 'round_of_16', roundName: 'Son 16', size: 16 },
   { phase: 'quarter_final', roundName: 'Çeyrek Final', size: 8 },
@@ -177,7 +178,7 @@ async function repairEuropeanCalendarBacklog(userId = null) {
 async function repairEuropeanKnockoutTiming(userId = null) {
   const scopedUserId = activeUserId(userId);
   for (const competitionCode of ['UCL', 'UEL', 'UECL']) {
-    for (const phaseInfo of KNOCKOUT_SEQUENCE) {
+    for (const phaseInfo of [PLAYOFF_PHASE, ...KNOCKOUT_SEQUENCE]) {
       const baseDay = KNOCKOUT_DAYS[competitionCode]?.[phaseInfo.phase];
       if (!baseDay) continue;
       const matches = await all(`
@@ -222,6 +223,31 @@ async function repairEuropeanScheduleTiming(userId = null) {
         const day = list[Math.min(index, list.length - 1)] + Math.floor(index / list.length) * 7;
         await run('UPDATE european_matches SET match_day = ?, match_date = ? WHERE id = ?', [day, seasonDate(day), row.id]);
       }
+    }
+  }
+}
+
+async function ensureEuropeanEntrantCounts(userId = null) {
+  const scopedUserId = activeUserId(userId);
+  const external = await all('SELECT * FROM european_teams ORDER BY overall DESC, pot ASC');
+  for (const competitionCode of ['UCL', 'UEL', 'UECL']) {
+    const targetCount = competitionCode === 'UCL' ? 32 : 24;
+    const entries = await all(`
+      SELECT team_id, european_team_id
+      FROM european_entries
+      WHERE user_id = ? AND season = ? AND competition_code = ?
+    `, [scopedUserId, SEASON, competitionCode]);
+    if (entries.length >= targetCount) continue;
+    const usedEuropeanIds = new Set(entries.map((entry) => Number(entry.european_team_id || 0)).filter(Boolean));
+    const candidates = external.filter((team) => !usedEuropeanIds.has(Number(team.id)));
+    for (const team of candidates.slice(0, targetCount - entries.length)) {
+      await insertEntry({
+        userId: scopedUserId,
+        competitionCode,
+        europeanTeamId: team.id,
+        source: 'UEFA seed',
+        entryStage: 'league'
+      });
     }
   }
 }
@@ -548,14 +574,6 @@ async function scheduleExternalLeagueFixtures(userId, competitionCode) {
   if (externalEntrants.length < 2) return;
 
   for (const row of leagueDays) {
-    const existing = await get(`
-      SELECT COUNT(*) AS count
-      FROM european_matches
-      WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = 'league' AND match_day = ?
-        AND home_european_team_id IS NOT NULL AND away_european_team_id IS NOT NULL
-    `, [scopedUserId, SEASON, competitionCode, row.match_day]);
-    if (existing?.count) continue;
-
     const busyRows = await all(`
       SELECT *
       FROM european_matches
@@ -625,6 +643,7 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
   await resetEuropeanSeasonIfNeeded();
   const existing = await get('SELECT COUNT(*) AS count FROM european_entries WHERE user_id = ? AND season = ?', [scopedUserId, SEASON]);
   if (existing?.count) {
+    await ensureEuropeanEntrantCounts(scopedUserId);
     await ensureEuropeanLeagueFixtureCount(scopedUserId);
     await repairEuropeanScheduleTiming(scopedUserId);
     await repairEuropeanKnockoutTiming(scopedUserId);
@@ -677,7 +696,8 @@ async function ensureEuropeanSeason(userIdOrTeamId = null, maybeUserTeamId = nul
 
   for (const comp of ['UCL', 'UEL', 'UECL']) {
     const locals = await all('SELECT * FROM european_entries WHERE user_id = ? AND season = ? AND competition_code = ? AND team_id IS NOT NULL', [scopedUserId, SEASON, comp]);
-    const needed = Math.max(20, 24 - locals.length);
+    const targetEntries = comp === 'UCL' ? 32 : 24;
+    const needed = Math.max(0, targetEntries - locals.length);
     const offset = comp === 'UCL' ? 0 : comp === 'UEL' ? 12 : 24;
     for (const team of external.slice(offset, offset + needed)) {
       await insertEntry({ userId: scopedUserId, competitionCode: comp, europeanTeamId: team.id, source: 'UEFA seed', entryStage: 'league' });
@@ -989,7 +1009,7 @@ async function simulateEuropeanMatch(match) {
   if (match.phase === 'qualifying' && match.leg === 2) {
     await settleQualifyingTie(match, home, away, homeScore, awayScore);
   }
-  if (['round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
+  if ([PLAYOFF_PHASE.phase, 'round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
     await settleKnockoutTie(match, home, away, homeScore, awayScore);
   }
 
@@ -1077,7 +1097,7 @@ async function simulateEuropeanBotMatch(match) {
   if (match.phase === 'qualifying' && match.leg === 2) {
     await settleQualifyingTie(match, home, away, homeScore, awayScore);
   }
-  if (['round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
+  if ([PLAYOFF_PHASE.phase, 'round_of_16', 'quarter_final', 'semi_final', 'final'].includes(match.phase)) {
     await settleKnockoutTie(match, home, away, homeScore, awayScore);
   }
 
@@ -1387,6 +1407,24 @@ async function createKnockoutRound(userId, competitionCode, phaseInfo, participa
   return true;
 }
 
+async function resolveBotOnlyKnockoutRound(userId, competitionCode, phase) {
+  const scopedUserId = activeUserId(userId);
+  const matches = await all(`
+    SELECT *
+    FROM european_matches
+    WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ?
+    ORDER BY match_day ASC, leg ASC, id ASC
+  `, [scopedUserId, SEASON, competitionCode, phase]);
+  if (!matches.length) return false;
+  const userClub = scopedUserId ? await get('SELECT team_id FROM clubs WHERE user_id = ? LIMIT 1', [scopedUserId]) : null;
+  const userTeamId = Number(userClub?.team_id || 0);
+  if (userTeamId && matches.some((match) => Number(match.home_team_id || 0) === userTeamId || Number(match.away_team_id || 0) === userTeamId)) return false;
+  for (const match of matches) {
+    if (!match.played) await simulateEuropeanBotMatch(match);
+  }
+  return true;
+}
+
 async function maybeCreateEuropeanKnockouts(userId, competitionCode, fallbackDay = 0) {
   const scopedUserId = activeUserId(userId);
   const leagueMatches = await get(`
@@ -1396,9 +1434,50 @@ async function maybeCreateEuropeanKnockouts(userId, competitionCode, fallbackDay
   `, [scopedUserId, SEASON, competitionCode]);
   if (!leagueMatches?.total || Number(leagueMatches.unplayed || 0) > 0) return false;
 
+  const standings = await europeanStandings(scopedUserId, competitionCode);
+  if (competitionCode === 'UCL') {
+    const playoffCount = await knockoutPhaseCount(scopedUserId, competitionCode, PLAYOFF_PHASE.phase);
+    const roundOf16Count = await knockoutPhaseCount(scopedUserId, competitionCode, 'round_of_16');
+    if (!playoffCount && !roundOf16Count) {
+      const playoffParticipants = standings.slice(8, 24).map(participantFromStanding);
+      const created = await createKnockoutRound(
+        scopedUserId,
+        competitionCode,
+        PLAYOFF_PHASE,
+        playoffParticipants,
+        Math.max(Number(leagueMatches.lastDay || 0) + 7, Number(fallbackDay || 0) + 7),
+        true
+      );
+      if (!created) return false;
+      await resolveBotOnlyKnockoutRound(scopedUserId, competitionCode, PLAYOFF_PHASE.phase);
+    }
+
+    const playoffMatches = await all(`
+      SELECT *
+      FROM european_matches
+      WHERE user_id = ? AND season = ? AND competition_code = ? AND phase = ?
+      ORDER BY match_day ASC, id ASC
+    `, [scopedUserId, SEASON, competitionCode, PLAYOFF_PHASE.phase]);
+    if (playoffMatches.length && !playoffMatches.some((match) => !match.played) && !(await knockoutPhaseCount(scopedUserId, competitionCode, 'round_of_16'))) {
+      const directParticipants = standings.slice(0, 8).map(participantFromStanding);
+      const playoffWinners = playoffMatches
+        .filter((match) => Number(match.leg || 1) === 2)
+        .map(knockoutWinner);
+      const lastPlayoffDay = Math.max(...playoffMatches.map((match) => Number(match.match_day || 0)));
+      return createKnockoutRound(
+        scopedUserId,
+        competitionCode,
+        KNOCKOUT_SEQUENCE[0],
+        [...directParticipants, ...playoffWinners],
+        Math.max(lastPlayoffDay + 7, Number(fallbackDay || 0) + 7),
+        true
+      );
+    }
+  }
+  if (competitionCode === 'UCL' && !(await knockoutPhaseCount(scopedUserId, competitionCode, 'round_of_16'))) return false;
+
   const firstPhase = KNOCKOUT_SEQUENCE[0];
   if (!(await knockoutPhaseCount(scopedUserId, competitionCode, firstPhase.phase))) {
-    const standings = await europeanStandings(scopedUserId, competitionCode);
     const participants = standings.slice(0, firstPhase.size).map(participantFromStanding);
     return createKnockoutRound(
       scopedUserId,

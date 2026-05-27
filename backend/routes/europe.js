@@ -77,8 +77,16 @@ router.get('/europe/matches', async (req, res, next) => {
     `, [req.session.userId, club.team_id, club.team_id]);
     const state = await get('SELECT * FROM career_states WHERE user_id = ?', [req.session.userId]);
     const currentDay = Number(state?.current_day || 1);
-    res.json(rows.map((row) => {
+    const phaseDrawDays = new Map();
+    for (const row of rows) {
+      const key = `${row.competition_code}_${row.phase}_${row.round_name}`;
       const drawDay = Math.max(1, Number(row.match_day || 1) - 7);
+      const currentDrawDay = phaseDrawDays.get(key);
+      phaseDrawDays.set(key, currentDrawDay ? Math.min(currentDrawDay, drawDay) : drawDay);
+    }
+    res.json(rows.map((row) => {
+      const key = `${row.competition_code}_${row.phase}_${row.round_name}`;
+      const drawDay = phaseDrawDays.get(key) || Math.max(1, Number(row.match_day || 1) - 7);
       if (row.played || currentDay >= drawDay) return { ...row, draw_day: drawDay, draw_revealed: true };
       return {
         ...row,
