@@ -8,6 +8,7 @@ const { simulateAiTransfers } = require('../utils/transferEngine');
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
 const { leagueWeeksForTeamCount } = require('../utils/matchEngine');
 const { awardSeasonXp, incrementSeasonCount } = require('../utils/managerEngine');
+const { syncCareerLeagueMatchDay } = require('../utils/scheduleEngine');
 const {
   buildSeasonPlan,
   parseSeasonPlan,
@@ -147,11 +148,7 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
     let state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
-    const expectedLeagueDay = leagueMatchDay(state.week || 1);
-    if (Number(state.next_match_day || 0) !== expectedLeagueDay && Number(state.week || 1) <= totalLeagueWeeks) {
-      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
-      state = await getCareerState(req.session.userId);
-    }
+    state = await syncCareerLeagueMatchDay(req.session.userId, club.team_id, state, totalLeagueWeeks);
     const leagueFinished = Number(state.week || 1) > totalLeagueWeeks;
     const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : state.next_match_day;
@@ -198,11 +195,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     let currentState = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
     const totalLeagueWeeks = leagueWeeksForTeamCount(teamCount?.count || 18);
-    const expectedLeagueDay = leagueMatchDay(currentState.week || 1);
-    if (Number(currentState.next_match_day || 0) !== expectedLeagueDay && Number(currentState.week || 1) <= totalLeagueWeeks) {
-      await run('UPDATE career_states SET next_match_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [expectedLeagueDay, req.session.userId]);
-      currentState = await getCareerState(req.session.userId);
-    }
+    currentState = await syncCareerLeagueMatchDay(req.session.userId, club.team_id, currentState, totalLeagueWeeks);
     const leagueFinished = Number(currentState.week || 1) > totalLeagueWeeks;
     const europeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const nextLeagueDay = leagueFinished ? Number.MAX_SAFE_INTEGER : currentState.next_match_day;
