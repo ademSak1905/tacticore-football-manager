@@ -1,4 +1,5 @@
 let calendarData = null;
+let calendarSession = null;
 let activeCalendarFilter = 'all';
 let drawAutoShown = false;
 
@@ -27,18 +28,14 @@ function isEuropeType(type) {
 }
 
 function filteredCalendarMatches() {
-  const rows = (calendarData?.calendarMatches || []).filter((match) => !isSeenDraw(match));
+  const rows = calendarData?.calendarMatches || [];
   if (activeCalendarFilter === 'all') return rows;
   if (activeCalendarFilter === 'europe') return rows.filter((match) => isEuropeType(match.competitionType));
   return rows.filter((match) => match.competitionType === activeCalendarFilter);
 }
 
 function drawStorageKey(draw) {
-  return `tacticore_draw_seen_${calendarData?.club?.team_id || 'team'}_${draw.id}_${draw.day}`;
-}
-
-function isSeenDraw(match) {
-  return match?.competitionType === 'europe_draw' && localStorage.getItem(drawStorageKey(match));
+  return `tacticore_draw_seen_${calendarSession?.userId || 'user'}_${calendarData?.club?.team_id || 'team'}_${draw.id}_${draw.day}`;
 }
 
 function drawById(id) {
@@ -122,7 +119,7 @@ function renderCalendarMatches() {
 
 async function loadCalendar() {
   wireShell('calendar');
-  await requireAuth();
+  calendarSession = await requireAuth();
   const data = await api.request('/api/calendar');
   calendarData = data;
   const nextFixtureDay = data.state.next_fixture_day || data.state.next_match_day;
@@ -142,7 +139,7 @@ async function loadCalendar() {
     const dueDraw = (data.calendarMatches || []).find((match) =>
       match.competitionType === 'europe_draw' &&
       match.drawRevealed &&
-      currentDay >= Number(match.day || 0) &&
+      currentDay === Number(match.day || 0) &&
       !localStorage.getItem(drawStorageKey(match))
     );
     if (dueDraw) setTimeout(() => showDrawAnimation(dueDraw), 450);

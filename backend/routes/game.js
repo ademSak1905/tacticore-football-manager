@@ -150,7 +150,11 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     if (currentState.current_day >= nextFixtureDay) {
       return res.status(400).json({ message: 'Maç günü geldi. Önce maçını oyna ya da atla, sonra günü ilerletebilirsin.' });
     }
-    const targetDay = Math.min(currentState.current_day + days, nextDrawDay || nextFixtureDay, nextFixtureDay);
+    const currentDay = Number(currentState.current_day || 1);
+    const stopDays = [currentDay + days, nextFixtureDay, nextDrawDay]
+      .map((day) => Number(day))
+      .filter((day) => Number.isFinite(day) && day > currentDay);
+    const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay;
     await run('UPDATE career_states SET current_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [targetDay, req.session.userId]);
     const state = await getCareerState(req.session.userId);
     const updatedEuropeNext = await nextEuropeanMatch(req.session.userId, club.team_id);

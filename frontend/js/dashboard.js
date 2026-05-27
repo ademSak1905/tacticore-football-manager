@@ -166,7 +166,8 @@ function renderDashboardCalendar() {
 
 function dashboardDrawStorageKey(draw) {
   const teamId = dashboardCache?.data?.club?.team_id || dashboardCache?.calendar?.club?.team_id || 'team';
-  return `tacticore_draw_seen_${teamId}_${draw.id}_${draw.day}`;
+  const userId = dashboardCache?.session?.userId || 'user';
+  return `tacticore_draw_seen_${userId}_${teamId}_${draw.id}_${draw.day}`;
 }
 
 function currentDashboardDraw() {
@@ -175,8 +176,7 @@ function currentDashboardDraw() {
     match.competitionType === 'europe_draw' &&
     match.drawRevealed &&
     !localStorage.getItem(dashboardDrawStorageKey(match)) &&
-    currentDay >= Number(match.day || 0) &&
-    currentDay <= Number(match.day || 0) + 2 &&
+    currentDay === Number(match.day || 0) &&
     (match.drawFixtures || []).some((fixture) => Number(fixture.matchDay || 0) >= currentDay)
   );
 }
@@ -359,6 +359,7 @@ async function loadDashboard() {
     api.request('/api/game/state')
   ]);
   dashboardCache = {
+    session,
     data,
     state,
     europe: null,
