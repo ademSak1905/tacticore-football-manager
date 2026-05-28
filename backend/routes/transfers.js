@@ -2,7 +2,7 @@
 const clubModel = require('../models/clubModel');
 const playerModel = require('../models/playerModel');
 const { all, get, run } = require('../database');
-const { dynamicMarket, negotiateTransfer } = require('../utils/transferEngine');
+const { dynamicMarket, negotiateTransfer, pendingOffersForUser } = require('../utils/transferEngine');
 const { createTransferStory } = require('../utils/feedEngine');
 
 const router = express.Router();
@@ -17,7 +17,15 @@ router.use(requireAuth);
 router.get('/market', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
-    res.json(await dynamicMarket(club.team_id, { category: req.query.category || 'all', q: req.query.q || '' }));
+    res.json(await dynamicMarket(club, { category: req.query.category || 'all', q: req.query.q || '' }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/pending', async (req, res, next) => {
+  try {
+    res.json(await pendingOffersForUser(req.session.userId));
   } catch (error) {
     next(error);
   }

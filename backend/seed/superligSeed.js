@@ -2,6 +2,11 @@ const path = require('path');
 const teams = require(path.join(__dirname, '..', '..', 'frontend', 'data', 'superlig-teams-2026.json'));
 const players = require(path.join(__dirname, '..', '..', 'frontend', 'data', 'superlig-players-2026.json'));
 const { formations } = require('../utils/lineupValidator');
+const {
+  clubTransferBudget,
+  calculateBaseMarketValue,
+  normalizeInternalMoney
+} = require('../utils/financeEngine');
 
 function value(base, spread = 4) {
   return Math.max(45, Math.min(89, base + Math.floor(Math.random() * spread * 2 + 1) - spread));
@@ -30,8 +35,8 @@ function normalizePlayer(player, team) {
     physical: player.physical || value(defaults.physical),
     stamina: player.stamina || value(74),
     morale: player.morale || value(72),
-    market_value: player.market_value || Math.round(base * base * 2200),
-    salary: player.salary || Math.round(base * 18500),
+    market_value: calculateBaseMarketValue({ ...player, overall: base, potential: player.potential || base }),
+    salary: normalizeInternalMoney(player.salary || Math.round(base * 18500), 25000000),
     injured: player.injured ? 1 : 0,
     image_url: player.image_url || '',
     is_starting_eleven: player.is_starting_eleven ? 1 : 0
@@ -60,7 +65,7 @@ async function seedSuperLigData(db) {
         goalkeeper_overall = excluded.goalkeeper_overall,
         default_formation = excluded.default_formation
     `, [
-      team.id, team.name, team.short_name, team.logo_url, team.city, team.stadium, team.budget, team.fans,
+      team.id, team.name, team.short_name, team.logo_url, team.city, team.stadium, clubTransferBudget(team), team.fans,
       team.overall, team.attack_overall, team.midfield_overall, team.defense_overall, team.goalkeeper_overall,
       team.default_formation
     ]);
@@ -75,14 +80,14 @@ async function seedSuperLigData(db) {
     await db.run(`
       INSERT INTO players
         (team_id, name, age, nationality, position, preferred_foot, overall, pace, shooting, passing,
-         dribbling, defending, physical, stamina, morale, salary, market_value, injured, image_url,
+         dribbling, defending, physical, stamina, morale, salary, market_value, base_market_value, injured, image_url,
          is_starting_eleven, lineup_role)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       player.team_id, player.name, normalized.age, normalized.nationality, player.position, normalized.preferred_foot,
       normalized.overall, normalized.pace, normalized.shooting, normalized.passing, normalized.dribbling,
       normalized.defending, normalized.physical, normalized.stamina, normalized.morale, normalized.salary,
-      normalized.market_value, normalized.injured, normalized.image_url, normalized.is_starting_eleven,
+      normalized.market_value, normalized.market_value, normalized.injured, normalized.image_url, normalized.is_starting_eleven,
       normalized.is_starting_eleven ? 'starter' : 'reserve'
     ]);
   }

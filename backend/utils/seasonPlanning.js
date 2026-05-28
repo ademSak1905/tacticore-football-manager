@@ -1,4 +1,10 @@
-const FINANCE_VERSION = 2;
+const {
+  clubMarketValueEuro,
+  clubTransferBudget,
+  clubSalaryBudget
+} = require('./financeEngine');
+
+const FINANCE_VERSION = 8;
 
 function seededNoise(seed, min, max) {
   const raw = Math.sin(Number(seed || 1) * 999) * 10000;
@@ -28,19 +34,12 @@ function projectedLeagueRank(team = {}) {
 
 function buildFinancialPlan(team = {}) {
   const tier = planTier(team);
-  const id = Number(team.id || team.team_id || 1);
-  const ranges = {
-    giant: { transfer: [780000000, 1050000000], salary: [42000000, 60000000] },
-    big: { transfer: [430000000, 620000000], salary: [27000000, 40000000] },
-    upper: { transfer: [210000000, 340000000], salary: [16000000, 26000000] },
-    middle: { transfer: [85000000, 155000000], salary: [8500000, 15500000] },
-    lower: { transfer: [42000000, 82000000], salary: [5200000, 9200000] },
-    survival: { transfer: [22000000, 52000000], salary: [3200000, 6200000] }
-  };
-  const selected = ranges[tier];
   return {
-    transferBudget: seededNoise(id + 11, selected.transfer[0], selected.transfer[1]),
-    salaryBudget: seededNoise(id + 29, selected.salary[0], selected.salary[1])
+    marketValueEuro: clubMarketValueEuro(team),
+    budgetRate: Number((clubTransferBudget(team) / 35 / Math.max(1, clubMarketValueEuro(team))).toFixed(3)),
+    transferBudget: clubTransferBudget(team),
+    salaryBudget: clubSalaryBudget(team),
+    tier
   };
 }
 
@@ -75,6 +74,8 @@ function buildSeasonPlan(team = {}) {
     financeVersion: FINANCE_VERSION,
     generatedAt: new Date().toISOString(),
     tier,
+    marketValueEuro: finance.marketValueEuro,
+    budgetRate: finance.budgetRate,
     league: leagueTargets[tier],
     cup: { code: cupTargets[tier].toLowerCase().replaceAll(' ', '_'), label: cupTargets[tier] },
     championsLeague: hasChampionsLeague ? uclTargets[tier] || { code: 'league_phase', label: 'Gruplardan cikmak', stage: 1 } : null,

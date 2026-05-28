@@ -6,6 +6,10 @@ const { seedSuperLigData } = require('./seed/superligSeed');
 const { seedEuropeanData } = require('./seed/uefaSeed');
 const { seasonDate, leagueMatchDay } = require('./utils/seasonCalendar');
 const { buildSeasonPlan, parseSeasonPlan } = require('./utils/seasonPlanning');
+const {
+  calculateBaseMarketValue,
+  normalizeInternalMoney
+} = require('./utils/financeEngine');
 
 const dbPath = path.join(__dirname, 'football_manager.sqlite');
 const db = new sqlite3.Database(dbPath);
@@ -191,8 +195,14 @@ async function createSchema() {
       sell_on_percent INTEGER NOT NULL DEFAULT 0,
       first_team_promise INTEGER NOT NULL DEFAULT 0,
       decision_score INTEGER NOT NULL DEFAULT 0,
+      user_id INTEGER,
+      response_week INTEGER NOT NULL DEFAULT 0,
+      response_day INTEGER NOT NULL DEFAULT 0,
+      asking_price INTEGER NOT NULL DEFAULT 0,
+      counter_offer INTEGER NOT NULL DEFAULT 0,
       day INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (player_id) REFERENCES players(id),
       FOREIGN KEY (from_team_id) REFERENCES teams(id),
       FOREIGN KEY (interested_team_id) REFERENCES teams(id)
@@ -344,6 +354,7 @@ async function createSchema() {
       morale INTEGER NOT NULL,
       salary INTEGER NOT NULL,
       market_value INTEGER NOT NULL,
+      base_market_value INTEGER NOT NULL DEFAULT 0,
       potential INTEGER NOT NULL DEFAULT 70,
       contract_until INTEGER NOT NULL DEFAULT 2027,
       happiness INTEGER NOT NULL DEFAULT 70,
@@ -677,12 +688,19 @@ async function createSchema() {
   await ensureColumn('players', 'image_url', 'TEXT');
   await ensureColumn('players', 'is_starting_eleven', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('players', 'role', 'TEXT');
+  await ensureColumn('players', 'base_market_value', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('players', 'potential', 'INTEGER NOT NULL DEFAULT 70');
   await ensureColumn('players', 'contract_until', 'INTEGER NOT NULL DEFAULT 2027');
   await ensureColumn('players', 'happiness', 'INTEGER NOT NULL DEFAULT 70');
   await ensureColumn('players', 'playing_time', 'INTEGER NOT NULL DEFAULT 50');
   await ensureColumn('players', 'transfer_status', "TEXT NOT NULL DEFAULT 'normal'");
   await ensureColumn('players', 'loan_available', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('transfer_interest', 'user_id', 'INTEGER');
+  await ensureColumn('transfer_interest', 'response_week', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('transfer_interest', 'response_day', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('transfer_interest', 'asking_price', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('transfer_interest', 'counter_offer', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('transfer_interest', 'updated_at', 'TEXT');
   await ensureColumn('social_posts', 'template_key', 'TEXT');
   await ensureColumn('social_posts', 'category', "TEXT NOT NULL DEFAULT 'social'");
   await ensureColumn('social_posts', 'team_id', 'INTEGER');
@@ -858,18 +876,26 @@ async function backfillMatchDays() {
   }
 }
 
+function financeVersionFromPlan(value) {
+  try {
+    return Number(JSON.parse(value || '{}').financeVersion || 0);
+  } catch {
+    return 0;
+  }
+}
+
 async function backfillSeasonPlans() {
   const clubs = await all(`
-    SELECT c.*, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
+    SELECT c.*, t.name AS team_name, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
     FROM clubs c
     LEFT JOIN teams t ON t.id = c.team_id
   `);
   for (const club of clubs) {
     const oldPlanText = club.season_objectives_json || '{}';
     const plan = parseSeasonPlan(club.season_objectives_json, club);
-    const planWasOld = !String(oldPlanText).includes('"financeVersion":2');
-    const budget = planWasOld ? plan.transferBudget : (club.budget || plan.transferBudget);
-    const salaryBudget = planWasOld ? plan.salaryBudget : (club.salary_budget || plan.salaryBudget);
+    const planWasOld = financeVersionFromPlan(oldPlanText) !== Number(plan.financeVersion || 0);
+    const budget = planWasOld || Number(club.budget || 0) <= 0 ? plan.transferBudget : (club.budget || plan.transferBudget);
+    const salaryBudget = planWasOld || Number(club.salary_budget || 0) <= 0 ? plan.salaryBudget : (club.salary_budget || plan.salaryBudget);
     await run(`
       UPDATE clubs
       SET currency = 'EUR', budget = ?, salary_budget = ?, season_objectives_json = ?
@@ -878,21 +904,21 @@ async function backfillSeasonPlans() {
   }
 
   const saves = await all(`
-    SELECT cs.*, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
+    SELECT cs.*, t.name AS team_name, t.overall, t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall
     FROM career_saves cs
     LEFT JOIN teams t ON t.id = cs.team_id
   `);
   for (const save of saves) {
     const oldPlanText = save.season_json || '{}';
     const plan = parseSeasonPlan(save.season_json, save);
-    const planWasOld = !String(oldPlanText).includes('"financeVersion":2');
+    const planWasOld = financeVersionFromPlan(oldPlanText) !== Number(plan.financeVersion || 0);
     await run(`
       UPDATE career_saves
       SET club_budget = ?, salary_budget = ?, season_json = ?
       WHERE id = ?
     `, [
-      planWasOld ? plan.transferBudget : (save.club_budget || plan.transferBudget),
-      planWasOld ? plan.salaryBudget : (save.salary_budget || plan.salaryBudget),
+      planWasOld || Number(save.club_budget || 0) <= 0 ? plan.transferBudget : (save.club_budget || plan.transferBudget),
+      planWasOld || Number(save.salary_budget || 0) <= 0 ? plan.salaryBudget : (save.salary_budget || plan.salaryBudget),
       JSON.stringify(plan),
       save.id
     ]);
@@ -1475,6 +1501,7 @@ async function backfillPlayerTransferData() {
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
     WHERE p.potential = 70 OR p.contract_until = 2027 OR p.happiness = 70 OR p.playing_time = 50
+      OR p.base_market_value = 0 OR p.market_value < 250000000 OR p.salary < 25000000
     LIMIT 5000
   `);
 
@@ -1490,12 +1517,20 @@ async function backfillPlayerTransferData() {
       ? player.transfer_status
       : happiness < 48 ? 'unhappy' : contractUntil <= 2026 ? 'expiring' : player.age <= 21 && potential >= 78 ? 'hot_prospect' : 'normal';
     const loanAvailable = player.loan_available || (player.age <= 22 && player.lineup_role !== 'starter' ? 1 : 0);
+    const baseMarketValue = player.base_market_value && player.base_market_value > 0
+      ? player.base_market_value
+      : calculateBaseMarketValue({ ...player, potential, contract_until: contractUntil, happiness });
+    const marketValue = player.market_value < 250000000
+      ? baseMarketValue
+      : Math.max(baseMarketValue, normalizeInternalMoney(player.market_value));
+    const salary = player.salary < 25000000 ? normalizeInternalMoney(player.salary, 25000000) : player.salary;
 
     await run(`
       UPDATE players
-      SET potential = ?, contract_until = ?, happiness = ?, playing_time = ?, transfer_status = ?, loan_available = ?
+      SET potential = ?, contract_until = ?, happiness = ?, playing_time = ?, transfer_status = ?, loan_available = ?,
+        base_market_value = ?, market_value = ?, salary = ?
       WHERE id = ?
-    `, [potential, contractUntil, happiness, playingTime, transferStatus, loanAvailable, player.id]);
+    `, [potential, contractUntil, happiness, playingTime, transferStatus, loanAvailable, baseMarketValue, marketValue, salary, player.id]);
   }
 }
 

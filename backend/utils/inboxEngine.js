@@ -2,6 +2,7 @@ const clubModel = require('../models/clubModel');
 const { all, get, run, getCareerState } = require('../database');
 const { seasonDate } = require('./seasonCalendar');
 const { parseSeasonPlan } = require('./seasonPlanning');
+const { money: transferMoney } = require('./transferEngine');
 
 const CATEGORIES = [
   { id: 'all', label: 'Tümü' },
@@ -32,7 +33,7 @@ function transferWindow(day) {
 }
 
 function money(value) {
-  return `${Number(value || 0).toLocaleString('tr-TR')} TL`;
+  return transferMoney ? transferMoney(value) : `${Math.round(Number(value || 0) / 35).toLocaleString('tr-TR')} EUR`;
 }
 
 async function createInboxMessage(userId, data) {
@@ -310,6 +311,73 @@ async function markAllMessagesRead(userId) {
   return { ok: true };
 }
 
+async function completeOutgoingTransferFromMessage(userId, transferInterestId, action) {
+  const club = await clubModel.getByUserId(userId);
+  const offer = await get(`
+    SELECT ti.*, p.name AS player_name, p.salary, p.position, p.overall, p.team_id,
+      ft.name AS from_team_name
+    FROM transfer_interest ti
+    JOIN players p ON p.id = ti.player_id
+    LEFT JOIN teams ft ON ft.id = ti.from_team_id
+    WHERE ti.id = ? AND ti.user_id = ?
+  `, [transferInterestId, userId]);
+  if (!offer) throw new Error('Transfer teklifi bulunamadı.');
+  if (action === 'reject') {
+    await run("UPDATE transfer_interest SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?", [offer.id, userId]);
+    return { message: 'Transfer görüşmesi reddedildi.' };
+  }
+  if (!['club_accepted', 'counter'].includes(offer.status)) throw new Error('Bu transfer artık tamamlanamaz.');
+  const price = offer.status === 'counter' ? Number(offer.counter_offer || offer.asking_price || offer.offer_price || 0) : Number(offer.offer_price || 0);
+  const totalCost = price + Number(offer.signing_bonus || 0) + Number(offer.loan_fee || 0);
+  if (Number(club.budget || 0) < totalCost) throw new Error('Transfer bütçen bu anlaşmayı tamamlamak için yeterli değil.');
+  if (Number(club.salary_budget || 0) < Number(offer.wage_offer || 0)) throw new Error('Maaş bütçen bu sözleşme için yeterli değil.');
+  if (Number(offer.team_id || 0) !== Number(offer.from_team_id || 0) && offer.from_team_id) {
+    await run("UPDATE transfer_interest SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [offer.id]);
+    throw new Error('Oyuncu artık eski kulübünde değil.');
+  }
+
+  const state = await getCareerState(userId);
+  await run('UPDATE clubs SET budget = budget - ? WHERE user_id = ?', [totalCost, userId]);
+  if (offer.from_team_id) await run('UPDATE teams SET budget = budget + ? WHERE id = ?', [price, offer.from_team_id]);
+  await run('DELETE FROM lineups WHERE player_id = ?', [offer.player_id]);
+  await run(`
+    UPDATE players
+    SET team_id = ?, club_id = NULL, salary = ?, lineup_role = 'reserve', is_starting_eleven = 0,
+        transfer_status = 'normal', happiness = 76, playing_time = 46
+    WHERE id = ?
+  `, [club.team_id, offer.wage_offer || offer.salary, offer.player_id]);
+  await run('INSERT INTO transfers (player_id, from_club_id, to_club_id, price) VALUES (?, NULL, ?, ?)', [offer.player_id, club.id, price]);
+  await run(`
+    INSERT INTO transfer_history
+      (player_id, from_team_id, to_team_id, category, price, wage, signing_bonus, loan_fee, buy_option, sell_on_percent, status, day)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
+  `, [
+    offer.player_id,
+    offer.from_team_id || null,
+    club.team_id,
+    offer.category || 'transfer',
+    price,
+    offer.wage_offer || offer.salary,
+    offer.signing_bonus || 0,
+    offer.loan_fee || 0,
+    offer.buy_option || 0,
+    offer.sell_on_percent || 0,
+    state.current_day
+  ]);
+  await run("UPDATE transfer_interest SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?", [offer.id, userId]);
+  await createInboxMessage(userId, {
+    teamId: club.team_id,
+    day: state.current_day,
+    category: 'transfer',
+    priority: 'important',
+    uniqueKey: `outgoing_offer_completed_${offer.id}`,
+    title: 'Transfer Tamamlandı',
+    summary: `${offer.player_name} başarıyla takımınıza katıldı.`,
+    body: `${offer.player_name}, ${offer.from_team_name || 'Serbest oyuncu'} tarafından ${money(price)} bedelle transfer edildi. Oyuncunun yeni maaşı ${money(offer.wage_offer || offer.salary)}.`
+  });
+  return { message: `${offer.player_name} transferi tamamlandı.`, redirect: '/transfers.html' };
+}
+
 async function handleMessageAction(userId, messageId, action) {
   const message = await get('SELECT * FROM inbox_messages WHERE id = ? AND user_id = ?', [messageId, userId]);
   if (!message) throw new Error('Mesaj bulunamadı.');
@@ -367,6 +435,16 @@ async function handleMessageAction(userId, messageId, action) {
   if (message.action_type === 'scout_review') {
     await run('UPDATE inbox_messages SET is_read = 1, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', ['reviewed', messageId, userId]);
     return { message: 'Oyuncu inceleme listesine yönlendiriliyor.', redirect: payload.redirect || '/transfers.html' };
+  }
+
+  if (message.action_type === 'outgoing_transfer_finalize' || message.action_type === 'outgoing_transfer_counter') {
+    const result = await completeOutgoingTransferFromMessage(userId, payload.transferInterestId, action);
+    await run('UPDATE inbox_messages SET status = ?, is_read = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', [
+      action === 'reject' ? 'rejected' : 'handled',
+      messageId,
+      userId
+    ]);
+    return result;
   }
 
   await markMessageRead(userId, messageId);

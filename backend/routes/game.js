@@ -4,7 +4,7 @@ const clubModel = require('../models/clubModel');
 const { all, get, run, getCareerState, ensureCareerForUser } = require('../database');
 const { seasonDate, withSeasonDates, leagueMatchDay } = require('../utils/seasonCalendar');
 const { ensureDailyFeed, combinedFeed } = require('../utils/feedEngine');
-const { simulateAiTransfers } = require('../utils/transferEngine');
+const { simulateAiTransfers, processPendingTransferOffers } = require('../utils/transferEngine');
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
 const { leagueWeeksForTeamCount } = require('../utils/matchEngine');
 const { awardSeasonXp, incrementSeasonCount } = require('../utils/managerEngine');
@@ -231,6 +231,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
       : updatedLeagueFinished ? 'season_end' : 'super_lig';
     await ensureDailyFeed(club.team_id);
     await simulateAiTransfers(club.team_id);
+    await processPendingTransferOffers(req.session.userId);
     res.json({
       ...withSeasonDates(state),
       next_fixture_day: updatedFixtureDay,

@@ -68,6 +68,7 @@ let marketPlayers = [];
 let ownPlayers = [];
 let clubData = null;
 let marketMeta = { window: { isOpen: true, name: 'Transfer dönemi' }, categories: [] };
+let pendingOffers = [];
 
 function transferCard(player) {
   const market = transferMode === 'market';
@@ -75,8 +76,9 @@ function transferCard(player) {
   const displayPrice = toCurrencyInput(price);
   const displaySalary = toCurrencyInput(player.salary);
   const action = market ? 'buy' : 'sell';
+  const pending = player.pending_offer;
   const label = market
-    ? player.can_buy ? 'Teklif yap' : 'Söylenti çıkar'
+    ? pending ? 'Teklif Bekleniyor' : player.can_buy ? 'Teklif Yap' : 'Dönem Kapalı'
     : 'Sat';
   return `
     <article class="player-card transfer-card ${market ? `cat-${player.category}` : ''}">
@@ -93,7 +95,7 @@ function transferCard(player) {
         <span>Mutluluk ${player.happiness || 70}</span><span>Süre ${player.playing_time || 50}</span>
         <span>Maaş ${money(player.salary)}</span><span>Bedel ${money(price)}</span>
       </div>
-      ${market ? `<p class="muted">${player.reason}</p>` : ''}
+      ${market ? `<p class="muted">${pending ? `Teklif gönderildi. Cevap hafta ${pending.response_week || '-'} içinde Mesajlar'a düşecek.` : player.reason}</p>` : ''}
       ${market ? `
         <div class="offer-box">
           <label><span>Teklif (EUR)</span><input type="number" data-offer="${player.id}" value="${displayPrice}"></label>
@@ -102,8 +104,35 @@ function transferCard(player) {
           <label class="checkbox-line"><input type="checkbox" data-role="${player.id}"><span>İlk 11 sözü</span></label>
         </div>
       ` : ''}
-      <button class="btn ${market ? 'green' : 'danger'}" data-action="${action}" data-id="${player.id}">${label}</button>
+      <button class="btn ${market ? 'green' : 'danger'}" data-action="${action}" data-id="${player.id}" ${pending || (market && !player.can_buy) ? 'disabled' : ''}>${label}</button>
     </article>
+  `;
+}
+
+function renderPendingOffers() {
+  const target = byId('pendingOffers');
+  if (!target) return;
+  if (!pendingOffers.length) {
+    target.hidden = true;
+    return;
+  }
+  target.hidden = false;
+  target.innerHTML = `
+    <div class="inbox-dashboard-head">
+      <div>
+        <span class="badge">Bekleyen Teklifler</span>
+        <h2>Transfer cevapları bekleniyor</h2>
+      </div>
+      <a class="btn secondary" href="/messages.html">Mesajları aç</a>
+    </div>
+    <div class="season-rows">
+      ${pendingOffers.map((offer) => `
+        <div class="season-row">
+          <span>${offer.player_name} - ${offer.from_team_name || 'Serbest'}</span>
+          <strong>${money(offer.offer_price)} / Hafta ${offer.response_week || '-'}</strong>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -122,6 +151,7 @@ function renderTransfers() {
   const list = transferMode === 'market' ? marketPlayers : ownPlayers;
   byId('categoryFilter').style.display = transferMode === 'market' ? 'block' : 'none';
   byId('transferSearch').style.display = transferMode === 'market' ? 'block' : 'none';
+  renderPendingOffers();
   byId('transferList').innerHTML = list.map(transferCard).join('') || '<div class="empty">Liste boş.</div>';
 }
 
@@ -131,6 +161,7 @@ async function refreshTransfers() {
   const q = byId('transferSearch')?.value || '';
   const market = await api.request(`/api/transfers/market?category=${encodeURIComponent(category)}&q=${encodeURIComponent(q)}`);
   marketMeta = { window: market.window, categories: market.categories };
+  pendingOffers = market.pendingOffers || await api.request('/api/transfers/pending').catch(() => []);
   if (!byId('categoryFilter').dataset.ready) {
     renderCategoryOptions();
     byId('categoryFilter').dataset.ready = '1';
@@ -180,10 +211,8 @@ document.addEventListener('click', async (event) => {
       })
     });
     setMessage(result.message, result.status === 'counter' ? 'info' : 'info');
-    if (result.status === 'accepted' && result.transfer) {
-      await showTransferSigning(result.transfer);
-    }
     await refreshTransfers();
+    refreshMessageBadge?.();
   } catch (error) {
     setMessage(error.message, 'error');
     await refreshTransfers().catch(() => {});

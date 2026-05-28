@@ -35,6 +35,18 @@ function actionButtons(message) {
       <button class="btn danger" data-action="reject">Reddet</button>
     `;
   }
+  if (message.action_type === 'outgoing_transfer_finalize') {
+    return `
+      <button class="btn green" data-action="accept">Sözleşmeyi Tamamla</button>
+      <button class="btn danger" data-action="reject">Vazgeç</button>
+    `;
+  }
+  if (message.action_type === 'outgoing_transfer_counter') {
+    return `
+      <button class="btn green" data-action="accept">Karşı Teklifi Kabul Et</button>
+      <button class="btn danger" data-action="reject">Reddet</button>
+    `;
+  }
   if (message.action_type === 'player_talk') {
     return '<button class="btn green" data-action="talk">Oyuncuyla Konuş</button>';
   }
@@ -89,6 +101,7 @@ function renderDetail() {
   if (payload.playerName) details.push(['Oyuncu', payload.playerName]);
   if (payload.buyerTeamName) details.push(['Teklif yapan kulüp', payload.buyerTeamName]);
   if (payload.offerPrice) details.push(['Teklif', money(payload.offerPrice)]);
+  if (payload.counterOffer) details.push(['Karşı teklif', money(payload.counterOffer)]);
   byId('messageDetail').innerHTML = `
     <div class="message-detail-head">
       <span class="message-category ${categoryTone(selected.category)}">${categoryLabel(selected.category)}</span>
