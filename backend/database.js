@@ -8,7 +8,8 @@ const { seasonDate, leagueMatchDay } = require('./utils/seasonCalendar');
 const { buildSeasonPlan, parseSeasonPlan } = require('./utils/seasonPlanning');
 const {
   rebalancePlayerMarketValue,
-  normalizeInternalMoney
+  normalizeInternalMoney,
+  roundInternalEuro
 } = require('./utils/financeEngine');
 
 const dbPath = path.join(__dirname, 'football_manager.sqlite');
@@ -1500,14 +1501,14 @@ async function initDatabase() {
 }
 
 async function backfillPlayerTransferData() {
-  const valueFlagKey = 'rebalance_player_values_20260603';
+  const valueFlagKey = 'rebalance_player_values_20260603_v2';
   const valueRebalanceDone = await get('SELECT flag_key FROM maintenance_flags WHERE flag_key = ?', [valueFlagKey]);
   const forceRebalance = !valueRebalanceDone;
   const players = await all(`
     SELECT p.*, t.overall AS team_overall
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
-    WHERE ${forceRebalance ? '(p.team_id IS NOT NULL OR p.club_id IS NOT NULL OR p.base_market_value = 0)' : '(p.base_market_value = 0 OR p.market_value < 250000000 OR p.salary < 25000000)'}
+    WHERE ${forceRebalance ? '1 = 1' : '(p.base_market_value = 0 OR p.market_value < 250000000 OR p.salary < 25000000)'}
     LIMIT 5000
   `);
 
@@ -1529,7 +1530,12 @@ async function backfillPlayerTransferData() {
         ? player.base_market_value
         : rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness });
     const marketValue = forceRebalance || player.market_value < 250000000 ? baseMarketValue : Math.max(baseMarketValue, normalizeInternalMoney(player.market_value));
-    const salary = player.salary < 25000000 ? normalizeInternalMoney(player.salary, 25000000) : player.salary;
+    const normalizedSalary = normalizeInternalMoney(player.salary, 25000000);
+    const balancedSalary = roundInternalEuro(
+      Math.max(baseMarketValue * 0.018, Math.min(normalizedSalary || baseMarketValue * 0.024, baseMarketValue * 0.042)),
+      50000
+    );
+    const salary = forceRebalance ? balancedSalary : player.salary < 25000000 ? normalizedSalary : player.salary;
 
     await run(`
       UPDATE players

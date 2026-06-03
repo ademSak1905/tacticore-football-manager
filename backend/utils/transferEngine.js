@@ -78,19 +78,19 @@ function askingPrice(player, category = null, buyerTeam = null, fromTeam = null)
   let multiplier = 1;
 
   if (selectedCategory === 'free') multiplier = 0;
-  else if (selectedCategory === 'loan') multiplier = 0.08;
-  else if (selectedCategory === 'expiring') multiplier = 0.45 + seededRatio(player.id + 3) * 0.35;
-  else if (age <= 23 && potential >= 80) multiplier = 1.25 + seededRatio(player.id + 5) * 0.6;
-  else if (overall >= 83) multiplier = 1.35 + seededRatio(player.id + 7) * 0.65;
-  else if (age >= 32) multiplier = 0.55 + seededRatio(player.id + 11) * 0.4;
-  else if (selectedCategory === 'unhappy') multiplier = 0.65 + seededRatio(player.id + 13) * 0.25;
-  else if (selectedCategory === 'bargain') multiplier = 0.68 + seededRatio(player.id + 17) * 0.3;
-  else multiplier = 0.92 + seededRatio(player.id + 19) * 0.38;
+  else if (selectedCategory === 'loan') multiplier = 0.06;
+  else if (selectedCategory === 'expiring') multiplier = 0.35 + seededRatio(player.id + 3) * 0.28;
+  else if (age <= 23 && potential >= 80) multiplier = 1.05 + seededRatio(player.id + 5) * 0.48;
+  else if (overall >= 83) multiplier = 1.12 + seededRatio(player.id + 7) * 0.5;
+  else if (age >= 32) multiplier = 0.45 + seededRatio(player.id + 11) * 0.32;
+  else if (selectedCategory === 'unhappy') multiplier = 0.55 + seededRatio(player.id + 13) * 0.22;
+  else if (selectedCategory === 'bargain') multiplier = 0.55 + seededRatio(player.id + 17) * 0.24;
+  else multiplier = 0.72 + seededRatio(player.id + 19) * 0.32;
 
   const difficulty = saleDifficulty(player, fromTeam, buyerTeam);
-  if (selectedCategory === 'listed' && difficulty > 1.35) multiplier = Math.max(multiplier, 1.55);
+  if (selectedCategory === 'listed' && difficulty > 1.35) multiplier = Math.max(multiplier, 1.25);
   if (difficulty > 1.8 && !['expiring', 'unhappy', 'bargain', 'loan'].includes(selectedCategory)) {
-    multiplier = Math.max(multiplier, 1.75 + seededRatio(player.id + 23) * 0.55);
+    multiplier = Math.max(multiplier, 1.45 + seededRatio(player.id + 23) * 0.35);
   }
   return roundInternalEuro(base * multiplier, selectedCategory === 'free' ? 1 : 50000);
 }
@@ -319,7 +319,8 @@ async function processPendingTransferOffers(userId) {
     }
     const fromTeam = { id: offer.from_team_id, name: offer.from_team_name, overall: offer.from_team_overall };
     const currentAsking = askingPrice(offer, offer.category, buyerTeam, fromTeam);
-    const requiredFee = Math.max(Number(offer.asking_price || 0), currentAsking);
+    const storedAsking = Number(offer.asking_price || 0);
+    const requiredFee = Math.max(currentAsking, storedAsking ? Math.min(storedAsking, currentAsking * 1.15) : 0);
     const ratio = Number(offer.offer_price || 0) / Math.max(1, requiredFee);
     const wageRequired = minimumWageForPlayer(offer, buyerTeam);
     const wageOk = Number(offer.wage_offer || 0) >= wageRequired * 0.92;
@@ -429,11 +430,11 @@ async function simulateAiTransfers(excludeTeamId = null) {
       if (recentPlayerMove) continue;
       const category = categoryForPlayer(item, day);
       const baseValue = calculateBaseMarketValue(item);
-      let ratio = 0.78 + seededRatio(Number(item.id) + Number(team.id) + day) * 0.28;
-      if (overall >= 80) ratio += 0.12;
-      if (Number(item.potential || overall) - overall >= 6 && overall < 82) ratio += 0.08;
+      let ratio = 0.62 + seededRatio(Number(item.id) + Number(team.id) + day) * 0.24;
+      if (overall >= 80) ratio += 0.08;
+      if (Number(item.potential || overall) - overall >= 6 && overall < 82) ratio += 0.06;
       const price = roundInternalEuro(baseValue * ratio, 50000);
-      const budgetCap = Number(team.budget || 0) * (teamOverall >= 80 ? 0.28 : 0.18);
+      const budgetCap = Number(team.budget || 0) * (teamOverall >= 80 ? 0.24 : 0.15);
       if (price <= 0 || price > budgetCap) continue;
       selected = item;
       selectedPrice = price;

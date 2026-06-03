@@ -125,14 +125,14 @@ function clubSalaryBudget(team = {}) {
 
 function estimatePlayerValueEuro(player = {}) {
   const overall = Number(player.overall || 65);
-  let value = 250000;
-  if (overall >= 88) value = 42000000 + (overall - 88) * 9000000;
-  else if (overall >= 85) value = 24000000 + (overall - 85) * 5500000;
-  else if (overall >= 82) value = 12000000 + (overall - 82) * 3200000;
-  else if (overall >= 78) value = 4500000 + (overall - 78) * 1600000;
-  else if (overall >= 74) value = 1600000 + (overall - 74) * 650000;
-  else if (overall >= 70) value = 600000 + (overall - 70) * 240000;
-  else value = Math.max(100000, 180000 + (overall - 60) * 65000);
+  let value = 160000;
+  if (overall >= 88) value = 26000000 + (overall - 88) * 4500000;
+  else if (overall >= 85) value = 14000000 + (overall - 85) * 3250000;
+  else if (overall >= 82) value = 7500000 + (overall - 82) * 2000000;
+  else if (overall >= 78) value = 2800000 + (overall - 78) * 850000;
+  else if (overall >= 74) value = 800000 + (overall - 74) * 420000;
+  else if (overall >= 70) value = 250000 + (overall - 70) * 150000;
+  else value = Math.max(75000, 100000 + (overall - 60) * 35000);
   return value;
 }
 
@@ -141,8 +141,8 @@ function marketAnchor(player = {}) {
   const estimateEuro = estimatePlayerValueEuro(player);
   if (!rawValue) return toInternalEuro(estimateEuro);
   const rawEuro = normalizeInternalMoney(rawValue) / INTERNAL_EUR_RATE;
-  const cappedEuro = Math.min(rawEuro, estimateEuro * 1.35);
-  return toInternalEuro(Math.max(estimateEuro * 0.72, cappedEuro));
+  const cappedEuro = Math.min(rawEuro, estimateEuro * 1.05);
+  return toInternalEuro(Math.max(estimateEuro * 0.55, cappedEuro));
 }
 
 function calculateBaseMarketValue(player = {}, options = {}) {
@@ -157,12 +157,12 @@ function calculateBaseMarketValue(player = {}, options = {}) {
   const morale = Number(player.morale || 70);
   const happiness = Number(player.happiness || 70);
 
-  const ageFactor = age <= 20 ? 1.35 : age <= 23 ? 1.22 : age <= 27 ? 1.08 : age <= 30 ? 1 : age <= 33 ? 0.82 : 0.62;
-  const potentialFactor = 1 + Math.min(0.36, Math.max(0, potential - overall) * 0.045);
-  const positionFactor = { GK: 0.82, DEF: 0.95, MID: 1.02, FWD: 1.08 }[player.position] || 1;
-  const contractFactor = contractUntil <= 2026 ? 0.78 : contractUntil === 2027 ? 0.94 : contractUntil >= 2029 ? 1.1 : 1.02;
-  const formFactor = 0.9 + Math.max(0, Math.min(20, ((morale + happiness) / 2) - 60)) / 100;
-  const starFactor = overall >= 85 ? 1.22 : overall >= 82 ? 1.12 : 1;
+  const ageFactor = age <= 20 ? 1.18 : age <= 23 ? 1.1 : age <= 27 ? 1.02 : age <= 30 ? 0.96 : age <= 33 ? 0.76 : 0.55;
+  const potentialFactor = 1 + Math.min(0.22, Math.max(0, potential - overall) * 0.032);
+  const positionFactor = { GK: 0.78, DEF: 0.92, MID: 1, FWD: 1.04 }[player.position] || 1;
+  const contractFactor = contractUntil <= 2026 ? 0.68 : contractUntil === 2027 ? 0.88 : contractUntil >= 2029 ? 1.06 : 1;
+  const formFactor = 0.88 + Math.max(0, Math.min(16, ((morale + happiness) / 2) - 60)) / 115;
+  const starFactor = overall >= 85 ? 1.1 : overall >= 82 ? 1.05 : 1;
 
   return roundInternalEuro(anchor * ageFactor * potentialFactor * positionFactor * contractFactor * formFactor * starFactor, 50000);
 }
@@ -177,7 +177,7 @@ function minimumWageForPlayer(player = {}, buyerTeam = {}) {
   const age = Number(player.age || 25);
   const prestigeFactor = prestige >= 82 ? 1.14 : prestige >= 78 ? 1.08 : 1;
   const ageFactor = age <= 23 ? 1.08 : age >= 32 ? 0.92 : 1;
-  return roundInternalEuro(Math.max(current * prestigeFactor * ageFactor, calculateBaseMarketValue(player) * 0.045), 50000);
+  return roundInternalEuro(Math.max(current * prestigeFactor * ageFactor, calculateBaseMarketValue(player) * 0.028), 50000);
 }
 
 module.exports = {

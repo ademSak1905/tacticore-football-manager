@@ -33,13 +33,12 @@ function renderAdmin() {
     <article class="stat-card"><span class="muted">Açık transfer</span><strong>${stats.open_transfer_count || 0}</strong></article>
     <article class="stat-card"><span class="muted">Okunmamış mesaj</span><strong>${stats.unread_messages || 0}</strong></article>
     <article class="stat-card"><span class="muted">Maç</span><strong>${adminData.matches}</strong></article>
-    <article class="stat-card"><span class="muted">Gün / Hafta</span><strong>${adminData.state.current_day} / ${adminData.state.week}</strong></article>
   `;
 
-  byId('currentDay').value = adminData.state.current_day;
-  byId('nextMatchDay').value = adminData.state.next_match_day;
-  byId('week').value = adminData.state.week;
-  byId('socialDay').value = adminData.state.current_day;
+  if (byId('currentDay')) byId('currentDay').value = adminData.state.current_day;
+  if (byId('nextMatchDay')) byId('nextMatchDay').value = adminData.state.next_match_day;
+  if (byId('week')) byId('week').value = adminData.state.week;
+  if (byId('socialDay')) byId('socialDay').value = adminData.state.current_day;
 
   byId('clubSelect').innerHTML = adminData.clubs.map((club) => `<option value="${club.id}">${club.name} ${club.username ? `(${club.username})` : '(bot)'}</option>`).join('');
   byId('passwordUserSelect').innerHTML = adminData.users.map((user) => `<option value="${user.id}">${user.username} - ${user.email}</option>`).join('');

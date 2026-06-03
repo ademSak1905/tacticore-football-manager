@@ -179,6 +179,205 @@ async function createPlayerRequestMessages(userId, club, state) {
   }
 }
 
+function tacticProfile(team = {}) {
+  const attack = Number(team.attack_overall || team.overall || 70);
+  const midfield = Number(team.midfield_overall || team.overall || 70);
+  const defense = Number(team.defense_overall || team.overall || 70);
+  const formation = team.default_formation
+    || (attack >= defense + 4 ? '4-3-3' : defense >= attack + 4 ? '5-3-2' : midfield >= attack ? '4-2-3-1' : '4-4-2');
+  const style = attack >= defense + 4
+    ? 'Hucum agirlikli oynuyor, kanat ve onde baskiyi seviyor.'
+    : defense >= attack + 4
+      ? 'Daha temkinli oynuyor, savunma blogunu kalabalik tutmayi seviyor.'
+      : midfield >= attack && midfield >= defense
+        ? 'Orta saha kontrolunu seviyor, pas ritmiyle oyunu sakinlestiriyor.'
+        : 'Dengeli oynuyor, macin gidisine gore tempo degistiriyor.';
+  return { attack, midfield, defense, formation, style };
+}
+
+function resultTag(match, teamId, europeanTeamId = null) {
+  const homeScore = Number(match.home_score || 0);
+  const awayScore = Number(match.away_score || 0);
+  const isHome = Number(match.home_team_id || match.home_club_id || 0) === Number(teamId)
+    || (europeanTeamId && Number(match.home_european_team_id || 0) === Number(europeanTeamId));
+  const teamScore = isHome ? homeScore : awayScore;
+  const rivalScore = isHome ? awayScore : homeScore;
+  if (teamScore > rivalScore) return 'G';
+  if (teamScore < rivalScore) return 'M';
+  return 'B';
+}
+
+function matchLine(match, teamId, europeanTeamId = null) {
+  const competition = match.competition || 'Lig';
+  const score = `${Number(match.home_score || 0)}-${Number(match.away_score || 0)}`;
+  const tag = resultTag(match, teamId, europeanTeamId);
+  return `${formatDate(match.match_day || 1)} - ${competition}: ${match.home_name || 'Ev sahibi'} ${score} ${match.away_name || 'Deplasman'} (${tag})`;
+}
+
+async function nextOpponentFixture(userId, club, state) {
+  const teamId = Number(club.team_id);
+  const currentDay = Math.max(1, Number(state.current_day || 1) - 1);
+  const domestic = await get(`
+    SELECT
+      'league' AS source,
+      'Süper Lig' AS competition,
+      m.id,
+      m.match_day,
+      m.home_club_id AS home_team_id,
+      m.away_club_id AS away_team_id,
+      NULL AS home_european_team_id,
+      NULL AS away_european_team_id,
+      ht.name AS home_name,
+      at.name AS away_name,
+      ht.default_formation AS home_formation,
+      at.default_formation AS away_formation,
+      ht.overall AS home_overall,
+      at.overall AS away_overall,
+      ht.attack_overall AS home_attack,
+      at.attack_overall AS away_attack,
+      ht.midfield_overall AS home_midfield,
+      at.midfield_overall AS away_midfield,
+      ht.defense_overall AS home_defense,
+      at.defense_overall AS away_defense
+    FROM matches m
+    LEFT JOIN teams ht ON ht.id = m.home_club_id
+    LEFT JOIN teams at ON at.id = m.away_club_id
+    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
+    ORDER BY m.match_day ASC, m.id ASC
+    LIMIT 1
+  `, [userId, teamId, teamId, currentDay]);
+  const europe = await get(`
+    SELECT
+      'europe' AS source,
+      em.round_name AS competition,
+      em.id,
+      em.match_day,
+      em.home_team_id,
+      em.away_team_id,
+      em.home_european_team_id,
+      em.away_european_team_id,
+      COALESCE(ht.name, het.name) AS home_name,
+      COALESCE(at.name, aet.name) AS away_name,
+      ht.default_formation AS home_formation,
+      at.default_formation AS away_formation,
+      COALESCE(ht.overall, het.overall) AS home_overall,
+      COALESCE(at.overall, aet.overall) AS away_overall,
+      COALESCE(ht.attack_overall, het.attack_overall) AS home_attack,
+      COALESCE(at.attack_overall, aet.attack_overall) AS away_attack,
+      COALESCE(ht.midfield_overall, het.midfield_overall) AS home_midfield,
+      COALESCE(at.midfield_overall, aet.midfield_overall) AS away_midfield,
+      COALESCE(ht.defense_overall, het.defense_overall) AS home_defense,
+      COALESCE(at.defense_overall, aet.defense_overall) AS away_defense
+    FROM european_matches em
+    LEFT JOIN teams ht ON ht.id = em.home_team_id
+    LEFT JOIN teams at ON at.id = em.away_team_id
+    LEFT JOIN european_teams het ON het.id = em.home_european_team_id
+    LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
+    WHERE em.user_id = ? AND em.played = 0 AND (em.home_team_id = ? OR em.away_team_id = ?) AND em.match_day >= ?
+    ORDER BY em.match_day ASC, em.id ASC
+    LIMIT 1
+  `, [userId, teamId, teamId, currentDay]);
+  return [domestic, europe]
+    .filter(Boolean)
+    .sort((a, b) => Number(a.match_day || 9999) - Number(b.match_day || 9999))[0] || null;
+}
+
+async function lastFiveForOpponent(userId, opponentTeamId, opponentEuropeanTeamId) {
+  const teamId = Number(opponentTeamId || 0);
+  const euroId = Number(opponentEuropeanTeamId || 0);
+  const domestic = teamId ? await all(`
+    SELECT
+      'Süper Lig' AS competition,
+      m.id,
+      m.match_day,
+      m.home_club_id AS home_team_id,
+      m.away_club_id AS away_team_id,
+      NULL AS home_european_team_id,
+      NULL AS away_european_team_id,
+      m.home_score,
+      m.away_score,
+      ht.name AS home_name,
+      at.name AS away_name
+    FROM matches m
+    LEFT JOIN teams ht ON ht.id = m.home_club_id
+    LEFT JOIN teams at ON at.id = m.away_club_id
+    WHERE m.user_id = ? AND m.played = 1 AND (m.home_club_id = ? OR m.away_club_id = ?)
+    ORDER BY m.match_day DESC, m.id DESC
+    LIMIT 5
+  `, [userId, teamId, teamId]) : [];
+  const europe = await all(`
+    SELECT
+      em.round_name AS competition,
+      em.id,
+      em.match_day,
+      em.home_team_id,
+      em.away_team_id,
+      em.home_european_team_id,
+      em.away_european_team_id,
+      em.home_score,
+      em.away_score,
+      COALESCE(ht.name, het.name) AS home_name,
+      COALESCE(at.name, aet.name) AS away_name
+    FROM european_matches em
+    LEFT JOIN teams ht ON ht.id = em.home_team_id
+    LEFT JOIN teams at ON at.id = em.away_team_id
+    LEFT JOIN european_teams het ON het.id = em.home_european_team_id
+    LEFT JOIN european_teams aet ON aet.id = em.away_european_team_id
+    WHERE em.user_id = ? AND em.played = 1 AND (
+      (? > 0 AND (em.home_team_id = ? OR em.away_team_id = ?))
+      OR (? > 0 AND (em.home_european_team_id = ? OR em.away_european_team_id = ?))
+    )
+    ORDER BY em.match_day DESC, em.id DESC
+    LIMIT 5
+  `, [userId, teamId, teamId, teamId, euroId, euroId, euroId]);
+  return [...domestic, ...europe]
+    .sort((a, b) => Number(b.match_day || 0) - Number(a.match_day || 0) || Number(b.id || 0) - Number(a.id || 0))
+    .slice(0, 5);
+}
+
+async function createOpponentReportMessages(userId, club, state) {
+  const fixture = await nextOpponentFixture(userId, club, state);
+  if (!fixture) return;
+  const teamId = Number(club.team_id);
+  const isHome = Number(fixture.home_team_id || 0) === teamId;
+  const opponentTeamId = isHome ? fixture.away_team_id : fixture.home_team_id;
+  const opponentEuropeanTeamId = isHome ? fixture.away_european_team_id : fixture.home_european_team_id;
+  const opponentName = isHome ? fixture.away_name : fixture.home_name;
+  if (!opponentName) return;
+  const opponent = {
+    default_formation: isHome ? fixture.away_formation : fixture.home_formation,
+    overall: isHome ? fixture.away_overall : fixture.home_overall,
+    attack_overall: isHome ? fixture.away_attack : fixture.home_attack,
+    midfield_overall: isHome ? fixture.away_midfield : fixture.home_midfield,
+    defense_overall: isHome ? fixture.away_defense : fixture.home_defense
+  };
+  const tactic = tacticProfile(opponent);
+  const lastFive = await lastFiveForOpponent(userId, opponentTeamId, opponentEuropeanTeamId);
+  const lastFiveText = lastFive.length
+    ? lastFive.map((match) => `- ${matchLine(match, opponentTeamId, opponentEuropeanTeamId)}`).join('\n')
+    : '- Bu kariyerde kayitli son mac bulunamadi.';
+  const daysUntil = Number(fixture.match_day || state.current_day || 1) - Number(state.current_day || 1);
+  await createInboxMessage(userId, {
+    teamId: club.team_id,
+    day: state.current_day,
+    category: 'scout',
+    priority: daysUntil <= 7 ? 'important' : 'normal',
+    uniqueKey: `opponent_report_${club.team_id}_${fixture.source}_${fixture.id}_${fixture.match_day}`,
+    title: `${opponentName} mac onu raporu`,
+    summary: 'Siradaki rakibin son 5 maci ve sevdigi taktik hazir.',
+    body: [
+      `Siradaki mac: ${fixture.competition || 'Mac'} - ${opponentName}`,
+      `Mac tarihi: ${formatDate(fixture.match_day || state.current_day)}`,
+      `Sevdigi dizilis: ${tactic.formation}`,
+      `Taktik egilim: ${tactic.style}`,
+      `Guc notu: Hucum ${tactic.attack} / Orta saha ${tactic.midfield} / Savunma ${tactic.defense}`,
+      'Son 5 mac:',
+      lastFiveText
+    ].join('\n'),
+    payload: { opponentTeamId, opponentEuropeanTeamId, opponentName, matchId: fixture.id, source: fixture.source }
+  });
+}
+
 async function createTransferMessages(userId, club, state) {
   const window = transferWindow(state.current_day);
   if (!window.isOpen) return;
@@ -229,10 +428,8 @@ async function createTransferMessages(userId, club, state) {
       if (player.lineup_role === 'starter' || Number(player.is_starting_eleven || 0) === 1) ratio += 0.08;
       const offerPrice = roundInternalEuro(baseValue * ratio, 50000);
       const budgetCap = Number(buyer.budget || 0) * (buyerOverall >= 80 ? 0.34 : 0.24);
-      if (recentPlayerOffer || weeklyBuyerOffer || starBlocked || offerPrice <= 0 || offerPrice > budgetCap) {
-        return;
-      }
-      await createInboxMessage(userId, {
+      if (!recentPlayerOffer && !weeklyBuyerOffer && !starBlocked && offerPrice > 0 && offerPrice <= budgetCap) {
+        await createInboxMessage(userId, {
         teamId: club.team_id,
         day,
         category: 'transfer',
@@ -243,7 +440,8 @@ async function createTransferMessages(userId, club, state) {
         body: `${buyer.name}, ${player.name} için resmi transfer teklifi gönderdi. Oyuncunun piyasa değeri ${money(player.market_value)}. Kulüp ilk teklif olarak ${money(offerPrice)} öneriyor.`,
         actionType: 'transfer_offer',
         payload: { playerId: player.id, playerName: player.name, buyerTeamId: buyer.id, buyerTeamName: buyer.name, offerPrice }
-      });
+        });
+      }
     }
   }
 
@@ -290,6 +488,7 @@ async function ensureAutomaticInbox(userId) {
   await createHealthMessages(userId, club, state);
   await createDisciplineMessages(userId, club);
   await createPlayerRequestMessages(userId, club, state);
+  await createOpponentReportMessages(userId, club, state);
   await createTransferMessages(userId, club, state);
   const after = await get('SELECT COUNT(*) AS count FROM inbox_messages WHERE user_id = ?', [userId]);
   return { created: Number(after?.count || 0) - Number(before?.count || 0) };
