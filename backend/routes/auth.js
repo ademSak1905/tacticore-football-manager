@@ -32,7 +32,7 @@ function careerClubName(teamName, userId) {
 function adminCredentials() {
   return {
     username: process.env.ADMIN_USERNAME || process.env.ADMIN_USER || 'admin',
-    password: process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'tacticore-admin'
+    password: process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'tc123'
   };
 }
 
