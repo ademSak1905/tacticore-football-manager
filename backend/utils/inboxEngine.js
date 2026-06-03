@@ -217,7 +217,8 @@ function matchLine(match, teamId, europeanTeamId = null) {
 async function nextOpponentFixture(userId, club, state) {
   const teamId = Number(club.team_id);
   const currentDay = Math.max(1, Number(state.current_day || 1) - 1);
-  const domestic = await get(`
+  const nextLeagueDay = Number(state.next_match_day || 0);
+  let domestic = await get(`
     SELECT
       'league' AS source,
       'Süper Lig' AS competition,
@@ -242,10 +243,42 @@ async function nextOpponentFixture(userId, club, state) {
     FROM matches m
     LEFT JOIN teams ht ON ht.id = m.home_club_id
     LEFT JOIN teams at ON at.id = m.away_club_id
-    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
-    ORDER BY m.match_day ASC, m.id ASC
+    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?)
+      AND (? <= 0 OR m.match_day = ?)
+    ORDER BY ABS(m.match_day - ?) ASC, m.match_day ASC, m.id ASC
     LIMIT 1
-  `, [userId, teamId, teamId, currentDay]);
+  `, [userId, teamId, teamId, nextLeagueDay, nextLeagueDay, nextLeagueDay || currentDay]);
+  if (!domestic) {
+    domestic = await get(`
+      SELECT
+        'league' AS source,
+        'Süper Lig' AS competition,
+        m.id,
+        m.match_day,
+        m.home_club_id AS home_team_id,
+        m.away_club_id AS away_team_id,
+        NULL AS home_european_team_id,
+        NULL AS away_european_team_id,
+        ht.name AS home_name,
+        at.name AS away_name,
+        ht.default_formation AS home_formation,
+        at.default_formation AS away_formation,
+        ht.overall AS home_overall,
+        at.overall AS away_overall,
+        ht.attack_overall AS home_attack,
+        at.attack_overall AS away_attack,
+        ht.midfield_overall AS home_midfield,
+        at.midfield_overall AS away_midfield,
+        ht.defense_overall AS home_defense,
+        at.defense_overall AS away_defense
+      FROM matches m
+      LEFT JOIN teams ht ON ht.id = m.home_club_id
+      LEFT JOIN teams at ON at.id = m.away_club_id
+      WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
+      ORDER BY m.match_day ASC, m.id ASC
+      LIMIT 1
+    `, [userId, teamId, teamId, currentDay]);
+  }
   const europe = await get(`
     SELECT
       'europe' AS source,
@@ -362,7 +395,7 @@ async function createOpponentReportMessages(userId, club, state) {
     day: state.current_day,
     category: 'scout',
     priority: daysUntil <= 7 ? 'important' : 'normal',
-    uniqueKey: `opponent_report_${club.team_id}_${fixture.source}_${fixture.id}_${fixture.match_day}`,
+    uniqueKey: `opponent_report_v2_${club.team_id}_${fixture.source}_${fixture.id}_${fixture.match_day}`,
     title: `${opponentName} mac onu raporu`,
     summary: 'Siradaki rakibin son 5 maci ve sevdigi taktik hazir.',
     body: [

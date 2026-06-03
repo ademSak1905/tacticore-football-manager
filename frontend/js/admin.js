@@ -30,9 +30,6 @@ function renderAdmin() {
     <article class="stat-card"><span class="muted">Pasif hesap</span><strong>${stats.passive_users || 0}</strong></article>
     <article class="stat-card"><span class="muted">Takım</span><strong>${adminData.teams.length}</strong></article>
     <article class="stat-card"><span class="muted">Oyuncu</span><strong>${stats.player_count || 0}</strong></article>
-    <article class="stat-card"><span class="muted">Açık transfer</span><strong>${stats.open_transfer_count || 0}</strong></article>
-    <article class="stat-card"><span class="muted">Okunmamış mesaj</span><strong>${stats.unread_messages || 0}</strong></article>
-    <article class="stat-card"><span class="muted">Maç</span><strong>${adminData.matches}</strong></article>
   `;
 
   if (byId('currentDay')) byId('currentDay').value = adminData.state.current_day;
@@ -48,7 +45,6 @@ function renderAdmin() {
   fillClubForm();
   fillTeamForm();
   renderUsers();
-  renderTransferControl();
   renderRecentMatches();
   renderPosts();
 }

@@ -3227,6 +3227,256 @@ td {
   }
 }
 
+.lineup-player.selected {
+  border-color: rgba(255, 210, 26, 0.96);
+  box-shadow: 0 0 0 4px rgba(255, 210, 26, 0.18), 0 18px 32px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 760px) {
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .topbar .brand {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 15px;
+  }
+
+  .brand span:last-child,
+  #userBadge {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .manager-xp-widget,
+  .shell-leaderboard {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0;
+  }
+
+  .manager-xp-widget {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .leaderboard-toggle,
+  #logoutButton,
+  .menu-btn {
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .layout {
+    width: 100%;
+    min-height: auto;
+    border: 0;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    width: 100%;
+    max-height: calc(100vh - 76px);
+    overflow: auto;
+  }
+
+  .content,
+  .admin-shell,
+  .admin-page {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .page-title {
+    display: grid;
+    gap: 12px;
+  }
+
+  .page-title .actions,
+  .actions,
+  .tabs,
+  .dashboard-tabs,
+  .calendar-filters,
+  .media-tabs,
+  .match-actions,
+  .message-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .page-title .actions > *,
+  .actions > *,
+  .tabs > *,
+  .dashboard-tabs > *,
+  .calendar-filters > *,
+  .media-tabs > *,
+  .match-actions > *,
+  .message-actions > * {
+    width: 100%;
+  }
+
+  .grid,
+  .stats,
+  .two-col,
+  .quick-menu,
+  .lineup-layout,
+  .lineup-tactic-layout,
+  .tactics-layout,
+  .manager-layout,
+  .admin-grid,
+  .match-layout,
+  .training-grid,
+  .transfer-grid,
+  .economy-grid,
+  .calendar-layout,
+  .inbox-layout,
+  .form-two,
+  .compact-form,
+  .offer-box,
+  .calendar-head,
+  .fixture-row,
+  .season-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .stat-card,
+  .calendar-card,
+  .transfer-card,
+  .player-card,
+  .media-card,
+  .draw-card,
+  .event,
+  .inbox-list-card,
+  .inbox-detail-card {
+    min-width: 0;
+    width: 100%;
+    padding: 14px;
+  }
+
+  .stat-card {
+    min-height: 86px;
+  }
+
+  .table-wrap,
+  .calendar-list,
+  .message-list,
+  .admin-list,
+  .bench-list {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .player-main,
+  .squad-list-head {
+    grid-template-columns: minmax(0, 1fr) 52px 52px !important;
+    gap: 8px;
+  }
+
+  .player-main span:nth-child(4),
+  .player-main span:nth-child(5),
+  .player-main span:nth-child(6),
+  .player-main strong:nth-child(7),
+  .squad-list-head span:nth-child(n+4) {
+    display: none;
+  }
+
+  .lineup-pitch {
+    min-height: 600px;
+    overflow: hidden;
+  }
+
+  .lineup-player {
+    width: 82px;
+    min-height: 64px;
+    padding: 6px;
+    font-size: 10px;
+    touch-action: manipulation;
+  }
+
+  .lineup-player .card-overall {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+
+  .lineup-player strong,
+  .lineup-player small {
+    max-width: 74px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bench-player {
+    width: 100%;
+    min-height: 46px;
+    touch-action: manipulation;
+  }
+
+  .tactic-pitch,
+  .dashboard-pitch,
+  .pitch {
+    min-height: 360px;
+  }
+
+  .dash-player,
+  .tactic-dot {
+    width: 70px;
+    min-height: 48px;
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .admin-hero,
+  .admin-login {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 420px) {
+  .lineup-pitch {
+    min-height: 560px;
+  }
+
+  .lineup-player {
+    width: 72px;
+    min-height: 58px;
+    font-size: 9px;
+  }
+
+  .lineup-player strong,
+  .lineup-player small {
+    max-width: 64px;
+  }
+
+  .auth-panel h1,
+  .page-title h1 {
+    font-size: 31px;
+  }
+}
+
 .nav a[data-page]::before {
   content: "";
   width: 28px;

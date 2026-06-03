@@ -3,6 +3,7 @@ let allPlayers = [];
 let selectedIds = [];
 let formations = [];
 let selectedBenchId = null;
+let selectedSlotIndex = null;
 
 function statAverage(players, field) {
   if (!players.length) return 0;
@@ -45,7 +46,7 @@ function renderLineup() {
     const player = allPlayers.find((item) => item.id === Number(selectedIds[index]));
     const mismatch = player && player.position !== positionGroup(slot[0]);
     const card = document.createElement('div');
-    card.className = `lineup-player ${mismatch ? 'mismatch' : ''}`;
+    card.className = `lineup-player ${mismatch ? 'mismatch' : ''} ${selectedSlotIndex === index ? 'selected' : ''}`;
     card.draggable = true;
     card.dataset.index = index;
     card.style.left = `${slot[1]}%`;
@@ -55,17 +56,41 @@ function renderLineup() {
     card.addEventListener('dragover', (event) => event.preventDefault());
     card.addEventListener('drop', (event) => {
       event.preventDefault();
-      const from = Number(event.dataTransfer.getData('text/plain'));
+      const value = event.dataTransfer.getData('text/plain');
+      if (value.startsWith('bench:')) return;
+      const from = Number(value);
       const to = Number(card.dataset.index);
+      if (!Number.isFinite(from) || from === to) return;
       [selectedIds[from], selectedIds[to]] = [selectedIds[to], selectedIds[from]];
+      selectedSlotIndex = null;
       renderLineup();
     });
     card.addEventListener('click', () => {
-      if (!selectedBenchId) return;
-      selectedIds[index] = selectedBenchId;
+      if (selectedBenchId) {
+        selectedIds[index] = selectedBenchId;
+        selectedBenchId = null;
+        selectedSlotIndex = null;
+        renderLineup();
+        setLineupMessage('Oyuncu pozisyona yerlestirildi. Kaydetmeyi unutma.');
+        return;
+      }
+      if (selectedSlotIndex === null) {
+        selectedSlotIndex = index;
+        renderLineup();
+        setLineupMessage('Kart secildi. Yer degistirmek icin baska bir saha kartina dokun.');
+        return;
+      }
+      if (selectedSlotIndex === index) {
+        selectedSlotIndex = null;
+        renderLineup();
+        setLineupMessage('Secim kaldirildi.');
+        return;
+      }
+      [selectedIds[selectedSlotIndex], selectedIds[index]] = [selectedIds[index], selectedIds[selectedSlotIndex]];
+      selectedSlotIndex = null;
       selectedBenchId = null;
       renderLineup();
-      setLineupMessage('Oyuncu pozisyona yerlestirildi. Kaydetmeyi unutma.');
+      setLineupMessage('Iki oyuncunun yeri degistirildi. Kaydetmeyi unutma.');
     });
     pitch.appendChild(card);
   });
@@ -80,6 +105,7 @@ function renderLineup() {
     button.addEventListener('dragstart', (event) => event.dataTransfer.setData('text/plain', `bench:${button.dataset.player}`));
     button.addEventListener('click', () => {
       selectedBenchId = Number(button.dataset.player);
+      selectedSlotIndex = null;
       renderLineup();
       setLineupMessage('Simdi sahadaki bir pozisyona tikla.');
     });
@@ -95,6 +121,8 @@ function renderLineup() {
         const benchIndex = selectedIds.findIndex((id) => Number(id) === playerId);
         if (benchIndex >= 0) selectedIds[benchIndex] = currentId;
         selectedIds[index] = playerId;
+        selectedBenchId = null;
+        selectedSlotIndex = null;
         renderLineup();
       }
     });
