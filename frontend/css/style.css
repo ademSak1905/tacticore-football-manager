@@ -362,6 +362,338 @@ select {
   filter: drop-shadow(0 0 8px rgba(77, 158, 255, 0.55));
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+.auth-panel-wide {
+  width: min(980px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.login-card {
+  min-width: 0;
+}
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.auth-links a {
+  color: var(--yellow);
+  font-weight: 900;
+}
+
+.leaderboard-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(73, 143, 255, 0.34);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 210, 26, 0.13), transparent 40%),
+    linear-gradient(145deg, rgba(7, 30, 70, 0.92), rgba(2, 12, 28, 0.96));
+}
+
+.start-leaderboard {
+  margin: 16px 0;
+}
+
+.leaderboard-head {
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-head h2 {
+  margin: 0;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 9px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(73, 143, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(4, 18, 38, 0.58);
+}
+
+.leaderboard-row.podium {
+  border-color: rgba(255, 210, 26, 0.36);
+}
+
+.leaderboard-rank {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #07111f;
+  background: var(--yellow);
+  font-weight: 900;
+}
+
+.leaderboard-row strong,
+.leaderboard-row small,
+.leaderboard-xp span {
+  display: block;
+}
+
+.leaderboard-row small,
+.leaderboard-xp small {
+  color: var(--muted);
+}
+
+.leaderboard-xp {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wide-admin-card {
+  grid-column: 1 / -1;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrap table {
+  min-width: 680px;
+}
+
+table input,
+table select {
+  max-width: 190px;
+}
+
+@media (max-width: 760px) {
+  .auth-page {
+    display: block;
+    min-height: 100vh;
+    padding: 14px;
+  }
+
+  .auth-panel,
+  .auth-panel-wide,
+  .start-panel {
+    width: 100%;
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .auth-panel h1,
+  .page-title h1 {
+    font-size: 34px;
+    line-height: 1.02;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .leaderboard-xp {
+    grid-column: 2 / -1;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .topbar {
+    position: sticky;
+    min-height: 68px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .topbar .brand {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .menu-btn {
+    display: inline-flex;
+  }
+
+  .manager-xp-widget {
+    order: 4;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    font-size: 12px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 68px);
+  }
+
+  .sidebar {
+    display: none;
+    position: sticky;
+    top: 68px;
+    z-index: 20;
+    padding: 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar.open {
+    display: block;
+  }
+
+  .nav {
+    gap: 6px;
+  }
+
+  .nav a {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .content {
+    width: 100%;
+    padding: 18px 10px;
+  }
+
+  .page-title {
+    display: grid;
+    align-items: start;
+  }
+
+  .grid,
+  .stats,
+  .two-col,
+  .quick-menu,
+  .lineup-layout,
+  .lineup-tactic-layout,
+  .tactics-layout,
+  .manager-layout,
+  .admin-grid,
+  .match-layout,
+  .training-grid,
+  .transfer-grid,
+  .economy-grid,
+  .calendar-layout,
+  .inbox-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .stat-card,
+  .calendar-card,
+  .transfer-card,
+  .player-card,
+  .media-card,
+  .event {
+    min-width: 0;
+  }
+
+  .calendar-head,
+  .fixture-row,
+  .season-row,
+  .news-flash,
+  .admin-hero,
+  .admin-login,
+  .compact-form,
+  .form-two,
+  .transfer-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .fixture-row span,
+  .fixture-row span:last-child {
+    text-align: left;
+  }
+
+  .pitch,
+  .dashboard-pitch,
+  .lineup-pitch,
+  .tactic-pitch {
+    width: 100%;
+    min-width: 0;
+    min-height: 420px;
+    overflow: hidden;
+  }
+
+  .lineup-pitch {
+    min-height: 560px;
+  }
+
+  .dash-player,
+  .lineup-player,
+  .tactic-dot {
+    width: 78px;
+    min-height: 54px;
+    padding: 7px;
+    font-size: 11px;
+  }
+
+  .dash-player strong,
+  .lineup-player strong,
+  .tactic-dot strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .match-scoreboard,
+  .match-actions,
+  .message-actions,
+  .start-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .match-actions .btn,
+  .start-actions .btn,
+  .message-actions .btn {
+    flex: 1 1 150px;
+  }
+
+  .admin-page {
+    padding: 10px;
+  }
+
+  .admin-shell {
+    width: 100%;
+  }
+
+  .table-wrap table {
+    min-width: 620px;
+  }
+}
+
 .message-toast {
   position: fixed;
   right: 24px;

@@ -15,7 +15,8 @@
           <p class="muted">Oyunun gününü, takımları, kulüpleri, oyuncuları ve sosyal akışı buradan yönet.</p>
         </div>
         <form id="adminForm" class="admin-login">
-          <label class="field"><span>Admin kodu</span><input id="adminCode" value="tacticore-admin"></label>
+          <label class="field"><span>Admin kullanici adi</span><input id="adminUsername" autocomplete="username"></label>
+          <label class="field"><span>Admin sifresi</span><input id="adminPassword" type="password" autocomplete="current-password"></label>
           <button class="btn" type="submit">Paneli aç</button>
         </form>
       </section>
@@ -24,6 +25,16 @@
       <section id="adminSummary" class="grid stats"></section>
 
       <section id="adminPanel" class="admin-grid" hidden>
+        <article class="card wide-admin-card">
+          <h2>Kullanici yonetimi</h2>
+          <div id="userManagement" class="table-wrap"></div>
+        </article>
+
+        <article class="card wide-admin-card">
+          <h2>Transfer kontrolu</h2>
+          <div id="transferControl" class="table-wrap"></div>
+        </article>
+
         <article class="card">
           <h2>Oyun tarihi</h2>
           <form id="gameStateForm" class="form compact-form">

@@ -1,5 +1,4 @@
 ﻿let adminData = null;
-let adminCode = '';
 let loadedPlayers = [];
 
 function adminMessage(text, type = 'info') {
@@ -10,12 +9,11 @@ function adminMessage(text, type = 'info') {
 }
 
 function adminRequest(path, options = {}) {
-  const hasQuery = path.includes('?');
-  const separator = hasQuery ? '&' : '?';
-  return api.request(`${path}${separator}code=${encodeURIComponent(adminCode)}`, {
-    ...options,
-    body: options.body ? JSON.stringify({ code: adminCode, ...options.body }) : undefined
-  });
+  const requestOptions = { ...options };
+  if (requestOptions.body && typeof requestOptions.body !== 'string') {
+    requestOptions.body = JSON.stringify(requestOptions.body);
+  }
+  return api.request(path, requestOptions);
 }
 
 function selectedOptionData(selectId, list) {
@@ -26,9 +24,14 @@ function selectedOptionData(selectId, list) {
 function renderAdmin() {
   if (!adminData) return;
   byId('adminPanel').hidden = false;
+  const stats = adminData.stats || {};
   byId('adminSummary').innerHTML = `
-    <article class="stat-card"><span class="muted">Kullanıcı</span><strong>${adminData.users.length}</strong></article>
+    <article class="stat-card"><span class="muted">Kullanıcı</span><strong>${stats.user_count || adminData.users.length}</strong></article>
+    <article class="stat-card"><span class="muted">Pasif hesap</span><strong>${stats.passive_users || 0}</strong></article>
     <article class="stat-card"><span class="muted">Takım</span><strong>${adminData.teams.length}</strong></article>
+    <article class="stat-card"><span class="muted">Oyuncu</span><strong>${stats.player_count || 0}</strong></article>
+    <article class="stat-card"><span class="muted">Açık transfer</span><strong>${stats.open_transfer_count || 0}</strong></article>
+    <article class="stat-card"><span class="muted">Okunmamış mesaj</span><strong>${stats.unread_messages || 0}</strong></article>
     <article class="stat-card"><span class="muted">Maç</span><strong>${adminData.matches}</strong></article>
     <article class="stat-card"><span class="muted">Gün / Hafta</span><strong>${adminData.state.current_day} / ${adminData.state.week}</strong></article>
   `;
@@ -45,6 +48,8 @@ function renderAdmin() {
 
   fillClubForm();
   fillTeamForm();
+  renderUsers();
+  renderTransferControl();
   renderRecentMatches();
   renderPosts();
 }
@@ -105,15 +110,79 @@ function renderPosts() {
   `).join('');
 }
 
+function renderUsers() {
+  const target = byId('userManagement');
+  if (!target) return;
+  target.innerHTML = `
+    <table>
+      <thead><tr><th>Kullanici</th><th>E-posta</th><th>Takim</th><th>Durum</th><th>Islem</th></tr></thead>
+      <tbody>
+        ${adminData.users.map((user) => `
+          <tr data-user-row="${user.id}">
+            <td><input data-user-field="username" value="${user.username || ''}"></td>
+            <td><input data-user-field="email" value="${user.email || ''}"></td>
+            <td>${user.team_name || user.club_name || '-'}</td>
+            <td>${Number(user.is_active) === 1 ? 'Aktif' : 'Pasif'}</td>
+            <td class="admin-actions">
+              <button class="btn secondary" data-user-action="save" data-user-id="${user.id}" type="button">Kaydet</button>
+              <button class="btn secondary" data-user-action="toggle" data-user-id="${user.id}" type="button">${Number(user.is_active) === 1 ? 'Pasifleştir' : 'Aktifleştir'}</button>
+              <button class="btn danger" data-user-action="delete" data-user-id="${user.id}" type="button">Sil</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderTransferControl() {
+  const target = byId('transferControl');
+  if (!target) return;
+  const offers = adminData.pendingTransfers || [];
+  const history = adminData.transferHistory || [];
+  target.innerHTML = `
+    <h3>Bekleyen / son teklifler</h3>
+    <table>
+      <thead><tr><th>Oyuncu</th><th>Kimden</th><th>Kime</th><th>Durum</th><th>Teklif</th></tr></thead>
+      <tbody>
+        ${offers.map((offer) => `<tr><td>${offer.player_name}</td><td>${offer.from_team_name || '-'}</td><td>${offer.interested_team_name || '-'}</td><td>${offer.status}</td><td>${money(offer.offer_price)}</td></tr>`).join('') || '<tr><td colspan="5">Bekleyen teklif yok.</td></tr>'}
+      </tbody>
+    </table>
+    <h3>Son transferler</h3>
+    <table>
+      <thead><tr><th>Oyuncu</th><th>Eski</th><th>Yeni</th><th>Bedel</th></tr></thead>
+      <tbody>
+        ${history.map((item) => `<tr><td>${item.player_name}</td><td>${item.from_team_name || '-'}</td><td>${item.to_team_name || '-'}</td><td>${money(item.price)}</td></tr>`).join('') || '<tr><td colspan="4">Transfer kaydı yok.</td></tr>'}
+      </tbody>
+    </table>
+  `;
+}
+
 async function loadOverview() {
   adminData = await adminRequest('/api/admin/overview');
   renderAdmin();
 }
 
+async function bootAdmin() {
+  try {
+    await api.request('/api/admin/me');
+    await loadOverview();
+    adminMessage('Admin oturumu acik.');
+  } catch {
+    byId('adminPanel').hidden = true;
+  }
+}
+
 byId('adminForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  adminCode = byId('adminCode').value.trim();
   try {
+    await api.request('/api/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: byId('adminUsername').value.trim(),
+        password: byId('adminPassword').value
+      })
+    });
     await loadOverview();
     adminMessage('Panel acildi.');
   } catch (error) {
@@ -273,4 +342,34 @@ byId('resetLeague')?.addEventListener('click', async () => {
   }
 });
 
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-user-action]');
+  if (!button) return;
+  const userId = button.dataset.userId;
+  const action = button.dataset.userAction;
+  const row = document.querySelector(`[data-user-row="${userId}"]`);
+  try {
+    if (action === 'save') {
+      adminData = await adminRequest(`/api/admin/users/${userId}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          username: row.querySelector('[data-user-field="username"]').value,
+          email: row.querySelector('[data-user-field="email"]').value,
+          is_active: adminData.users.find((user) => Number(user.id) === Number(userId))?.is_active
+        })
+      });
+    } else if (action === 'toggle') {
+      adminData = await adminRequest(`/api/admin/users/${userId}/toggle-active`, { method: 'POST', body: JSON.stringify({}) });
+    } else if (action === 'delete') {
+      if (!window.confirm('Bu kullanıcı ve kariyerleri silinsin mi?')) return;
+      adminData = await adminRequest(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    }
+    renderAdmin();
+    adminMessage('Kullanıcı işlemi tamamlandı.');
+  } catch (error) {
+    adminMessage(error.message, 'error');
+  }
+});
+
+bootAdmin();
 

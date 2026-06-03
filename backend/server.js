@@ -1,9 +1,27 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const { initDatabase } = require('./database');
+
+function loadLocalEnv() {
+  const envPath = path.join(__dirname, '..', '.env');
+  if (!fs.existsSync(envPath)) return;
+  const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const separator = trimmed.indexOf('=');
+    if (separator < 1) continue;
+    const key = trimmed.slice(0, separator).trim();
+    const value = trimmed.slice(separator + 1).trim().replace(/^["']|["']$/g, '');
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+loadLocalEnv();
 
 const authRoutes = require('./routes/auth');
 const clubRoutes = require('./routes/club');
@@ -47,10 +65,10 @@ app.use(
 app.use(express.static(frontendPath));
 
 app.use('/api', authRoutes);
+app.use('/api', managerRoutes);
 app.use('/api', teamRoutes);
 app.use('/api', gameRoutes);
 app.use('/api', europeRoutes);
-app.use('/api', managerRoutes);
 app.use('/api', messageRoutes);
 app.get('/api/formations', (req, res) => {
   res.json(Object.entries(FORMATIONS).map(([id, item]) => ({ id, ...item })));

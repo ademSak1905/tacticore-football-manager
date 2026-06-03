@@ -3,6 +3,7 @@ const { all, get, run, getCareerState } = require('../database');
 const { seasonDate } = require('./seasonCalendar');
 const { parseSeasonPlan } = require('./seasonPlanning');
 const { money: transferMoney } = require('./transferEngine');
+const { calculateBaseMarketValue, roundInternalEuro, seededRatio } = require('./financeEngine');
 
 const CATEGORIES = [
   { id: 'all', label: 'Tümü' },
@@ -181,6 +182,8 @@ async function createPlayerRequestMessages(userId, club, state) {
 async function createTransferMessages(userId, club, state) {
   const window = transferWindow(state.current_day);
   if (!window.isOpen) return;
+  const day = Number(state.current_day || 1);
+  const weekBucket = Math.floor((day - 1) / 7);
   const activeOffer = await get(`
     SELECT COUNT(*) AS count
     FROM inbox_messages
@@ -190,19 +193,51 @@ async function createTransferMessages(userId, club, state) {
     const player = await get(`
       SELECT *
       FROM players
-      WHERE team_id = ? AND market_value > 0
-      ORDER BY ((id + ?) % 7) ASC, market_value DESC
+      WHERE team_id = ? AND market_value > 0 AND injured = 0
+      ORDER BY
+        CASE WHEN overall >= 85 THEN 5 WHEN overall >= 80 THEN 3 ELSE 0 END ASC,
+        CASE WHEN is_starting_eleven = 1 OR lineup_role = 'starter' THEN 2 ELSE 0 END ASC,
+        salary ASC,
+        (potential - overall) DESC,
+        playing_time ASC,
+        ((id + ?) % 17) ASC
       LIMIT 1
-    `, [club.team_id, Number(state.current_day || 1)]);
-    const buyer = await get('SELECT id, name, budget, overall FROM teams WHERE id != ? ORDER BY ((id + ?) % 11) ASC, overall DESC LIMIT 1', [club.team_id, Number(state.current_day || 1)]);
+    `, [club.team_id, day]);
+    const buyer = await get('SELECT id, name, budget, overall FROM teams WHERE id != ? AND budget > 0 ORDER BY ((id + ?) % 19) ASC, overall DESC LIMIT 1', [club.team_id, day]);
     if (player && buyer) {
-      const offerPrice = Math.round(Number(player.market_value || 0) * (0.82 + (Number(buyer.overall || 70) % 12) / 100) / 50000) * 50000;
+      const recentPlayerOffer = await get(`
+        SELECT id
+        FROM inbox_messages
+        WHERE user_id = ? AND action_type = 'transfer_offer' AND day >= ? AND action_payload LIKE ?
+        LIMIT 1
+      `, [userId, Math.max(1, day - 28), `%"playerId":${Number(player.id)}%`]);
+      const weeklyBuyerOffer = await get(`
+        SELECT id
+        FROM inbox_messages
+        WHERE action_type = 'transfer_offer' AND unique_key LIKE ?
+        LIMIT 1
+      `, [`transfer_offer_${weekBucket}_%_${Number(buyer.id)}`]);
+      const overall = Number(player.overall || 65);
+      const buyerOverall = Number(buyer.overall || 70);
+      const chance = seededRatio(Number(player.id) * 17 + Number(buyer.id) * 31 + weekBucket);
+      const starBlocked = (overall >= 85 && buyerOverall < 80) || (overall >= 80 && chance > (buyerOverall >= 80 ? 0.22 : 0.08));
+      const baseValue = calculateBaseMarketValue(player);
+      const potentialGap = Math.max(0, Number(player.potential || overall) - overall);
+      let ratio = 0.72 + seededRatio(Number(player.id) + Number(buyer.id) + day) * 0.26;
+      if (overall >= 80) ratio += 0.08;
+      if (potentialGap >= 6 && overall < 82) ratio += 0.08;
+      if (player.lineup_role === 'starter' || Number(player.is_starting_eleven || 0) === 1) ratio += 0.08;
+      const offerPrice = roundInternalEuro(baseValue * ratio, 50000);
+      const budgetCap = Number(buyer.budget || 0) * (buyerOverall >= 80 ? 0.34 : 0.24);
+      if (recentPlayerOffer || weeklyBuyerOffer || starBlocked || offerPrice <= 0 || offerPrice > budgetCap) {
+        return;
+      }
       await createInboxMessage(userId, {
         teamId: club.team_id,
-        day: state.current_day,
+        day,
         category: 'transfer',
-        priority: 'important',
-        uniqueKey: `transfer_offer_${Math.floor(Number(state.current_day || 1) / 14)}_${player.id}_${buyer.id}`,
+        priority: overall >= 80 ? 'important' : 'normal',
+        uniqueKey: `transfer_offer_${weekBucket}_${player.id}_${buyer.id}`,
         title: `${buyer.name}, ${player.name} için teklif yaptı`,
         summary: `Teklif: ${money(offerPrice)}. Kabul edebilir, reddedebilir veya pazarlık yapabilirsin.`,
         body: `${buyer.name}, ${player.name} için resmi transfer teklifi gönderdi. Oyuncunun piyasa değeri ${money(player.market_value)}. Kulüp ilk teklif olarak ${money(offerPrice)} öneriyor.`,
@@ -219,7 +254,7 @@ async function createTransferMessages(userId, club, state) {
     WHERE (p.team_id IS NULL OR p.team_id != ?) AND p.overall >= 67
     ORDER BY ((p.id + ?) % 13) ASC, p.market_value ASC, p.potential DESC
     LIMIT 1
-  `, [club.team_id, Number(state.current_day || 1)]);
+  `, [club.team_id, day]);
   if (marketPlayer) {
     const isFree = !marketPlayer.team_id;
     const fee = isFree ? 0 : Math.round(Number(marketPlayer.market_value || 0) * 0.58 / 50000) * 50000;

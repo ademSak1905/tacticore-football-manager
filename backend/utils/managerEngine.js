@@ -251,6 +251,90 @@ async function getManagerSummary(userId) {
   };
 }
 
+async function playedStatsFor(userId, teamId) {
+  if (!teamId) return { played: 0, wins: 0, draws: 0, losses: 0, winRate: 0 };
+  const leagueStats = await get(`
+    SELECT
+      COUNT(*) AS played,
+      SUM(CASE
+        WHEN home_club_id = ? AND home_score > away_score THEN 1
+        WHEN away_club_id = ? AND away_score > home_score THEN 1
+        ELSE 0 END) AS wins,
+      SUM(CASE WHEN home_score = away_score THEN 1 ELSE 0 END) AS draws,
+      SUM(CASE
+        WHEN home_club_id = ? AND home_score < away_score THEN 1
+        WHEN away_club_id = ? AND away_score < home_score THEN 1
+        ELSE 0 END) AS losses
+    FROM matches
+    WHERE user_id = ? AND played = 1 AND (home_club_id = ? OR away_club_id = ?)
+  `, [teamId, teamId, teamId, teamId, userId, teamId, teamId]);
+  const euroStats = await get(`
+    SELECT
+      COUNT(*) AS played,
+      SUM(CASE
+        WHEN home_team_id = ? AND home_score > away_score THEN 1
+        WHEN away_team_id = ? AND away_score > home_score THEN 1
+        ELSE 0 END) AS wins,
+      SUM(CASE WHEN home_score = away_score THEN 1 ELSE 0 END) AS draws,
+      SUM(CASE
+        WHEN home_team_id = ? AND home_score < away_score THEN 1
+        WHEN away_team_id = ? AND away_score < home_score THEN 1
+        ELSE 0 END) AS losses
+    FROM european_matches
+    WHERE user_id = ? AND played = 1 AND (home_team_id = ? OR away_team_id = ?)
+  `, [teamId, teamId, teamId, teamId, userId, teamId, teamId]);
+  const played = Number(leagueStats?.played || 0) + Number(euroStats?.played || 0);
+  const wins = Number(leagueStats?.wins || 0) + Number(euroStats?.wins || 0);
+  const draws = Number(leagueStats?.draws || 0) + Number(euroStats?.draws || 0);
+  const losses = Number(leagueStats?.losses || 0) + Number(euroStats?.losses || 0);
+  return {
+    played,
+    wins,
+    draws,
+    losses,
+    winRate: played ? Math.round((wins / played) * 100) : 0
+  };
+}
+
+async function getManagerLeaderboard(limit = 10) {
+  const safeLimit = Math.min(10, Math.max(1, Number(limit || 10)));
+  const rows = await all(`
+    SELECT
+      u.id AS user_id,
+      u.username,
+      COALESCE(u.is_active, 1) AS is_active,
+      COALESCE(mp.total_xp, 0) AS total_xp,
+      COALESCE(mp.seasons, 1) AS seasons,
+      c.team_id,
+      COALESCE(t.name, c.name, 'Takim secilmedi') AS team_name
+    FROM users u
+    LEFT JOIN manager_profiles mp ON mp.user_id = u.id
+    LEFT JOIN clubs c ON c.user_id = u.id
+    LEFT JOIN teams t ON t.id = c.team_id
+    WHERE COALESCE(u.is_active, 1) = 1
+    ORDER BY COALESCE(mp.total_xp, 0) DESC, u.id ASC
+    LIMIT ?
+  `, [safeLimit]);
+
+  const enriched = [];
+  for (const row of rows) {
+    const info = levelInfo(row.total_xp || 0);
+    const stats = await playedStatsFor(row.user_id, row.team_id);
+    enriched.push({
+      userId: row.user_id,
+      username: row.username,
+      teamName: row.team_name,
+      totalXp: info.totalXp,
+      level: info.level,
+      currentXp: info.currentXp,
+      nextXp: info.nextXp,
+      seasons: Number(row.seasons || 1),
+      ...stats
+    });
+  }
+  return enriched;
+}
+
 async function incrementSeasonCount(userId) {
   await ensureManagerProfile(userId);
   await run('UPDATE manager_profiles SET seasons = seasons + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [userId]);
@@ -260,6 +344,7 @@ module.exports = {
   ensureManagerProfile,
   getManagerProfile,
   getManagerSummary,
+  getManagerLeaderboard,
   awardMatchXp,
   awardSeasonXp,
   incrementSeasonCount

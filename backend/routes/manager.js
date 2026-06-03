@@ -1,5 +1,5 @@
 const express = require('express');
-const { getManagerProfile, getManagerSummary } = require('../utils/managerEngine');
+const { getManagerProfile, getManagerSummary, getManagerLeaderboard } = require('../utils/managerEngine');
 
 const router = express.Router();
 
@@ -8,9 +8,15 @@ function requireAuth(req, res, next) {
   next();
 }
 
-router.use(requireAuth);
+router.get('/manager/leaderboard', async (req, res, next) => {
+  try {
+    res.json(await getManagerLeaderboard(10));
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.get('/manager/profile', async (req, res, next) => {
+router.get('/manager/profile', requireAuth, async (req, res, next) => {
   try {
     res.json(await getManagerProfile(req.session.userId));
   } catch (error) {
@@ -18,7 +24,7 @@ router.get('/manager/profile', async (req, res, next) => {
   }
 });
 
-router.get('/manager/summary', async (req, res, next) => {
+router.get('/manager/summary', requireAuth, async (req, res, next) => {
   try {
     res.json(await getManagerSummary(req.session.userId));
   } catch (error) {

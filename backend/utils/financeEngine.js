@@ -126,23 +126,30 @@ function clubSalaryBudget(team = {}) {
 function estimatePlayerValueEuro(player = {}) {
   const overall = Number(player.overall || 65);
   let value = 250000;
-  if (overall >= 86) value = 45000000 + (overall - 86) * 15000000;
-  else if (overall >= 82) value = 18000000 + (overall - 82) * 6000000;
-  else if (overall >= 78) value = 8000000 + (overall - 78) * 2500000;
-  else if (overall >= 74) value = 3500000 + (overall - 74) * 1100000;
-  else if (overall >= 70) value = 1300000 + (overall - 70) * 500000;
-  else value = Math.max(150000, 250000 + (overall - 60) * 120000);
+  if (overall >= 88) value = 42000000 + (overall - 88) * 9000000;
+  else if (overall >= 85) value = 24000000 + (overall - 85) * 5500000;
+  else if (overall >= 82) value = 12000000 + (overall - 82) * 3200000;
+  else if (overall >= 78) value = 4500000 + (overall - 78) * 1600000;
+  else if (overall >= 74) value = 1600000 + (overall - 74) * 650000;
+  else if (overall >= 70) value = 600000 + (overall - 70) * 240000;
+  else value = Math.max(100000, 180000 + (overall - 60) * 65000);
   return value;
 }
 
-function calculateBaseMarketValue(player = {}) {
-  const storedBase = Number(player.base_market_value || 0);
-  if (storedBase > 0) return roundInternalEuro(normalizeInternalMoney(storedBase), 50000);
-
+function marketAnchor(player = {}) {
   const rawValue = Number(player.market_value || 0);
-  const anchor = rawValue
-    ? normalizeInternalMoney(rawValue)
-    : toInternalEuro(estimatePlayerValueEuro(player));
+  const estimateEuro = estimatePlayerValueEuro(player);
+  if (!rawValue) return toInternalEuro(estimateEuro);
+  const rawEuro = normalizeInternalMoney(rawValue) / INTERNAL_EUR_RATE;
+  const cappedEuro = Math.min(rawEuro, estimateEuro * 1.35);
+  return toInternalEuro(Math.max(estimateEuro * 0.72, cappedEuro));
+}
+
+function calculateBaseMarketValue(player = {}, options = {}) {
+  const storedBase = Number(player.base_market_value || 0);
+  if (!options.ignoreStored && storedBase > 0) return roundInternalEuro(normalizeInternalMoney(storedBase), 50000);
+
+  const anchor = marketAnchor(player);
   const age = Number(player.age || 25);
   const overall = Number(player.overall || 65);
   const potential = Math.max(overall, Number(player.potential || overall));
@@ -160,6 +167,10 @@ function calculateBaseMarketValue(player = {}) {
   return roundInternalEuro(anchor * ageFactor * potentialFactor * positionFactor * contractFactor * formFactor * starFactor, 50000);
 }
 
+function rebalancePlayerMarketValue(player = {}) {
+  return calculateBaseMarketValue(player, { ignoreStored: true });
+}
+
 function minimumWageForPlayer(player = {}, buyerTeam = {}) {
   const current = normalizeInternalMoney(player.salary || 0, 25000000);
   const prestige = Number(buyerTeam.overall || buyerTeam.team_overall || 70);
@@ -175,6 +186,7 @@ module.exports = {
   clubTransferBudget,
   clubSalaryBudget,
   calculateBaseMarketValue,
+  rebalancePlayerMarketValue,
   minimumWageForPlayer,
   normalizeInternalMoney,
   roundInternalEuro,

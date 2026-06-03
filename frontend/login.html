@@ -3,25 +3,38 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Giriş | TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Giris | TactiCore</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260603-admin">
   </head>
   <body class="auth-page">
-    <main class="auth-panel">
-      <div class="brand"><span class="brand-mark">TC</span><span>TactiCore</span></div>
-      <h1>Maç günü yaklaşıyor.</h1>
-      <p class="muted">Takımını seç, taktiğini kur, sosyal medyayı sustur.</p>
-      <form id="loginForm" class="form">
-        <label class="field"><span>Kullanıcı adı veya e-posta</span><input id="login" required autocomplete="username"></label>
-        <label class="field"><span>Şifre</span><input id="password" type="password" required autocomplete="current-password"></label>
-        <button class="btn" type="submit">Giriş yap</button>
-        <p id="message" class="message"></p>
-      </form>
-      <p class="muted">Hesabın yok mu? <a href="/register.html">Yeni kulüp kur</a></p>
+    <main class="auth-panel auth-panel-wide">
+      <section class="login-card">
+        <div class="brand"><span class="brand-mark">TC</span><span>TactiCore</span></div>
+        <h1>Mac gunu yaklasiyor.</h1>
+        <p class="muted">Takimini sec, taktigini kur, sosyal medyayi sustur.</p>
+        <form id="loginForm" class="form">
+          <label class="field"><span>Kullanici adi veya e-posta</span><input id="login" required autocomplete="username"></label>
+          <label class="field"><span>Sifre</span><input id="password" type="password" required autocomplete="current-password"></label>
+          <button class="btn" type="submit">Giris yap</button>
+          <p id="message" class="message"></p>
+        </form>
+        <p class="muted auth-links">
+          Hesabin yok mu? <a href="/register.html">Yeni kulup kur</a>
+          <a href="/admin.html">Admin Girisi</a>
+        </p>
+      </section>
+
+      <aside class="leaderboard-card" aria-label="Menajer Siralamasi">
+        <div class="leaderboard-head">
+          <span class="message-category gold">Canli</span>
+          <h2>Menajer Siralamasi</h2>
+        </div>
+        <div id="managerLeaderboard" class="leaderboard-list">
+          <div class="empty">Siralamalar yukleniyor...</div>
+        </div>
+      </aside>
     </main>
     <script src="/js/auth.js?v=20260526-manager"></script>
+    <script src="/js/leaderboard.js?v=20260603-admin"></script>
   </body>
 </html>
-
-
-

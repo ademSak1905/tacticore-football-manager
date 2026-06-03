@@ -29,13 +29,9 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function adminCode(req) {
-  return req.query.code || req.body.code || req.headers['x-admin-code'];
-}
-
 function requireAdmin(req, res, next) {
-  if (adminCode(req) !== (process.env.ADMIN_CODE || 'tacticore-admin')) {
-    return res.status(401).json({ message: 'Admin kodu hatalı.' });
+  if (!req.session.isAdmin) {
+    return res.status(403).json({ message: 'Admin yetkisi gerekli.' });
   }
   next();
 }
@@ -517,16 +513,16 @@ router.get('/social/feed', requireAuth, async (req, res, next) => {
 });
 
 async function adminOverview() {
-  const [state, users, teams, matches, clubs, recentMatches, posts] = await Promise.all([
+  const [state, users, teams, matches, clubs, recentMatches, posts, pendingTransfers, transferHistory, stats] = await Promise.all([
     get('SELECT * FROM game_state WHERE id = 1'),
     all(`
-      SELECT u.id, u.username, u.email, u.created_at, c.id AS club_id, c.name AS club_name,
+      SELECT u.id, u.username, u.email, u.is_active, u.role, u.created_at, c.id AS club_id, c.name AS club_name,
         c.budget, c.fans, c.stadium_capacity, c.currency, tr.name AS team_name
       FROM users u
       LEFT JOIN clubs c ON c.user_id = u.id
       LEFT JOIN teams tr ON tr.id = c.team_id
       ORDER BY u.id DESC
-      LIMIT 30
+      LIMIT 80
     `),
     all('SELECT * FROM teams ORDER BY points DESC, (goals_for - goals_against) DESC, name ASC'),
     get('SELECT COUNT(*) AS count FROM matches'),
@@ -546,6 +542,33 @@ async function adminOverview() {
       LIMIT 10
     `),
     all('SELECT * FROM social_posts ORDER BY id DESC LIMIT 10')
+    ,
+    all(`
+      SELECT ti.*, p.name AS player_name, ft.name AS from_team_name, it.name AS interested_team_name
+      FROM transfer_interest ti
+      JOIN players p ON p.id = ti.player_id
+      LEFT JOIN teams ft ON ft.id = ti.from_team_id
+      LEFT JOIN teams it ON it.id = ti.interested_team_id
+      ORDER BY ti.id DESC
+      LIMIT 20
+    `),
+    all(`
+      SELECT th.*, p.name AS player_name, ft.name AS from_team_name, tt.name AS to_team_name
+      FROM transfer_history th
+      JOIN players p ON p.id = th.player_id
+      LEFT JOIN teams ft ON ft.id = th.from_team_id
+      LEFT JOIN teams tt ON tt.id = th.to_team_id
+      ORDER BY th.id DESC
+      LIMIT 20
+    `),
+    get(`
+      SELECT
+        (SELECT COUNT(*) FROM users) AS user_count,
+        (SELECT COUNT(*) FROM users WHERE is_active = 0) AS passive_users,
+        (SELECT COUNT(*) FROM players) AS player_count,
+        (SELECT COUNT(*) FROM transfer_interest WHERE status IN ('pending','counter','club_accepted')) AS open_transfer_count,
+        (SELECT COUNT(*) FROM inbox_messages WHERE is_read = 0) AS unread_messages
+    `)
   ]);
 
   return {
@@ -555,8 +578,11 @@ async function adminOverview() {
     clubs,
     recentMatches,
     posts,
+    pendingTransfers,
+    transferHistory,
+    stats,
     matches: matches.count,
-    adminCodeHint: 'Varsayilan kod: tacticore-admin'
+    adminUserHint: process.env.ADMIN_USERNAME || process.env.ADMIN_USER || 'admin'
   };
 }
 
@@ -568,7 +594,7 @@ router.get('/admin/summary', requireAdmin, async (req, res, next) => {
       users: overview.users.length,
       teams: overview.teams.length,
       matches: overview.matches,
-      adminCodeHint: overview.adminCodeHint
+      adminUserHint: overview.adminUserHint
     });
   } catch (error) {
     next(error);
@@ -661,6 +687,45 @@ router.post('/admin/users/:id/password', requireAdmin, async (req, res, next) =>
     const passwordHash = await bcrypt.hash(password, 12);
     await run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, user.id]);
     res.json({ message: `${user.username} için şifre yenilendi. Giriste kullanıcı/e-posta: ${user.email}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/users/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const user = await get('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (!user) return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+    const username = cleanText(req.body.username, user.username);
+    const email = cleanText(req.body.email, user.email).toLowerCase();
+    const isActive = req.body.is_active === false || req.body.is_active === '0' ? 0 : 1;
+    if (username.length < 3 || !email.includes('@')) return res.status(400).json({ message: 'Kullanıcı adı veya e-posta hatalı.' });
+    await run('UPDATE users SET username = ?, email = ?, is_active = ? WHERE id = ?', [username, email, isActive, user.id]);
+    await run('UPDATE manager_profiles SET manager_name = ? WHERE user_id = ?', [username, user.id]);
+    res.json(await adminOverview());
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ message: 'Bu kullanıcı adı/e-posta kullanılıyor.' });
+    next(error);
+  }
+});
+
+router.post('/admin/users/:id/toggle-active', requireAdmin, async (req, res, next) => {
+  try {
+    const user = await get('SELECT id, is_active FROM users WHERE id = ?', [req.params.id]);
+    if (!user) return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+    await run('UPDATE users SET is_active = ? WHERE id = ?', [Number(user.is_active) === 1 ? 0 : 1, user.id]);
+    res.json(await adminOverview());
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/admin/users/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const user = await get('SELECT id FROM users WHERE id = ?', [req.params.id]);
+    if (!user) return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+    await run('DELETE FROM users WHERE id = ?', [user.id]);
+    res.json(await adminOverview());
   } catch (error) {
     next(error);
   }

@@ -79,18 +79,18 @@ function askingPrice(player, category = null, buyerTeam = null, fromTeam = null)
 
   if (selectedCategory === 'free') multiplier = 0;
   else if (selectedCategory === 'loan') multiplier = 0.08;
-  else if (selectedCategory === 'expiring') multiplier = 0.5 + seededRatio(player.id + 3) * 0.4;
-  else if (age <= 23 && potential >= 80) multiplier = 1.4 + seededRatio(player.id + 5) * 0.8;
-  else if (overall >= 83) multiplier = 1.5 + seededRatio(player.id + 7) * 1.0;
-  else if (age >= 32) multiplier = 0.6 + seededRatio(player.id + 11) * 0.5;
-  else if (selectedCategory === 'unhappy') multiplier = 0.72 + seededRatio(player.id + 13) * 0.28;
-  else if (selectedCategory === 'bargain') multiplier = 0.75 + seededRatio(player.id + 17) * 0.35;
-  else multiplier = 1.05 + seededRatio(player.id + 19) * 0.55;
+  else if (selectedCategory === 'expiring') multiplier = 0.45 + seededRatio(player.id + 3) * 0.35;
+  else if (age <= 23 && potential >= 80) multiplier = 1.25 + seededRatio(player.id + 5) * 0.6;
+  else if (overall >= 83) multiplier = 1.35 + seededRatio(player.id + 7) * 0.65;
+  else if (age >= 32) multiplier = 0.55 + seededRatio(player.id + 11) * 0.4;
+  else if (selectedCategory === 'unhappy') multiplier = 0.65 + seededRatio(player.id + 13) * 0.25;
+  else if (selectedCategory === 'bargain') multiplier = 0.68 + seededRatio(player.id + 17) * 0.3;
+  else multiplier = 0.92 + seededRatio(player.id + 19) * 0.38;
 
   const difficulty = saleDifficulty(player, fromTeam, buyerTeam);
   if (selectedCategory === 'listed' && difficulty > 1.35) multiplier = Math.max(multiplier, 1.55);
   if (difficulty > 1.8 && !['expiring', 'unhappy', 'bargain', 'loan'].includes(selectedCategory)) {
-    multiplier = Math.max(multiplier, 2 + seededRatio(player.id + 23) * 1);
+    multiplier = Math.max(multiplier, 1.75 + seededRatio(player.id + 23) * 0.55);
   }
   return roundInternalEuro(base * multiplier, selectedCategory === 'free' ? 1 : 50000);
 }
@@ -398,19 +398,52 @@ async function simulateAiTransfers(excludeTeamId = null) {
   const state = await get('SELECT * FROM game_state WHERE id = 1');
   const window = transferWindow(state.current_day);
   if (!window.isOpen || state.current_day % 7 !== 0) return [];
-  const teams = await all('SELECT * FROM teams ORDER BY overall DESC');
+  const day = Number(state.current_day || 1);
+  const teams = await all('SELECT * FROM teams ORDER BY ((id + ?) % 23) ASC, overall DESC', [day]);
   const candidates = await all(`
     SELECT * FROM players
-    WHERE team_id IS NOT NULL
-    ORDER BY potential DESC, happiness ASC, market_value ASC
-    LIMIT 50
+    WHERE team_id IS NOT NULL AND market_value > 0
+    ORDER BY
+      CASE WHEN overall >= 85 THEN 5 WHEN overall >= 80 THEN 3 ELSE 0 END ASC,
+      CASE WHEN is_starting_eleven = 1 OR lineup_role = 'starter' THEN 2 ELSE 0 END ASC,
+      salary ASC,
+      (potential - overall) DESC,
+      playing_time ASC
+    LIMIT 120
   `);
   const completed = [];
-  for (const team of teams.filter((item) => item.id !== Number(excludeTeamId)).slice(0, 4)) {
-    const player = candidates.find((item) => item.team_id !== team.id && askingPrice(item, categoryForPlayer(item, state.current_day), team) < team.budget * 0.16);
-    if (!player || Math.random() > 0.34) continue;
-    const category = categoryForPlayer(player, state.current_day);
-    const price = askingPrice(player, category, team);
+  for (const team of teams.filter((item) => item.id !== Number(excludeTeamId)).slice(0, 10)) {
+    const weeklyDone = await get('SELECT id FROM transfer_history WHERE to_team_id = ? AND day >= ? LIMIT 1', [team.id, Math.max(1, day - 6)]);
+    if (weeklyDone) continue;
+    let selected = null;
+    let selectedPrice = 0;
+    let selectedCategory = 'transfer';
+    for (const item of candidates) {
+      if (Number(item.team_id) === Number(team.id) || Number(item.team_id) === Number(excludeTeamId)) continue;
+      const overall = Number(item.overall || 65);
+      const teamOverall = Number(team.overall || 70);
+      const chance = seededRatio(Number(item.id) * 29 + Number(team.id) * 13 + day);
+      if (overall >= 85 && teamOverall < 80) continue;
+      if (overall >= 80 && chance > (teamOverall >= 80 ? 0.18 : 0.04)) continue;
+      const recentPlayerMove = await get('SELECT id FROM transfer_history WHERE player_id = ? AND day >= ? LIMIT 1', [item.id, Math.max(1, day - 35)]);
+      if (recentPlayerMove) continue;
+      const category = categoryForPlayer(item, day);
+      const baseValue = calculateBaseMarketValue(item);
+      let ratio = 0.78 + seededRatio(Number(item.id) + Number(team.id) + day) * 0.28;
+      if (overall >= 80) ratio += 0.12;
+      if (Number(item.potential || overall) - overall >= 6 && overall < 82) ratio += 0.08;
+      const price = roundInternalEuro(baseValue * ratio, 50000);
+      const budgetCap = Number(team.budget || 0) * (teamOverall >= 80 ? 0.28 : 0.18);
+      if (price <= 0 || price > budgetCap) continue;
+      selected = item;
+      selectedPrice = price;
+      selectedCategory = category;
+      break;
+    }
+    const player = selected;
+    const price = selectedPrice;
+    const category = selectedCategory;
+    if (!player) continue;
     await run('UPDATE teams SET budget = budget - ? WHERE id = ?', [price, team.id]);
     if (player.team_id) await run('UPDATE teams SET budget = budget + ? WHERE id = ?', [price, player.team_id]);
     await run('DELETE FROM lineups WHERE player_id = ?', [player.id]);

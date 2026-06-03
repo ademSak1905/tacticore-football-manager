@@ -29,6 +29,13 @@ function careerClubName(teamName, userId) {
   return `${teamName} Kariyer ${userId}`;
 }
 
+function adminCredentials() {
+  return {
+    username: process.env.ADMIN_USERNAME || process.env.ADMIN_USER || 'admin',
+    password: process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'tacticore-admin'
+  };
+}
+
 router.post('/register', async (req, res, next) => {
   try {
     const username = cleanText(req.body.username);
@@ -145,13 +152,38 @@ router.post('/login', async (req, res, next) => {
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ message: 'Giriş bilgileri hatalı.' });
     }
+    if (Number(user.is_active ?? 1) !== 1) {
+      return res.status(403).json({ message: 'Bu hesap pasif. Admin ile görüşmelisin.' });
+    }
 
     req.session.userId = user.id;
+    req.session.isAdmin = false;
     await ensureManagerProfile(user.id);
     res.json({ id: user.id, username: user.username, email: user.email });
   } catch (error) {
     next(error);
   }
+});
+
+router.post('/admin/login', async (req, res, next) => {
+  try {
+    const username = cleanText(req.body.username);
+    const password = String(req.body.password || '').trim();
+    const admin = adminCredentials();
+    if (!admin.username || !admin.password || username !== admin.username || password !== admin.password) {
+      return res.status(401).json({ message: 'Admin bilgileri hatalı.' });
+    }
+    req.session.userId = null;
+    req.session.isAdmin = true;
+    res.json({ username: admin.username, isAdmin: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/me', (req, res) => {
+  if (!req.session.isAdmin) return res.status(401).json({ message: 'Admin oturumu yok.' });
+  res.json({ isAdmin: true, username: adminCredentials().username });
 });
 
 router.post('/logout', (req, res) => {

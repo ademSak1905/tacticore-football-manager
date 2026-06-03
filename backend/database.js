@@ -7,7 +7,7 @@ const { seedEuropeanData } = require('./seed/uefaSeed');
 const { seasonDate, leagueMatchDay } = require('./utils/seasonCalendar');
 const { buildSeasonPlan, parseSeasonPlan } = require('./utils/seasonPlanning');
 const {
-  calculateBaseMarketValue,
+  rebalancePlayerMarketValue,
   normalizeInternalMoney
 } = require('./utils/financeEngine');
 
@@ -237,6 +237,8 @@ async function createSchema() {
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      role TEXT NOT NULL DEFAULT 'user',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -680,6 +682,8 @@ async function createSchema() {
 
   await ensureColumn('clubs', 'team_id', 'INTEGER');
   await ensureColumn('clubs', 'currency', "TEXT NOT NULL DEFAULT 'EUR'");
+  await ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+  await ensureColumn('users', 'role', "TEXT NOT NULL DEFAULT 'user'");
   await ensureColumn('players', 'team_id', 'INTEGER');
   await ensureColumn('players', 'nationality', "TEXT NOT NULL DEFAULT 'Türkiye'");
   await ensureColumn('players', 'preferred_foot', "TEXT NOT NULL DEFAULT 'right'");
@@ -1496,12 +1500,14 @@ async function initDatabase() {
 }
 
 async function backfillPlayerTransferData() {
+  const valueFlagKey = 'rebalance_player_values_20260603';
+  const valueRebalanceDone = await get('SELECT flag_key FROM maintenance_flags WHERE flag_key = ?', [valueFlagKey]);
+  const forceRebalance = !valueRebalanceDone;
   const players = await all(`
     SELECT p.*, t.overall AS team_overall
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
-    WHERE p.potential = 70 OR p.contract_until = 2027 OR p.happiness = 70 OR p.playing_time = 50
-      OR p.base_market_value = 0 OR p.market_value < 250000000 OR p.salary < 25000000
+    WHERE ${forceRebalance ? '(p.team_id IS NOT NULL OR p.club_id IS NOT NULL OR p.base_market_value = 0)' : '(p.base_market_value = 0 OR p.market_value < 250000000 OR p.salary < 25000000)'}
     LIMIT 5000
   `);
 
@@ -1517,12 +1523,12 @@ async function backfillPlayerTransferData() {
       ? player.transfer_status
       : happiness < 48 ? 'unhappy' : contractUntil <= 2026 ? 'expiring' : player.age <= 21 && potential >= 78 ? 'hot_prospect' : 'normal';
     const loanAvailable = player.loan_available || (player.age <= 22 && player.lineup_role !== 'starter' ? 1 : 0);
-    const baseMarketValue = player.base_market_value && player.base_market_value > 0
-      ? player.base_market_value
-      : calculateBaseMarketValue({ ...player, potential, contract_until: contractUntil, happiness });
-    const marketValue = player.market_value < 250000000
-      ? baseMarketValue
-      : Math.max(baseMarketValue, normalizeInternalMoney(player.market_value));
+    const baseMarketValue = forceRebalance
+      ? rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness })
+      : player.base_market_value && player.base_market_value > 0
+        ? player.base_market_value
+        : rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness });
+    const marketValue = forceRebalance || player.market_value < 250000000 ? baseMarketValue : Math.max(baseMarketValue, normalizeInternalMoney(player.market_value));
     const salary = player.salary < 25000000 ? normalizeInternalMoney(player.salary, 25000000) : player.salary;
 
     await run(`
@@ -1532,6 +1538,7 @@ async function backfillPlayerTransferData() {
       WHERE id = ?
     `, [potential, contractUntil, happiness, playingTime, transferStatus, loanAvailable, baseMarketValue, marketValue, salary, player.id]);
   }
+  if (forceRebalance) await run('INSERT INTO maintenance_flags (flag_key) VALUES (?)', [valueFlagKey]);
 }
 
 module.exports = {
