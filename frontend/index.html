@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260603-admin">
+    <link rel="stylesheet" href="/css/style.css?v=20260603-shell-leaderboard">
   </head>
   <body class="auth-page start-page">
     <main class="auth-panel start-panel">
@@ -12,15 +12,6 @@
       <h1>Kariyer merkezine hos geldin.</h1>
       <p class="muted" id="startText">Takimini sec, kadronu kur ve sezona hazirlan.</p>
       <div id="careerCard" class="start-card"></div>
-      <aside class="leaderboard-card start-leaderboard" aria-label="Menajer Siralamasi">
-        <div class="leaderboard-head">
-          <span class="message-category gold">Canli</span>
-          <h2>Menajer Siralamasi</h2>
-        </div>
-        <div id="managerLeaderboard" class="leaderboard-list">
-          <div class="empty">Siralamalar yukleniyor...</div>
-        </div>
-      </aside>
       <div class="start-actions">
         <a id="startGameButton" class="btn green" href="/dashboard.html" hidden>Oyuna Basla</a>
         <a id="loginButton" class="btn" href="/login.html">Giris Yap</a>
@@ -28,8 +19,7 @@
         <button id="newCareerButton" class="btn secondary" type="button" hidden>Yeni Kariyer Baslat</button>
       </div>
     </main>
-    <script src="/js/auth.js?v=20260526-manager"></script>
-    <script src="/js/leaderboard.js?v=20260603-admin"></script>
+    <script src="/js/auth.js?v=20260603-shell-leaderboard"></script>
     <script>
       (async () => {
         const careerCard = byId('careerCard');

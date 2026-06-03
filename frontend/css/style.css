@@ -470,6 +470,49 @@ video {
   white-space: nowrap;
 }
 
+.shell-leaderboard {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.leaderboard-toggle {
+  min-height: 46px;
+  padding: 10px 14px;
+}
+
+.shell-leaderboard-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 90;
+  width: min(390px, calc(100vw - 24px));
+  max-height: min(620px, calc(100vh - 110px));
+  display: none;
+  gap: 12px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(73, 143, 255, 0.44);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 210, 26, 0.16), transparent 42%),
+    linear-gradient(145deg, rgba(3, 18, 42, 0.98), rgba(2, 9, 22, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 28px rgba(73, 143, 255, 0.16);
+}
+
+.shell-leaderboard.open .shell-leaderboard-panel {
+  display: grid;
+}
+
+.shell-leaderboard-panel .leaderboard-head {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.shell-leaderboard-panel .leaderboard-head h2 {
+  font-size: 20px;
+}
+
 .wide-admin-card {
   grid-column: 1 / -1;
 }
@@ -549,6 +592,26 @@ table select {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     font-size: 12px;
+  }
+
+  .shell-leaderboard {
+    order: 3;
+    margin-left: auto;
+  }
+
+  .leaderboard-toggle {
+    min-height: 42px;
+    padding: 8px 11px;
+    font-size: 13px;
+  }
+
+  .shell-leaderboard-panel {
+    position: fixed;
+    top: 76px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100vh - 92px);
   }
 
   .layout {
