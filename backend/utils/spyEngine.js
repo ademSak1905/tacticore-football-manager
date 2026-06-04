@@ -8,6 +8,8 @@ const SPY_TYPES = {
   elite: { label: 'Elit Casus', cost: 120, successRate: 0.9 }
 };
 
+const SPY_REVEAL_DELAY_MS = 150 * 1000;
+
 function parseJson(value, fallback = {}) {
   try {
     return JSON.parse(value || '');
@@ -26,9 +28,27 @@ function weakAreas(team) {
   return rows.slice(0, 2).map(([label]) => label);
 }
 
+async function refreshReadyReports(userId) {
+  await run(`
+    UPDATE spy_reports
+    SET status = 'completed'
+    WHERE user_id = ?
+      AND status = 'pending'
+      AND datetime(reveal_at) <= datetime('now')
+  `, [userId]);
+}
+
 async function listSpyTeams(userId, ownTeamId) {
+  await refreshReadyReports(userId);
   const teams = await all('SELECT id, name, overall, default_formation FROM teams WHERE id != ? ORDER BY overall DESC, name ASC', [ownTeamId]);
-  const reports = await all('SELECT * FROM spy_reports WHERE user_id = ? ORDER BY created_at DESC LIMIT 8', [userId]);
+  const reports = await all(`
+    SELECT sr.*, t.name AS target_team_name
+    FROM spy_reports sr
+    JOIN teams t ON t.id = sr.target_team_id
+    WHERE sr.user_id = ?
+    ORDER BY sr.created_at DESC
+    LIMIT 8
+  `, [userId]);
   return { spyTypes: SPY_TYPES, teams, recentReports: reports.map((row) => ({ ...row, report_json: parseJson(row.report_json, {}) })) };
 }
 
@@ -76,15 +96,22 @@ async function sendSpy(userId, ownTeamId, targetTeamId, spyType = 'normal') {
   const report = success
     ? await buildReport(targetTeamId)
     : { teamName: target.name, caught: true, message: 'Casus yakalandı. Bilgi alınamadı.' };
+  const revealAt = new Date(Date.now() + SPY_REVEAL_DELAY_MS).toISOString();
   const inserted = await run(`
-    INSERT INTO spy_reports (user_id, target_team_id, spy_type, cost, success, report_json)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `, [userId, targetTeamId, spyType, config.cost, success ? 1 : 0, JSON.stringify(report)]);
-  return get('SELECT * FROM spy_reports WHERE id = ?', [inserted.id]);
+    INSERT INTO spy_reports (user_id, target_team_id, spy_type, cost, success, report_json, status, reveal_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+  `, [userId, targetTeamId, spyType, config.cost, success ? 1 : 0, JSON.stringify(report), revealAt]);
+  return get(`
+    SELECT sr.*, t.name AS target_team_name
+    FROM spy_reports sr
+    JOIN teams t ON t.id = sr.target_team_id
+    WHERE sr.id = ?
+  `, [inserted.id]);
 }
 
 module.exports = {
   SPY_TYPES,
+  refreshReadyReports,
   listSpyTeams,
   sendSpy
 };

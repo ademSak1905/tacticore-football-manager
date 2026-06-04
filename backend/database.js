@@ -306,6 +306,8 @@ async function createSchema() {
       cost INTEGER NOT NULL,
       success INTEGER NOT NULL DEFAULT 0,
       report_json TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'completed',
+      reveal_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (target_team_id) REFERENCES teams(id)
@@ -767,6 +769,9 @@ async function createSchema() {
   await ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
   await ensureColumn('users', 'role', "TEXT NOT NULL DEFAULT 'user'");
   await ensureColumn('users', 'tacticoins', 'INTEGER NOT NULL DEFAULT 100');
+  await ensureColumn('spy_reports', 'status', "TEXT NOT NULL DEFAULT 'completed'");
+  await ensureColumn('spy_reports', 'reveal_at', "TEXT NOT NULL DEFAULT ''");
+  await run("UPDATE spy_reports SET reveal_at = created_at WHERE reveal_at = '' OR reveal_at IS NULL");
   await ensureColumn('players', 'team_id', 'INTEGER');
   await ensureColumn('players', 'nationality', "TEXT NOT NULL DEFAULT 'Türkiye'");
   await ensureColumn('players', 'preferred_foot', "TEXT NOT NULL DEFAULT 'right'");
