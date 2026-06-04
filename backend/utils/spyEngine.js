@@ -1,11 +1,11 @@
-const { all, get, run } = require('../database');
+const { all, get, run, getCareerState } = require('../database');
 const { spendCoins } = require('./coinManager');
 const { recordTaskProgress } = require('./taskEngine');
 
 const SPY_TYPES = {
-  normal: { label: 'Normal Casus', cost: 50, successRate: 0.65 },
+  normal: { label: 'Normal Casus', cost: 50, successRate: 0.65, delayDays: 3 },
   advanced: { label: 'Gelişmiş Casus', cost: 80, successRate: 0.8 },
-  elite: { label: 'Elit Casus', cost: 120, successRate: 0.9 }
+  elite: { label: 'Elit Casus', cost: 120, successRate: 0.9, delayDays: 1 }
 };
 
 const SPY_REVEAL_DELAY_MS = 150 * 1000;
@@ -29,13 +29,18 @@ function weakAreas(team) {
 }
 
 async function refreshReadyReports(userId) {
+  const state = await getCareerState(userId);
+  const currentDay = Number(state?.current_day || 1);
   await run(`
     UPDATE spy_reports
     SET status = 'completed'
     WHERE user_id = ?
       AND status = 'pending'
-      AND datetime(reveal_at) <= datetime('now')
-  `, [userId]);
+      AND (
+        (reveal_day > 0 AND reveal_day <= ?)
+        OR (reveal_day = 0 AND datetime(reveal_at) <= datetime('now'))
+      )
+  `, [userId, currentDay]);
 }
 
 async function listSpyTeams(userId, ownTeamId) {
@@ -96,11 +101,13 @@ async function sendSpy(userId, ownTeamId, targetTeamId, spyType = 'normal') {
   const report = success
     ? await buildReport(targetTeamId)
     : { teamName: target.name, caught: true, message: 'Casus yakalandı. Bilgi alınamadı.' };
+  const state = await getCareerState(userId);
+  const revealDay = Number(state?.current_day || 1) + Number(config.delayDays || 2);
   const revealAt = new Date(Date.now() + SPY_REVEAL_DELAY_MS).toISOString();
   const inserted = await run(`
-    INSERT INTO spy_reports (user_id, target_team_id, spy_type, cost, success, report_json, status, reveal_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
-  `, [userId, targetTeamId, spyType, config.cost, success ? 1 : 0, JSON.stringify(report), revealAt]);
+    INSERT INTO spy_reports (user_id, target_team_id, spy_type, cost, success, report_json, status, reveal_at, reveal_day)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+  `, [userId, targetTeamId, spyType, config.cost, success ? 1 : 0, JSON.stringify(report), revealAt, revealDay]);
   return get(`
     SELECT sr.*, t.name AS target_team_name
     FROM spy_reports sr

@@ -346,10 +346,13 @@ async function createMatchStories(roundResult, userTeamId, userId = null) {
   const featured = roundResult?.featured;
   if (!featured?.match) return;
   const numericUserTeamId = Number(userTeamId);
-  const focusTeam = featured.home.id === numericUserTeamId ? featured.home : featured.away;
-  const opponent = featured.home.id === numericUserTeamId ? featured.away : featured.home;
-  const userGoals = featured.home.id === numericUserTeamId ? featured.match.home_score : featured.match.away_score;
-  const opponentGoals = featured.home.id === numericUserTeamId ? featured.match.away_score : featured.match.home_score;
+  const homeId = Number(featured.home?.team_id || featured.home?.id || featured.match.home_team_id || featured.match.home_club_id || 0);
+  const awayId = Number(featured.away?.team_id || featured.away?.id || featured.match.away_team_id || featured.match.away_club_id || 0);
+  const isHome = homeId === numericUserTeamId || (homeId !== numericUserTeamId && awayId !== numericUserTeamId);
+  const focusTeam = isHome ? featured.home : featured.away;
+  const opponent = isHome ? featured.away : featured.home;
+  const userGoals = isHome ? featured.match.home_score : featured.match.away_score;
+  const opponentGoals = isHome ? featured.match.away_score : featured.match.home_score;
   const resultType = getResultType(userGoals, opponentGoals);
   const points = getPointsByResult(resultType);
   const context = await teamContext(focusTeam.id, userId);

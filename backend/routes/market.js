@@ -36,9 +36,11 @@ router.get('/coins', async (req, res, next) => {
 router.get('/market/items', async (req, res, next) => {
   try {
     const items = await all('SELECT * FROM market_items WHERE active = 1 ORDER BY item_type, price ASC, id ASC');
+    const boosters = await inventory(req.session.userId);
     res.json({
       balance: await getBalance(req.session.userId),
-      inventory: await inventory(req.session.userId),
+      inventory: boosters,
+      boosters,
       items: items.map((item) => ({ ...item, effect: parseJson(item.effect_json, {}) }))
     });
   } catch (error) {
@@ -84,7 +86,7 @@ router.post('/boosters/use', async (req, res, next) => {
     } else if (effect.healInjury) {
       const player = await get('SELECT * FROM players WHERE id = ? AND team_id = ?', [Number(req.body.playerId), club.team_id]);
       if (!player) return res.status(404).json({ message: 'Oyuncu bulunamadı.' });
-      await run('UPDATE players SET injured = 0 WHERE id = ?', [player.id]);
+      await run("UPDATE players SET injured = 0, injury_type = '', injury_return_day = 0 WHERE id = ?", [player.id]);
       message = `${player.name} sakatlık kartıyla iyileştirildi.`;
     }
     await run('UPDATE user_boosters SET quantity = quantity - 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND item_key = ?', [userId, item.item_key]);

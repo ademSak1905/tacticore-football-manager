@@ -7,7 +7,7 @@ function todayKey() {
 }
 
 async function ensureDailyRows(userId, dateKey = todayKey()) {
-  const tasks = await all('SELECT * FROM daily_tasks WHERE category = ? ORDER BY id ASC', ['daily']);
+  const tasks = await all('SELECT * FROM daily_tasks ORDER BY id ASC');
   for (const task of tasks) {
     await run(
       'INSERT OR IGNORE INTO user_daily_tasks (user_id, task_key, date_key) VALUES (?, ?, ?)',
@@ -24,7 +24,6 @@ async function getDailyTasks(userId) {
     SELECT dt.*, COALESCE(udt.progress, 0) AS progress, COALESCE(udt.claimed, 0) AS claimed
     FROM daily_tasks dt
     LEFT JOIN user_daily_tasks udt ON udt.task_key = dt.task_key AND udt.user_id = ? AND udt.date_key = ?
-    WHERE dt.category = 'daily'
     ORDER BY dt.id ASC
   `, [userId, dateKey]);
   return {

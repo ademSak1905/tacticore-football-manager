@@ -108,8 +108,8 @@ function budgetRateForTeam(team = {}) {
   if (['Galatasaray', 'Fenerbahçe', 'Fenerbahce'].includes(name)) return 0.12 + noise * 0.06;
   if (['Beşiktaş', 'Besiktas', 'Trabzonspor'].includes(name)) return 0.09 + noise * 0.04;
   const overall = Number(team.overall || team.team_overall || 70);
-  if (overall >= 74) return 0.07 + noise * 0.05;
-  return 0.03 + noise * 0.04;
+  if (overall >= 74) return 0.09 + noise * 0.05;
+  return 0.05 + noise * 0.04;
 }
 
 function clubTransferBudget(team = {}) {
@@ -126,13 +126,13 @@ function clubSalaryBudget(team = {}) {
 function estimatePlayerValueEuro(player = {}) {
   const overall = Number(player.overall || 65);
   let value = 160000;
-  if (overall >= 88) value = 26000000 + (overall - 88) * 4500000;
-  else if (overall >= 85) value = 14000000 + (overall - 85) * 3250000;
-  else if (overall >= 82) value = 7500000 + (overall - 82) * 2000000;
-  else if (overall >= 78) value = 2800000 + (overall - 78) * 850000;
-  else if (overall >= 74) value = 800000 + (overall - 74) * 420000;
-  else if (overall >= 70) value = 250000 + (overall - 70) * 150000;
-  else value = Math.max(75000, 100000 + (overall - 60) * 35000);
+  if (overall >= 88) value = 18000000 + (overall - 88) * 3300000;
+  else if (overall >= 85) value = 8500000 + (overall - 85) * 2100000;
+  else if (overall >= 82) value = 4200000 + (overall - 82) * 1050000;
+  else if (overall >= 78) value = 1450000 + (overall - 78) * 430000;
+  else if (overall >= 74) value = 450000 + (overall - 74) * 210000;
+  else if (overall >= 70) value = 150000 + (overall - 70) * 80000;
+  else value = Math.max(50000, 70000 + (overall - 60) * 22000);
   return value;
 }
 
@@ -141,7 +141,7 @@ function marketAnchor(player = {}) {
   const estimateEuro = estimatePlayerValueEuro(player);
   if (!rawValue) return toInternalEuro(estimateEuro);
   const rawEuro = normalizeInternalMoney(rawValue) / INTERNAL_EUR_RATE;
-  const cappedEuro = Math.min(rawEuro, estimateEuro * 1.05);
+  const cappedEuro = Math.min(rawEuro, estimateEuro * 0.85);
   return toInternalEuro(Math.max(estimateEuro * 0.55, cappedEuro));
 }
 

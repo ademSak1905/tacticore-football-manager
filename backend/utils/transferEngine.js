@@ -79,18 +79,18 @@ function askingPrice(player, category = null, buyerTeam = null, fromTeam = null)
 
   if (selectedCategory === 'free') multiplier = 0;
   else if (selectedCategory === 'loan') multiplier = 0.06;
-  else if (selectedCategory === 'expiring') multiplier = 0.35 + seededRatio(player.id + 3) * 0.28;
-  else if (age <= 23 && potential >= 80) multiplier = 1.05 + seededRatio(player.id + 5) * 0.48;
-  else if (overall >= 83) multiplier = 1.12 + seededRatio(player.id + 7) * 0.5;
-  else if (age >= 32) multiplier = 0.45 + seededRatio(player.id + 11) * 0.32;
-  else if (selectedCategory === 'unhappy') multiplier = 0.55 + seededRatio(player.id + 13) * 0.22;
-  else if (selectedCategory === 'bargain') multiplier = 0.55 + seededRatio(player.id + 17) * 0.24;
-  else multiplier = 0.72 + seededRatio(player.id + 19) * 0.32;
+  else if (selectedCategory === 'expiring') multiplier = 0.28 + seededRatio(player.id + 3) * 0.22;
+  else if (age <= 23 && potential >= 80) multiplier = 0.92 + seededRatio(player.id + 5) * 0.32;
+  else if (overall >= 83) multiplier = 0.98 + seededRatio(player.id + 7) * 0.35;
+  else if (age >= 32) multiplier = 0.35 + seededRatio(player.id + 11) * 0.26;
+  else if (selectedCategory === 'unhappy') multiplier = 0.42 + seededRatio(player.id + 13) * 0.18;
+  else if (selectedCategory === 'bargain') multiplier = 0.42 + seededRatio(player.id + 17) * 0.2;
+  else multiplier = 0.58 + seededRatio(player.id + 19) * 0.25;
 
   const difficulty = saleDifficulty(player, fromTeam, buyerTeam);
-  if (selectedCategory === 'listed' && difficulty > 1.35) multiplier = Math.max(multiplier, 1.25);
+  if (selectedCategory === 'listed' && difficulty > 1.35) multiplier = Math.max(multiplier, 1.08);
   if (difficulty > 1.8 && !['expiring', 'unhappy', 'bargain', 'loan'].includes(selectedCategory)) {
-    multiplier = Math.max(multiplier, 1.45 + seededRatio(player.id + 23) * 0.35);
+    multiplier = Math.max(multiplier, 1.18 + seededRatio(player.id + 23) * 0.26);
   }
   return roundInternalEuro(base * multiplier, selectedCategory === 'free' ? 1 : 50000);
 }

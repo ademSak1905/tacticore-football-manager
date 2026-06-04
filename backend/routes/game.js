@@ -8,6 +8,7 @@ const { simulateAiTransfers, processPendingTransferOffers } = require('../utils/
 const { ensureEuropeanSeason, nextEuropeanMatch } = require('../utils/europeEngine');
 const { leagueWeeksForTeamCount } = require('../utils/matchEngine');
 const { awardSeasonXp, incrementSeasonCount } = require('../utils/managerEngine');
+const { ensureCareerMood, processDailyCareerEvents } = require('../utils/careerEngine');
 const { syncCareerLeagueMatchDay } = require('../utils/scheduleEngine');
 const {
   buildSeasonPlan,
@@ -140,6 +141,7 @@ async function nextEuropeanDrawDay(userId, teamId, currentDay, beforeDay, includ
 router.get('/game/state', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
+    const moodClub = await ensureCareerMood(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
     let state = await getCareerState(req.session.userId);
     const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
@@ -176,7 +178,7 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
       totalLeagueWeeks,
       next_european_match: europeNext,
       matchAvailable: state.current_day >= nextFixtureDay,
-      club
+      club: moodClub || club
     });
   } catch (error) {
     next(error);
@@ -185,7 +187,8 @@ router.get('/game/state', requireAuth, async (req, res, next) => {
 
 router.post('/game/advance', requireAuth, async (req, res, next) => {
   try {
-    const days = Number(req.body.days) === 7 ? 7 : 1;
+    const requestedDays = Number(req.body.days);
+    const days = [1, 3, 7].includes(requestedDays) ? requestedDays : 1;
     const club = await clubModel.getByUserId(req.session.userId);
     await ensureEuropeanSeason(req.session.userId, club.team_id);
     let currentState = await getCareerState(req.session.userId);
@@ -212,6 +215,7 @@ router.post('/game/advance', requireAuth, async (req, res, next) => {
     const targetDay = stopDays.length ? Math.min(...stopDays) : currentDay + days;
     const safeTargetDay = Math.max(currentDay + 1, targetDay);
     await run('UPDATE career_states SET current_day = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?', [safeTargetDay, req.session.userId]);
+    await processDailyCareerEvents(req.session.userId, currentDay, safeTargetDay);
     const state = await getCareerState(req.session.userId);
     const updatedEuropeNext = await nextEuropeanMatch(req.session.userId, club.team_id);
     const updatedLeagueFinished = Number(state.week || 1) > totalLeagueWeeks;
@@ -457,6 +461,13 @@ router.get('/game/season-review', requireAuth, async (req, res, next) => {
         mostAppearances: mostAppearances ? { name: mostAppearances.name, appearances: mostAppearances.appearances || 0 } : null,
         bestYoung: bestYoung ? { name: bestYoung.name, rating: Number(bestYoung.average_rating || 0).toFixed(1) } : null,
         worstRated: worstRated ? { name: worstRated.name, rating: Number(worstRated.average_rating || 0).toFixed(1) } : null
+      },
+      awards: {
+        goalKing: topScorer ? { title: 'Gol Krali', name: topScorer.name, value: topScorer.goals || 0 } : null,
+        assistKing: topAssist ? { title: 'Asist Krali', name: topAssist.name, value: topAssist.assists || 0 } : null,
+        playerOfYear: bestRated ? { title: 'Yilin Oyuncusu', name: bestRated.name, value: Number(bestRated.average_rating || 0).toFixed(1) } : null,
+        youngPlayerOfYear: bestYoung ? { title: 'Yilin Genc Oyuncusu', name: bestYoung.name, value: Number(bestYoung.average_rating || 0).toFixed(1) } : null,
+        managerOfYear: rank <= 2 || verdict.score >= 80 ? { title: 'Yilin Menajeri', name: user?.username || 'Menajer', value: verdict.label } : null
       },
       transfers: {
         incoming: incoming.map((item) => ({ name: item.player_name || 'Oyuncu', price: item.price || 0 })),

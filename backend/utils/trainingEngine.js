@@ -29,6 +29,17 @@ function growthFor(player, intensity) {
   return Math.max(1, intensityBonus + ageBonus + moraleBonus);
 }
 
+function overallGrowthFor(player, intensity) {
+  const overall = Number(player.overall || 60);
+  const potential = Math.max(overall, Number(player.potential || overall));
+  if (overall >= potential) return 0;
+  const age = Number(player.age || 25);
+  const ageFactor = age <= 20 ? 1 : age <= 23 ? 0.7 : age <= 27 ? 0.35 : 0.12;
+  const intensityFactor = intensity === 'heavy' ? 0.55 : intensity === 'normal' ? 0.32 : 0.15;
+  const gapFactor = Math.min(1, Math.max(0.2, (potential - overall) / 12));
+  return ageFactor * intensityFactor * gapFactor;
+}
+
 async function record(clubId, playerId, text) {
   await run('INSERT INTO training_results (club_id, player_id, result_text) VALUES (?, ?, ?)', [clubId, playerId || null, text]);
 }
@@ -43,6 +54,9 @@ async function applyTeamTraining(club, type, intensity) {
     const growth = growthFor(player, intensity);
     for (const column of config.columns) {
       await run(`UPDATE players SET ${column} = MIN(99, ${column} + ?) WHERE id = ?`, [growth, player.id]);
+    }
+    if (overallGrowthFor(player, intensity) >= 0.28) {
+      await run('UPDATE players SET overall = MIN(potential, overall + 1) WHERE id = ?', [player.id]);
     }
   }
 
@@ -67,12 +81,14 @@ async function applyPlayerTraining(club, playerId, type, intensity) {
 
   const column = playerTraining[type] || 'stamina';
   const growth = growthFor(player, intensity);
-  await run(`UPDATE players SET ${column} = MIN(99, ${column} + ?), stamina = MAX(35, stamina - ?) WHERE id = ?`, [
+  const overallGrowth = overallGrowthFor(player, intensity) >= 0.22 ? 1 : 0;
+  await run(`UPDATE players SET ${column} = MIN(99, ${column} + ?), overall = MIN(potential, overall + ?), stamina = MAX(35, stamina - ?) WHERE id = ?`, [
     growth,
+    overallGrowth,
     intensity === 'heavy' ? 4 : intensity === 'normal' ? 2 : 0,
     player.id
   ]);
-  const text = `${player.name} +${growth} ${column}`;
+  const text = `${player.name} +${growth} ${column}${overallGrowth ? ', overall +1' : ''}`;
   await run('INSERT INTO training (club_id, player_id, type, intensity) VALUES (?, ?, ?, ?)', [club.id, player.id, type, intensity]);
   await record(club.id, player.id, text);
   return [text, intensity === 'heavy' ? 'Ağır bireysel antrenman kondisyonu düşürdü' : 'Bireysel çalışma tamamlandı'];

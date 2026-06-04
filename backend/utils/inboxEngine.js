@@ -633,6 +633,30 @@ async function handleMessageAction(userId, messageId, action) {
   const club = await clubModel.getByUserId(userId);
   const state = await getCareerState(userId);
 
+  if (message.action_type === 'club_offer') {
+    if (action !== 'accept') {
+      await run('UPDATE club_offers SET status = ? WHERE id = ? AND user_id = ?', ['rejected', payload.offerId, userId]);
+      await run('UPDATE inbox_messages SET status = ?, is_read = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', ['rejected', messageId, userId]);
+      return { message: 'Kulup teklifi reddedildi.' };
+    }
+    const { acceptClubOffer } = require('./careerEngine');
+    const result = await acceptClubOffer(userId, payload.offerId);
+    await run('UPDATE inbox_messages SET status = ?, is_read = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', ['accepted', messageId, userId]);
+    return result;
+  }
+
+  if (message.action_type === 'sponsor_offer') {
+    if (action !== 'accept') {
+      await run('UPDATE sponsor_deals SET status = ? WHERE id = ? AND user_id = ?', ['rejected', payload.sponsorId, userId]);
+      await run('UPDATE inbox_messages SET status = ?, is_read = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', ['rejected', messageId, userId]);
+      return { message: 'Sponsor teklifi reddedildi.' };
+    }
+    const { acceptSponsorOffer } = require('./careerEngine');
+    const result = await acceptSponsorOffer(userId, payload.sponsorId);
+    await run('UPDATE inbox_messages SET status = ?, is_read = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?', ['accepted', messageId, userId]);
+    return result;
+  }
+
   if (message.action_type === 'transfer_offer') {
     if (action === 'accept') {
       const player = await get('SELECT * FROM players WHERE id = ? AND team_id = ?', [payload.playerId, club.team_id]);

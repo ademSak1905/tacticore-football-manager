@@ -4,7 +4,7 @@ const {
   clubSalaryBudget
 } = require('./financeEngine');
 
-const FINANCE_VERSION = 8;
+const FINANCE_VERSION = 9;
 
 function seededNoise(seed, min, max) {
   const raw = Math.sin(Number(seed || 1) * 999) * 10000;

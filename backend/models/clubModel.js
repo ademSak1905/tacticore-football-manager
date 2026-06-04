@@ -21,7 +21,8 @@ async function getByUserId(userId) {
     SELECT c.id, c.user_id, c.team_id, c.currency, COALESCE(t.name, c.name) AS name,
       c.budget, c.salary_budget, c.season_objectives_json, c.season_intro_seen, c.season_summary_seen,
       c.stadium_capacity, c.fans, c.points, c.wins, c.draws, c.losses,
-      c.goals_for, c.goals_against, c.last_match, t.name AS team_name,
+      c.goals_for, c.goals_against, c.last_match, c.fan_satisfaction, c.board_confidence,
+      c.board_status, c.ultimatum_until_day, c.fired, t.name AS team_name,
       t.logo_url, t.city, t.stadium, t.overall AS team_overall,
       t.attack_overall, t.midfield_overall, t.defense_overall, t.goalkeeper_overall,
       t.default_formation, COALESCE(ls.form, '') AS form

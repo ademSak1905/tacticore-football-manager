@@ -11,6 +11,10 @@ function renderAchievement(item) {
   `;
 }
 
+function renderTimeline(items, emptyText, renderer) {
+  return items?.length ? items.map(renderer).join('') : `<div class="empty">${emptyText}</div>`;
+}
+
 async function loadManagerPage() {
   wireShell('manager');
   const session = await requireAuth();
@@ -46,6 +50,32 @@ async function loadManagerPage() {
   byId('managerStats').innerHTML = rows.map(([label, value]) => `
     <article class="stat-card"><span class="muted">${label}</span><strong>${value}</strong></article>
   `).join('');
+
+  const systems = data.careerSystems || {};
+  byId('careerMood').innerHTML = `
+    <article class="timeline-item"><strong>Taraftar memnuniyeti</strong><span>%${Number(systems.fanSatisfaction ?? 65)}</span></article>
+    <article class="timeline-item"><strong>Yonetim guveni</strong><span>${systems.boardStatus || 'Guvende'} - %${Number(systems.boardConfidence ?? 70)}</span></article>
+    ${systems.fired ? '<article class="timeline-item urgent"><strong>Kariyer durumu</strong><span>Bu kulupte gorev bitti. Yeni tekliflerle kariyer devam eder.</span></article>' : ''}
+    ${Number(systems.ultimatumUntilDay || 0) ? `<article class="timeline-item urgent"><strong>Ultimatom</strong><span>Yonetim ${systems.ultimatumUntilDay}. gune kadar toparlanma bekliyor.</span></article>` : ''}
+  `;
+  byId('clubOffers').innerHTML = renderTimeline(systems.clubOffers || [], 'Henuz kulup teklifi yok.', (offer) => `
+    <article class="timeline-item">
+      <strong>${offer.team_name}</strong>
+      <span>OVR ${offer.team_overall || '-'} - ${offer.status}</span>
+    </article>
+  `);
+  byId('sponsorDeals').innerHTML = renderTimeline(systems.sponsorDeals || [], 'Henuz sponsor teklifi yok.', (deal) => `
+    <article class="timeline-item">
+      <strong>${deal.sponsor_name}</strong>
+      <span>${money(deal.income || 0)} + bonus ${money(deal.bonus || 0)} - ${deal.status}</span>
+    </article>
+  `);
+  byId('academyReports').innerHTML = renderTimeline(systems.academyReports || [], 'Akademi raporu gelmedi.', (report) => `
+    <article class="timeline-item">
+      <strong>${report.player_name || 'Genc oyuncu'}</strong>
+      <span>${report.position || '-'} OVR ${report.overall || '-'} / POT ${report.potential || '-'}</span>
+    </article>
+  `);
 
   const achievements = data.achievements || [];
   const locked = [

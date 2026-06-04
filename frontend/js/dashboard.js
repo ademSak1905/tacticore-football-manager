@@ -87,6 +87,9 @@ function renderGeneralDashboard() {
   const stats = [
     ['Bütçe', money(data.club.budget)],
     ['TactiCoins', Number(dashboardCache.coins?.balance || 0).toLocaleString('tr-TR')],
+    ['Bugun', formatSeasonDate(state.current_date, `Gun ${state.current_day}`)],
+    ['Taraftar memnuniyeti', `%${Number(state.club?.fan_satisfaction ?? data.club.fan_satisfaction ?? 65)}`],
+    ['Yonetim guveni', `${state.club?.board_status || data.club.board_status || 'Guvende'} (%${Number(state.club?.board_confidence ?? data.club.board_confidence ?? 70)})`],
     ['Lig sırası', `${data.rank}.`],
     ['Son maç', data.club.last_match || 'Yok'],
     [isDrawNext ? 'Sıradaki olay' : 'Sıradaki rakip', nextOpponent],
@@ -412,8 +415,10 @@ function updateGameState(state, nextOpponent) {
     </article>
   `;
   byId('goMatch').style.display = isMatchDay ? 'inline-flex' : 'none';
-  byId('nextWeek').style.display = isMatchDay ? 'none' : 'inline-flex';
-  byId('nextWeek').disabled = isMatchDay;
+  document.querySelectorAll('.time-advance').forEach((button) => {
+    button.style.display = isMatchDay ? 'none' : 'inline-flex';
+    button.disabled = isMatchDay;
+  });
   byId('dashboardNextSeason')?.addEventListener('click', async () => {
     const result = await api.request('/api/game/next-season', { method: 'POST' });
     showXpToast(result.xpAward);
@@ -421,7 +426,7 @@ function updateGameState(state, nextOpponent) {
   });
 }
 
-async function advance(days) {
+async function advance(days, forcedTargetDay = null) {
   if (isAdvancingWeek) return;
   isAdvancingWeek = true;
   const nextWeekButton = byId('nextWeek');
@@ -436,7 +441,7 @@ async function advance(days) {
   }, 8000);
   try {
     const previousDay = Number(dashboardCache?.state?.current_day || 0);
-    const targetDay = Number(dashboardCache?.state?.next_event_day || dashboardCache?.state?.next_fixture_day || 0);
+    const targetDay = Number(forcedTargetDay || dashboardCache?.state?.next_event_day || dashboardCache?.state?.next_fixture_day || 0);
     let state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days, targetDay }) });
     for (let retry = 0; retry < 2 && Number(state.current_day || 0) <= previousDay && state.next_match_competition_type !== 'season_end'; retry += 1) {
       state = await api.request('/api/game/advance', { method: 'POST', body: JSON.stringify({ days, targetDay }) });
@@ -511,7 +516,10 @@ document.addEventListener('click', (event) => {
   if (tab) setDashboardTab(tab.dataset.dashboardTab);
 });
 
-byId('nextWeek')?.addEventListener('click', () => advance(7));
+byId('nextDay')?.addEventListener('click', () => advance(1));
+byId('next3Days')?.addEventListener('click', () => advance(3));
+byId('goMatchDay')?.addEventListener('click', () => advance(7, dashboardCache?.state?.next_fixture_day || dashboardCache?.state?.next_event_day));
+byId('nextWeek')?.addEventListener('click', () => advance(7, dashboardCache?.state?.next_event_day || dashboardCache?.state?.next_fixture_day));
 byId('currencySelect')?.addEventListener('change', async () => {
   const currency = byId('currencySelect').value;
   localStorage.setItem('tacticoreCurrency', currency);

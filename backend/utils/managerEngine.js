@@ -231,6 +231,29 @@ async function getManagerSummary(userId) {
   const losses = Number(leagueStats?.losses || 0) + Number(euroStats?.losses || 0);
   const achievements = await all('SELECT * FROM manager_achievements WHERE user_id = ? ORDER BY unlocked_at DESC', [userId]);
   const events = await all('SELECT * FROM manager_xp_events WHERE user_id = ? ORDER BY id DESC LIMIT 8', [userId]);
+  const clubOffers = await all(`
+    SELECT co.*, t.name AS team_name, t.overall AS team_overall
+    FROM club_offers co
+    JOIN teams t ON t.id = co.from_team_id
+    WHERE co.user_id = ?
+    ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END, co.id DESC
+    LIMIT 8
+  `, [userId]);
+  const sponsorDeals = await all(`
+    SELECT *
+    FROM sponsor_deals
+    WHERE user_id = ?
+    ORDER BY CASE status WHEN 'offer' THEN 0 WHEN 'active' THEN 1 ELSE 2 END, id DESC
+    LIMIT 6
+  `, [userId]);
+  const academyReports = await all(`
+    SELECT ar.*, p.name AS player_name, p.position, p.overall, p.potential
+    FROM academy_reports ar
+    LEFT JOIN players p ON p.id = ar.player_id
+    WHERE ar.user_id = ?
+    ORDER BY ar.report_day DESC, ar.id DESC
+    LIMIT 6
+  `, [userId]);
   return {
     user,
     profile,
@@ -244,6 +267,16 @@ async function getManagerSummary(userId) {
       trophies: achievements.filter((item) => item.achievement_key.includes('championship') || item.achievement_key.includes('cup')).length
     },
     achievements,
+    careerSystems: {
+      fanSatisfaction: club.fan_satisfaction ?? 65,
+      boardConfidence: club.board_confidence ?? 70,
+      boardStatus: club.board_status || 'Guvende',
+      fired: Boolean(club.fired),
+      ultimatumUntilDay: club.ultimatum_until_day || 0,
+      clubOffers,
+      sponsorDeals,
+      academyReports
+    },
     history: [
       { title: `${club.name} kariyeri`, description: `${user?.username || profile.managerName} teknik direktör olarak göreve başladı.` },
       ...events.map((event) => ({ title: `+${event.amount} XP`, description: event.reason }))

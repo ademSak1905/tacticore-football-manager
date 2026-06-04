@@ -368,6 +368,51 @@ async function createSchema() {
   `);
 
   await run(`
+    CREATE TABLE IF NOT EXISTS club_offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      from_team_id INTEGER NOT NULL,
+      target_club_id INTEGER,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      offered_day INTEGER NOT NULL DEFAULT 1,
+      expires_day INTEGER NOT NULL DEFAULT 14,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (from_team_id) REFERENCES teams(id)
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS sponsor_deals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      sponsor_name TEXT NOT NULL,
+      income INTEGER NOT NULL DEFAULT 0,
+      bonus INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'offer',
+      start_day INTEGER NOT NULL DEFAULT 1,
+      end_day INTEGER NOT NULL DEFAULT 305,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS academy_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      player_id INTEGER,
+      report_day INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'reported',
+      summary TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (player_id) REFERENCES players(id)
+    )
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS teams (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
@@ -414,6 +459,11 @@ async function createSchema() {
       goals_for INTEGER NOT NULL DEFAULT 0,
       goals_against INTEGER NOT NULL DEFAULT 0,
       last_match TEXT,
+      fan_satisfaction INTEGER NOT NULL DEFAULT 65,
+      board_confidence INTEGER NOT NULL DEFAULT 70,
+      board_status TEXT NOT NULL DEFAULT 'Güvende',
+      ultimatum_until_day INTEGER NOT NULL DEFAULT 0,
+      fired INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (team_id) REFERENCES teams(id)
     )
@@ -448,6 +498,8 @@ async function createSchema() {
       transfer_status TEXT NOT NULL DEFAULT 'normal',
       loan_available INTEGER NOT NULL DEFAULT 0,
       injured INTEGER NOT NULL DEFAULT 0,
+      injury_type TEXT NOT NULL DEFAULT '',
+      injury_return_day INTEGER NOT NULL DEFAULT 0,
       image_url TEXT,
       is_starting_eleven INTEGER NOT NULL DEFAULT 0,
       lineup_role TEXT NOT NULL DEFAULT 'reserve',
@@ -771,6 +823,7 @@ async function createSchema() {
   await ensureColumn('users', 'tacticoins', 'INTEGER NOT NULL DEFAULT 100');
   await ensureColumn('spy_reports', 'status', "TEXT NOT NULL DEFAULT 'completed'");
   await ensureColumn('spy_reports', 'reveal_at', "TEXT NOT NULL DEFAULT ''");
+  await ensureColumn('spy_reports', 'reveal_day', 'INTEGER NOT NULL DEFAULT 0');
   await run("UPDATE spy_reports SET reveal_at = created_at WHERE reveal_at = '' OR reveal_at IS NULL");
   await ensureColumn('players', 'team_id', 'INTEGER');
   await ensureColumn('players', 'nationality', "TEXT NOT NULL DEFAULT 'Türkiye'");
@@ -787,6 +840,8 @@ async function createSchema() {
   await ensureColumn('players', 'playing_time', 'INTEGER NOT NULL DEFAULT 50');
   await ensureColumn('players', 'transfer_status', "TEXT NOT NULL DEFAULT 'normal'");
   await ensureColumn('players', 'loan_available', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('players', 'injury_type', "TEXT NOT NULL DEFAULT ''");
+  await ensureColumn('players', 'injury_return_day', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('transfer_interest', 'user_id', 'INTEGER');
   await ensureColumn('transfer_interest', 'response_week', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('transfer_interest', 'response_day', 'INTEGER NOT NULL DEFAULT 0');
@@ -842,6 +897,11 @@ async function createSchema() {
   await ensureColumn('clubs', 'season_objectives_json', "TEXT NOT NULL DEFAULT '{}'");
   await ensureColumn('clubs', 'season_intro_seen', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('clubs', 'season_summary_seen', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('clubs', 'fan_satisfaction', 'INTEGER NOT NULL DEFAULT 65');
+  await ensureColumn('clubs', 'board_confidence', 'INTEGER NOT NULL DEFAULT 70');
+  await ensureColumn('clubs', 'board_status', "TEXT NOT NULL DEFAULT 'Güvende'");
+  await ensureColumn('clubs', 'ultimatum_until_day', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('clubs', 'fired', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('european_entries', 'user_id', 'INTEGER');
   await ensureColumn('european_matches', 'user_id', 'INTEGER');
   await ensureColumn('european_standings', 'user_id', 'INTEGER');

@@ -1,6 +1,6 @@
 const express = require('express');
 const clubModel = require('../models/clubModel');
-const { all } = require('../database');
+const { all, getCareerState } = require('../database');
 const { getBalance } = require('../utils/coinManager');
 const { listSpyTeams, refreshReadyReports, sendSpy } = require('../utils/spyEngine');
 
@@ -11,9 +11,12 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function normalizeReport(row) {
+function normalizeReport(row, currentDay = 0) {
   const revealAt = row.reveal_at || row.created_at;
-  const ready = !revealAt || new Date(revealAt).getTime() <= Date.now() || row.status === 'completed';
+  const revealDay = Number(row.reveal_day || 0);
+  const ready = row.status === 'completed'
+    || (revealDay > 0 && revealDay <= Number(currentDay || 0))
+    || (!revealDay && (!revealAt || new Date(revealAt).getTime() <= Date.now()));
   if (!ready) {
     return {
       ...row,
@@ -21,6 +24,8 @@ function normalizeReport(row) {
       success: null,
       isReady: false,
       reveal_at: revealAt,
+      reveal_day: revealDay,
+      days_left: revealDay ? Math.max(1, revealDay - Number(currentDay || 0)) : null,
       report: {
         teamName: row.target_team_name || 'Rakip',
         message: 'Casus ekibi rakip tesise sızmaya çalışıyor.'
@@ -43,7 +48,8 @@ router.get('/spy/teams', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
     const data = await listSpyTeams(req.session.userId, club.team_id);
-    res.json({ ...data, recentReports: data.recentReports.map(normalizeReport), balance: await getBalance(req.session.userId) });
+    const state = await getCareerState(req.session.userId);
+    res.json({ ...data, recentReports: data.recentReports.map((row) => normalizeReport(row, state.current_day)), balance: await getBalance(req.session.userId) });
   } catch (error) {
     next(error);
   }
@@ -53,7 +59,8 @@ router.post('/spy/send', async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
     const report = await sendSpy(req.session.userId, club.team_id, Number(req.body.teamId), req.body.spyType || 'normal');
-    res.json({ report: normalizeReport(report), balance: await getBalance(req.session.userId) });
+    const state = await getCareerState(req.session.userId);
+    res.json({ report: normalizeReport(report, state.current_day), balance: await getBalance(req.session.userId) });
   } catch (error) {
     next(error);
   }
@@ -62,6 +69,7 @@ router.post('/spy/send', async (req, res, next) => {
 router.get('/spy/reports', async (req, res, next) => {
   try {
     await refreshReadyReports(req.session.userId);
+    const state = await getCareerState(req.session.userId);
     const rows = await all(`
       SELECT sr.*, t.name AS target_team_name
       FROM spy_reports sr
@@ -70,7 +78,7 @@ router.get('/spy/reports', async (req, res, next) => {
       ORDER BY sr.created_at DESC
       LIMIT 20
     `, [req.session.userId]);
-    res.json(rows.map(normalizeReport));
+    res.json(rows.map((row) => normalizeReport(row, state.current_day)));
   } catch (error) {
     next(error);
   }

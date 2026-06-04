@@ -53,6 +53,18 @@ function actionButtons(message) {
   if (message.action_type === 'scout_review') {
     return '<button class="btn green" data-action="review">İncele</button>';
   }
+  if (message.action_type === 'club_offer') {
+    return `
+      <button class="btn green" data-action="accept">Teklifi Kabul Et</button>
+      <button class="btn danger" data-action="reject">Reddet</button>
+    `;
+  }
+  if (message.action_type === 'sponsor_offer') {
+    return `
+      <button class="btn green" data-action="accept">Sponsoru Kabul Et</button>
+      <button class="btn danger" data-action="reject">Reddet</button>
+    `;
+  }
   return '<button class="btn secondary" data-action="read">Okundu Yap</button>';
 }
 
