@@ -2,6 +2,7 @@
 const clubModel = require('../models/clubModel');
 const playerModel = require('../models/playerModel');
 const { run } = require('../database');
+const { calculateBaseMarketValue, calculatePlayerSalary } = require('../utils/financeEngine');
 
 const router = express.Router();
 
@@ -14,7 +15,10 @@ router.get('/players', requireAuth, async (req, res, next) => {
   try {
     const club = await clubModel.getByUserId(req.session.userId);
     const players = await playerModel.getClubPlayers(club.id);
-    res.json(players);
+    res.json(players.map((player) => {
+      const value = calculateBaseMarketValue(player);
+      return { ...player, market_value: value, base_market_value: value, salary: calculatePlayerSalary(player) };
+    }));
   } catch (error) {
     next(error);
   }

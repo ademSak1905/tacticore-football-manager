@@ -50,19 +50,19 @@ function setMessage(text, type = 'info') {
 
 const SHELL_NAV_ITEMS = [
   ['dashboard', '/dashboard.html', 'Dashboard'],
-  ['manager', '/manager.html', 'Menajerim'],
-  ['messages', '/messages.html', 'Mesajlar'],
-  ['squad', '/squad.html', 'Kadro'],
+  ['squad', '/squad.html', 'Takım'],
+  ['calendar', '/calendar.html', 'Maçlar'],
+  ['transfers', '/transfers.html', 'Transferler'],
+  ['training', '/training.html', 'Tesisler'],
   ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
+  ['league', '/league.html', 'Ligler'],
+  ['manager', '/manager.html', 'Menajer'],
+  ['daily-tasks', '/daily-tasks.html', 'Görevler'],
   ['spy', '/spy.html', 'Casus'],
-  ['daily-tasks', '/daily-tasks.html', 'Günlük Görevler'],
+  ['messages', '/messages.html', 'Mesajlar'],
   ['market', '/market.html', 'Market'],
-  ['calendar', '/calendar.html', 'Takvim'],
-  ['social', '/social.html', 'Sosyal Medya'],
-  ['league', '/league.html', 'Lig'],
-  ['transfers', '/transfers.html', 'Transfer'],
-  ['training', '/training.html', 'Antrenman'],
-  ['economy', '/economy.html', 'Ekonomi']
+  ['economy', '/economy.html', 'Ekonomi'],
+  ['social', '/social.html', 'Sosyal Medya']
 ];
 
 function managerXpText(manager) {
@@ -83,7 +83,22 @@ function updateManagerWidget(manager) {
 function updateCoinWidget(balance) {
   const widget = byId('coinWidget');
   if (!widget) return;
-  widget.innerHTML = `<span>TactiCoins</span><strong>${Number(balance || 0).toLocaleString('tr-TR')}</strong>`;
+  widget.innerHTML = `<span class="shell-coin-icon"></span><strong>${Number(balance || 0).toLocaleString('tr-TR')}</strong><span class="shell-plus">+</span>`;
+}
+
+function updateBudgetWidget(club) {
+  const widget = byId('budgetWidget');
+  if (!widget || !club) return;
+  widget.innerHTML = `<span class="shell-money-icon"></span><strong>${money(club.budget || 0)}</strong>`;
+}
+
+function updateDateWidget(state) {
+  const widget = byId('dateWidget');
+  if (!widget || !state) return;
+  const date = state.current_date ? new Date(`${String(state.current_date).slice(0, 10)}T12:00:00`) : null;
+  const dateText = date ? date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : `Gün ${state.current_day || 1}`;
+  const dayText = date ? date.toLocaleDateString('tr-TR', { weekday: 'long' }) : '';
+  widget.innerHTML = `<span class="shell-calendar-icon"></span><strong>${dateText}</strong><small>${dayText}</small>`;
 }
 
 function showXpToast(award) {
@@ -219,9 +234,11 @@ async function requireAuth() {
     const badge = byId('userBadge');
     if (badge && session.club) badge.textContent = session.club.name;
     localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
+    updateBudgetWidget(session.club);
     updateManagerWidget(session.manager);
     refreshMessageBadge();
     refreshCoinWidget();
+    api.request('/api/game/state').then(updateDateWidget).catch(() => {});
     return session;
   } catch (error) {
     window.location.href = '/login.html';
@@ -237,12 +254,30 @@ function wireShell(activePage) {
   const topbar = document.querySelector('.topbar');
   if (topbar && !byId('managerXpWidget')) {
     const logout = byId('logoutButton');
+    const budget = document.createElement('a');
+    budget.id = 'budgetWidget';
+    budget.className = 'budget-widget';
+    budget.href = '/economy.html';
+    budget.innerHTML = '<span class="shell-money-icon"></span><strong>0 EUR</strong>';
+    topbar.insertBefore(budget, logout || null);
     const coin = document.createElement('a');
     coin.id = 'coinWidget';
     coin.className = 'coin-widget';
     coin.href = '/market.html';
-    coin.innerHTML = '<span>TactiCoins</span><strong>0</strong>';
+    coin.innerHTML = '<span class="shell-coin-icon"></span><strong>0</strong><span class="shell-plus">+</span>';
     topbar.insertBefore(coin, logout || null);
+    const date = document.createElement('a');
+    date.id = 'dateWidget';
+    date.className = 'date-widget';
+    date.href = '/calendar.html';
+    date.innerHTML = '<span class="shell-calendar-icon"></span><strong>Takvim</strong><small>Hazırlanıyor</small>';
+    topbar.insertBefore(date, logout || null);
+    const continueButton = document.createElement('a');
+    continueButton.id = 'continueWidget';
+    continueButton.className = 'continue-widget btn green';
+    continueButton.href = '/dashboard.html';
+    continueButton.textContent = 'DEVAM ET';
+    topbar.insertBefore(continueButton, logout || null);
     const widget = document.createElement('a');
     widget.id = 'managerXpWidget';
     widget.className = 'manager-xp-widget';
@@ -253,12 +288,30 @@ function wireShell(activePage) {
   } else if (topbar) {
     if (!byId('coinWidget')) {
       const logout = byId('logoutButton');
+      const budget = document.createElement('a');
+      budget.id = 'budgetWidget';
+      budget.className = 'budget-widget';
+      budget.href = '/economy.html';
+      budget.innerHTML = '<span class="shell-money-icon"></span><strong>0 EUR</strong>';
+      topbar.insertBefore(budget, logout || null);
       const coin = document.createElement('a');
       coin.id = 'coinWidget';
       coin.className = 'coin-widget';
       coin.href = '/market.html';
-      coin.innerHTML = '<span>TactiCoins</span><strong>0</strong>';
+      coin.innerHTML = '<span class="shell-coin-icon"></span><strong>0</strong><span class="shell-plus">+</span>';
       topbar.insertBefore(coin, byId('managerXpWidget') || logout || null);
+      const date = document.createElement('a');
+      date.id = 'dateWidget';
+      date.className = 'date-widget';
+      date.href = '/calendar.html';
+      date.innerHTML = '<span class="shell-calendar-icon"></span><strong>Takvim</strong><small>Hazırlanıyor</small>';
+      topbar.insertBefore(date, logout || null);
+      const continueButton = document.createElement('a');
+      continueButton.id = 'continueWidget';
+      continueButton.className = 'continue-widget btn green';
+      continueButton.href = '/dashboard.html';
+      continueButton.textContent = 'DEVAM ET';
+      topbar.insertBefore(continueButton, logout || null);
     }
     wireShellLeaderboard(topbar, byId('logoutButton'));
   }

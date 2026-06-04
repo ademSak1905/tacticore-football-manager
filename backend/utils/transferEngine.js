@@ -2,6 +2,7 @@ const { all, get, run, getCareerState } = require('../database');
 const { createTransferStory } = require('./feedEngine');
 const {
   calculateBaseMarketValue,
+  calculatePlayerSalary,
   minimumWageForPlayer,
   normalizeInternalMoney,
   roundInternalEuro,
@@ -155,9 +156,12 @@ async function dynamicMarket(clubOrTeamId, filters = {}) {
     const interest = clamp(Math.round((Number(player.potential || 70) - 62) * 1.3 + (100 - Number(player.happiness || 70)) * 0.22 + (Number(player.overall || 65) - 65) * 0.8), 5, 96);
     const canBuy = window.isOpen || category === 'free';
     const pendingOffer = pendingByPlayer.get(Number(player.id)) || null;
+    const baseMarketValue = calculateBaseMarketValue(player);
     return {
       ...player,
-      base_market_value: player.base_market_value || calculateBaseMarketValue(player),
+      base_market_value: baseMarketValue,
+      market_value: baseMarketValue,
+      salary: calculatePlayerSalary(player),
       category,
       category_label: CATEGORY_LABELS[category],
       asking_price: price,

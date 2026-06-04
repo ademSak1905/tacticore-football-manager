@@ -22,6 +22,16 @@ function formatSeasonDate(value, fallback) {
   });
 }
 
+function formatWeekday(value) {
+  if (!value) return 'Hazirlaniyor';
+  return new Date(`${String(value).slice(0, 10)}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long' });
+}
+
+function daysBetweenSeasonDates(currentDay, targetDay) {
+  if (!targetDay) return 0;
+  return Math.max(0, Number(targetDay || 0) - Number(currentDay || 0));
+}
+
 function setDashboardTab(tab) {
   activeDashboardTab = tab;
   console.log('DASHBOARD TAB CHECK', { activeDashboardTab });
@@ -128,6 +138,8 @@ function renderGeneralDashboard() {
 function renderDashboardInbox() {
   const card = byId('dashboardInboxCard');
   if (!card) return;
+  card.hidden = true;
+  return;
   const inbox = dashboardCache?.inbox;
   const messages = (inbox?.messages || []).slice(0, 3);
   if (!messages.length) {
@@ -368,15 +380,105 @@ function renderEuropeWeek(state, europe) {
 }
 
 function renderDashboardPitch(lineup = []) {
-  if (!lineup.length) {
-    byId('dashboardPitch').innerHTML = '<div class="empty dashboard-loading-note">İlk 11 yükleniyor...</div>';
-    return;
-  }
-  byId('dashboardPitch').innerHTML = lineup.map((row) => `
-    <div class="dash-player" style="left:${row.x_position}%;top:${row.y_position}%">
-      <span>${row.overall}</span><strong>${row.name.split(' ').slice(-1)[0]}</strong>
-    </div>
-  `).join('');
+  const cache = dashboardCache || {};
+  const data = cache.data || {};
+  const club = data.club || {};
+  const league = cache.league || [];
+  const calendar = cache.calendar || {};
+  const inbox = cache.inbox || {};
+  const myTeamId = club.team_id;
+  const tableRows = league.slice(0, 7);
+  const recent = (calendar.recentMatches || calendar.last5Matches || calendar.lastMatches || []).slice(0, 5);
+  const messages = (inbox.messages || []).slice(0, 3);
+  const income = Number(club.season_income || club.income || (club.budget || 0) * 1.6 || 0);
+  const expenses = Number(club.season_expenses || club.expenses || club.salary_budget || 0);
+  const profit = Math.max(0, income - expenses);
+  const fan = Number(cache.state?.club?.fan_satisfaction ?? club.fan_satisfaction ?? 65);
+  const board = Number(cache.state?.club?.board_confidence ?? club.board_confidence ?? 70);
+  const incoming = Number(club.incoming_transfers || 0);
+  const outgoing = Number(club.outgoing_transfers || 0);
+
+  byId('dashboardPitch').innerHTML = `
+    <section class="dashboard-board-grid">
+      <article class="dashboard-main-card league-card">
+        <h3>Lig durumu</h3>
+        <table class="dashboard-mini-table">
+          <thead><tr><th>#</th><th>Takim</th><th>O</th><th>G</th><th>B</th><th>M</th><th>P</th></tr></thead>
+          <tbody>
+            ${tableRows.map((team, index) => `
+              <tr class="${team.id === myTeamId ? 'my-team-row' : ''}">
+                <td>${index + 1}</td>
+                <td><img class="team-logo" src="${team.logo_url || '/assets/logos/placeholder.svg'}" alt="">${team.name}</td>
+                <td>${team.played || 0}</td><td>${team.wins || 0}</td><td>${team.draws || 0}</td><td>${team.losses || 0}</td><td>${team.points || 0}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <a class="dashboard-small-link" href="/league.html">Lig tablosunu goruntule</a>
+      </article>
+      <article class="dashboard-main-card finance-card">
+        <h3>Kulup finansi</h3>
+        <div class="dashboard-finance-ring">
+          <span></span>
+          <div>
+            <p><i class="green-dot"></i>Gelir <strong>${money(income)}</strong></p>
+            <p><i class="blue-dot"></i>Gider <strong>${money(expenses)}</strong></p>
+            <p><i class="yellow-dot"></i>Kar <strong>${money(profit)}</strong></p>
+          </div>
+        </div>
+        <a class="dashboard-small-link" href="/economy.html">Finansal durumu goruntule</a>
+      </article>
+      <article class="dashboard-main-card results-card">
+        <h3>Son sonuclar</h3>
+        <div class="dashboard-result-list">
+          ${recent.length ? recent.map((match) => `
+            <div>
+              <span>${match.home || match.home_name || club.name}</span>
+              <strong>${match.home_score ?? match.score_home ?? '-'} - ${match.away_score ?? match.score_away ?? '-'}</strong>
+              <span>${match.away || match.away_name || '-'}</span>
+            </div>
+          `).join('') : '<p class="muted">Henuz oynanmis mac yok.</p>'}
+        </div>
+        <a class="dashboard-small-link" href="/calendar.html">Tum sonuclari gor</a>
+      </article>
+      <article class="dashboard-main-card quick-card">
+        <h3>Hizli menu</h3>
+        <div class="dashboard-quick-list">
+          <a href="/transfers.html">Transfer Merkezi</a>
+          <a href="/calendar.html">Takvim</a>
+          <a href="/training.html">Antrenman</a>
+          <a href="/economy.html">Ekonomi</a>
+        </div>
+        <h3>Bildirimler</h3>
+        <div class="dashboard-notice-list">
+          ${messages.length ? messages.map((item) => `
+            <a href="/messages.html"><strong>${item.title}</strong><span>${item.summary || 'Yeni bildirim'}</span></a>
+          `).join('') : '<p class="muted">Yeni bildirim yok.</p>'}
+        </div>
+      </article>
+      <article class="dashboard-main-card transfer-status-card">
+        <h3>Transfer durumu</h3>
+        <div class="dashboard-status-icons">
+          <div><strong>${incoming}</strong><span>Gelen oyuncu</span></div>
+          <div><strong>${outgoing}</strong><span>Giden oyuncu</span></div>
+          <div><strong>${money(club.budget || 0)}</strong><span>Transfer butcesi</span></div>
+        </div>
+        <a class="dashboard-small-link" href="/transfers.html">Transfer merkezine git</a>
+      </article>
+      <article class="dashboard-main-card mood-card">
+        <h3>Taraftar memnuniyeti</h3>
+        <div class="dashboard-percent"><strong>${fan}%</strong><span style="width:${Math.max(0, Math.min(100, fan))}%"></span></div>
+        <p class="muted">Taraftarlar kulubun genel durumundan memnun.</p>
+        <a class="dashboard-small-link" href="/manager.html">Detaylari goruntule</a>
+      </article>
+      <article class="dashboard-main-card board-card">
+        <h3>Yonetim guveni</h3>
+        <div class="dashboard-percent"><strong>${board}%</strong><span style="width:${Math.max(0, Math.min(100, board))}%"></span></div>
+        <p class="muted">${cache.state?.club?.board_status || club.board_status || 'Yonetim size guveniyor.'}</p>
+        <a class="dashboard-small-link" href="/manager.html">Detaylari goruntule</a>
+      </article>
+    </section>
+  `;
 }
 
 function updateGameState(state, nextOpponent) {
@@ -399,6 +501,8 @@ function updateGameState(state, nextOpponent) {
     ? state.next_european_match?.match_date
     : (state.next_match_date || state.next_fixture_date);
   const nextMatch = formatSeasonDate(nextMatchSource, `Gun ${nextMatchDay}`);
+  const daysLeft = daysBetweenSeasonDates(state.current_day, nextMatchDay);
+  const weekday = formatWeekday(state.current_date);
   const isMatchDay = !isDrawNext && state.matchAvailable;
   const nextMatchTitle = byId('nextMatchTitle');
   if (nextMatchTitle) nextMatchTitle.textContent = isDrawNext ? 'Sıradaki olay' : 'Sıradaki maç';
@@ -407,10 +511,15 @@ function updateGameState(state, nextOpponent) {
     : seasonEnded ? `${today}. Sezon bitti, yeni sezona gecmelisin.`
     : `${today}. ${isMatchDay ? 'Mac gunu geldi.' : `${isDrawNext ? 'Siradaki olay' : 'Siradaki mac'}: ${nextMatch}.`}`;
   byId('nextMatchCard').innerHTML = `
-    <article class="event">
-      <strong>${seasonEnded ? 'Sezon tamamlandi' : isDrawNext ? 'Şampiyonlar Ligi kurası' : competitionLabel(effectiveCompetitionType)}</strong><br>
-      ${seasonEnded ? 'Sezon ozeti hazir. Yeni sezona gecebilirsin.' : isDrawNext ? (drawNotice?.label || 'Rakipler kura gunu aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}<br>
-      <span class="muted">${isDrawNext ? formatSeasonDate(drawNotice?.date || state.next_draw_date || state.next_event_date, `Gun ${drawNotice?.day || state.next_draw_day || state.next_event_day}`) : nextMatch}</span>
+    <article class="event dashboard-time-card">
+      <strong>${seasonEnded ? 'Sezon tamamlandi' : isDrawNext ? 'Sampiyonlar Ligi kurasi' : competitionLabel(effectiveCompetitionType)}</strong>
+      <span>${seasonEnded ? 'Sezon ozeti hazir. Yeni sezona gecebilirsin.' : isDrawNext ? (drawNotice?.label || 'Rakipler kura gunu aciklanacak') : (nextOpponent || 'Rakip hazirlaniyor.')}</span>
+      <div class="dashboard-time-grid">
+        <div><small>Bugun</small><b>${today}</b></div>
+        <div><small>Gun</small><b>${weekday}</b></div>
+        <div><small>${isDrawNext ? 'Olay tarihi' : 'Mac tarihi'}</small><b>${isDrawNext ? formatSeasonDate(drawNotice?.date || state.next_draw_date || state.next_event_date, `Gun ${drawNotice?.day || state.next_draw_day || state.next_event_day}`) : nextMatch}</b></div>
+        <div><small>Kalan</small><b>${seasonEnded ? '-' : `${daysLeft} gun`}</b></div>
+      </div>
       ${seasonEnded ? '<br><button class="btn green" id="dashboardNextSeason" type="button">Yeni Sezona Gec</button>' : ''}
     </article>
   `;

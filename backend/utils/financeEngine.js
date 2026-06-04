@@ -147,9 +147,11 @@ function marketAnchor(player = {}) {
 
 function calculateBaseMarketValue(player = {}, options = {}) {
   const storedBase = Number(player.base_market_value || 0);
-  if (!options.ignoreStored && storedBase > 0) return roundInternalEuro(normalizeInternalMoney(storedBase), 50000);
-
   const anchor = marketAnchor(player);
+  if (!options.ignoreStored && storedBase > 0) {
+    const stored = normalizeInternalMoney(storedBase);
+    return roundInternalEuro(Math.min(stored, anchor * 1.12), 50000);
+  }
   const age = Number(player.age || 25);
   const overall = Number(player.overall || 65);
   const potential = Math.max(overall, Number(player.potential || overall));
@@ -171,8 +173,22 @@ function rebalancePlayerMarketValue(player = {}) {
   return calculateBaseMarketValue(player, { ignoreStored: true });
 }
 
+function calculatePlayerSalary(player = {}) {
+  const stored = normalizeInternalMoney(player.salary || 0, 25000000);
+  const base = calculateBaseMarketValue(player);
+  const overall = Number(player.overall || 65);
+  let rate = 0.045;
+  if (overall >= 86) rate = 0.095;
+  else if (overall >= 82) rate = 0.078;
+  else if (overall >= 78) rate = 0.062;
+  else if (overall >= 74) rate = 0.05;
+  const target = roundInternalEuro(base * rate, 50000);
+  if (!stored) return target;
+  return roundInternalEuro(Math.min(stored, target * 1.25), 50000);
+}
+
 function minimumWageForPlayer(player = {}, buyerTeam = {}) {
-  const current = normalizeInternalMoney(player.salary || 0, 25000000);
+  const current = calculatePlayerSalary(player);
   const prestige = Number(buyerTeam.overall || buyerTeam.team_overall || 70);
   const age = Number(player.age || 25);
   const prestigeFactor = prestige >= 82 ? 1.14 : prestige >= 78 ? 1.08 : 1;
@@ -187,6 +203,7 @@ module.exports = {
   clubSalaryBudget,
   calculateBaseMarketValue,
   rebalancePlayerMarketValue,
+  calculatePlayerSalary,
   minimumWageForPlayer,
   normalizeInternalMoney,
   roundInternalEuro,

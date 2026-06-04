@@ -362,6 +362,701 @@ select {
   filter: drop-shadow(0 0 8px rgba(77, 158, 255, 0.55));
 }
 
+/* 2026-06-05 image based shell, dashboard and transfer refresh */
+:root {
+  --tc-bg: #06111d;
+  --tc-panel: #0b1724;
+  --tc-panel-2: #0e2235;
+  --tc-border: rgba(116, 143, 176, 0.22);
+  --tc-green: #31c952;
+  --tc-green-2: #1d7f31;
+  --tc-yellow: #ffd736;
+  --tc-text: #f4f8ff;
+  --tc-muted: #b8c5d8;
+}
+
+body {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(49, 201, 82, 0.12), transparent 24%),
+    radial-gradient(circle at 12% 22%, rgba(30, 105, 164, 0.18), transparent 34%),
+    linear-gradient(180deg, #08101a 0%, #07111d 45%, #05101b 100%);
+  color: var(--tc-text);
+}
+
+.topbar {
+  min-height: 92px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--tc-border);
+  background: rgba(7, 14, 23, 0.94);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  gap: 16px;
+}
+
+.brand {
+  margin-right: auto;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(180deg, #53d33c, #1e7d2d);
+  box-shadow: 0 0 24px rgba(54, 211, 95, 0.42);
+}
+
+.layout {
+  grid-template-columns: 230px minmax(0, 1fr);
+}
+
+.sidebar {
+  width: 230px;
+  padding: 26px 18px;
+  border-right: 1px solid var(--tc-border);
+  background:
+    linear-gradient(180deg, rgba(12, 22, 34, 0.96), rgba(8, 16, 26, 0.98)),
+    radial-gradient(circle at 80% 20%, rgba(58, 185, 86, 0.08), transparent 30%);
+}
+
+.nav {
+  gap: 10px;
+}
+
+.nav a[data-page] {
+  min-height: 56px;
+  padding: 12px 14px;
+  border-radius: 0;
+  color: #e8eef7;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.nav a[data-page]::before {
+  content: "";
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  background: linear-gradient(180deg, #f9fbff, #bdc8d6);
+  -webkit-mask: var(--nav-icon) center / 28px 28px no-repeat;
+  mask: var(--nav-icon) center / 28px 28px no-repeat;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.34));
+}
+
+.nav a[data-page]:hover,
+.nav a[data-page].active {
+  color: #ffffff;
+  border-color: rgba(49, 201, 82, 0.35);
+  border-right: 4px solid var(--tc-green);
+  background: linear-gradient(90deg, rgba(49, 201, 82, 0.22), rgba(49, 201, 82, 0.04));
+}
+
+.nav a[data-page].active::before {
+  background: linear-gradient(180deg, #65ff80, #28c64e);
+}
+
+.content {
+  width: min(1390px, calc(100vw - 280px));
+  padding: 28px 24px 44px;
+}
+
+.card,
+.stat-card,
+.event,
+.transfer-wide-card,
+.dashboard-main-card {
+  border: 1px solid var(--tc-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(12, 28, 45, 0.95), rgba(7, 16, 27, 0.98)),
+    radial-gradient(circle at 20% 0%, rgba(45, 125, 197, 0.18), transparent 35%);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+
+.btn {
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.btn.green,
+.continue-widget {
+  color: #ffffff;
+  background: linear-gradient(180deg, #42c84d, #21832e);
+  border-color: rgba(91, 234, 103, 0.45);
+}
+
+.btn:not(.green):not(.danger).active,
+.dashboard-tabs .btn.active,
+#marketTab:not(.secondary),
+#sellTab:not(.secondary) {
+  color: #07111d;
+  background: linear-gradient(180deg, #ffe055, #ffc928);
+  border-color: rgba(255, 223, 65, 0.8);
+}
+
+.budget-widget,
+.coin-widget,
+.date-widget,
+.manager-xp-widget,
+.shell-leaderboard .leaderboard-toggle {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  color: #f5f8ff;
+  text-decoration: none;
+  border: 1px solid var(--tc-border);
+  border-radius: 8px;
+  background: rgba(10, 20, 32, 0.94);
+}
+
+.budget-widget strong,
+.coin-widget strong,
+.date-widget strong {
+  white-space: nowrap;
+}
+
+.date-widget {
+  min-width: 180px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+}
+
+.date-widget small {
+  grid-column: 2;
+  color: var(--tc-muted);
+}
+
+.shell-money-icon,
+.shell-coin-icon,
+.shell-calendar-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+}
+
+.shell-money-icon {
+  background: radial-gradient(circle at 35% 35%, #7dff8d, #269f33 60%, #0d5e22);
+}
+
+.shell-coin-icon {
+  background: radial-gradient(circle at 35% 35%, #fff06b, #e3a90c 62%, #a66d06);
+}
+
+.shell-calendar-icon {
+  border-radius: 8px;
+  background: linear-gradient(180deg, #627083, #232f3d);
+}
+
+.shell-plus {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #05111c;
+  background: #79c66d;
+  font-weight: 900;
+}
+
+.continue-widget {
+  min-width: 128px;
+  justify-content: center;
+}
+
+body[data-shell-page="transfers"] .page-title,
+body[data-shell-page="dashboard"] .page-title {
+  align-items: center;
+}
+
+body[data-shell-page="transfers"] .page-title h1,
+body[data-shell-page="dashboard"] .page-title h1 {
+  font-size: clamp(28px, 3vw, 42px);
+  text-transform: none;
+}
+
+.transfer-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) minmax(160px, 1fr) minmax(200px, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  margin: 22px 0;
+  padding: 22px;
+}
+
+.transfer-toolbar .actions {
+  align-items: center;
+  gap: 10px;
+}
+
+.transfer-toolbar .tabs {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 12px;
+  align-items: center;
+}
+
+.transfer-toolbar .tabs .btn {
+  width: auto;
+}
+
+.transfer-market-list {
+  display: grid;
+  gap: 22px;
+}
+
+.transfer-wide-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.transfer-player-hero {
+  display: grid;
+  grid-template-columns: 150px 72px minmax(260px, 1fr) 110px minmax(320px, 0.72fr);
+  gap: 28px;
+  align-items: center;
+  padding: 34px;
+  min-height: 245px;
+  background:
+    radial-gradient(circle at 8% 70%, rgba(95, 132, 161, 0.18), transparent 25%),
+    linear-gradient(90deg, rgba(17, 30, 43, 0.94), rgba(10, 22, 36, 0.98));
+}
+
+.transfer-silhouette {
+  width: 150px;
+  height: 170px;
+  opacity: 0.5;
+  background:
+    radial-gradient(circle at 50% 30%, transparent 0 34px, rgba(146, 164, 184, 0.8) 35px 37px, transparent 38px),
+    radial-gradient(ellipse at 50% 94%, transparent 0 74px, rgba(146, 164, 184, 0.74) 75px 78px, transparent 79px);
+}
+
+.transfer-club-logo {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+}
+
+.transfer-player-copy h2 {
+  margin: 8px 0 8px;
+  font-size: clamp(28px, 3vw, 44px);
+}
+
+.transfer-rating {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.transfer-rating strong {
+  color: var(--tc-yellow);
+  font-size: 54px;
+  line-height: 1;
+}
+
+.transfer-rating span {
+  color: var(--tc-muted);
+  font-weight: 800;
+}
+
+.transfer-attributes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 34px;
+  padding-left: 28px;
+  border-left: 1px solid var(--tc-border);
+}
+
+.transfer-attributes div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.transfer-attributes span,
+.market-info-card span {
+  color: #d9e2ee;
+}
+
+.transfer-offer-panel {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(280px, 420px);
+  gap: 28px 70px;
+  padding: 30px 34px;
+  border-top: 1px solid var(--tc-border);
+}
+
+.transfer-offer-panel::before {
+  content: "TRANSFER TEKLIFI";
+  grid-column: 1 / -1;
+  color: #5dff76;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.transfer-offer-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 46px;
+}
+
+.transfer-offer-form label {
+  display: grid;
+  gap: 10px;
+}
+
+.transfer-offer-form input,
+.transfer-toolbar select,
+.transfer-toolbar input {
+  height: 54px;
+  color: var(--tc-text);
+  border: 1px solid var(--tc-border);
+  border-radius: 8px;
+  background: rgba(4, 12, 22, 0.8);
+}
+
+.market-info-card {
+  grid-row: span 2;
+  padding: 24px;
+  border: 1px solid var(--tc-border);
+  border-radius: 8px;
+  background: rgba(7, 18, 30, 0.72);
+}
+
+.market-info-card h3,
+.dashboard-main-card h3 {
+  margin: 0 0 16px;
+}
+
+.transfer-main-action {
+  grid-column: 1 / -1;
+  min-height: 62px;
+  font-size: 18px;
+}
+
+.transfer-pending-note {
+  grid-column: 1 / -1;
+}
+
+body[data-shell-page="dashboard"] .grid.stats {
+  grid-template-columns: repeat(8, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+body[data-shell-page="dashboard"] .stat-card {
+  min-height: 94px;
+  padding: 16px;
+  text-align: center;
+}
+
+body[data-shell-page="dashboard"] .stat-card strong {
+  font-size: 20px;
+}
+
+body[data-shell-page="dashboard"] .two-col {
+  grid-template-columns: minmax(0, 1fr) 350px !important;
+  align-items: start;
+}
+
+body[data-shell-page="dashboard"] .dashboard-pitch {
+  min-height: auto;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.dashboard-board-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr 0.92fr;
+  gap: 14px;
+}
+
+.dashboard-main-card {
+  min-height: 180px;
+  padding: 20px;
+}
+
+.league-card {
+  grid-row: span 2;
+}
+
+.quick-card {
+  grid-row: span 2;
+}
+
+.dashboard-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dashboard-mini-table th,
+.dashboard-mini-table td {
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.dashboard-mini-table td:nth-child(2) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.dashboard-small-link,
+.dashboard-quick-list a,
+.dashboard-notice-list a {
+  display: block;
+  margin-top: 14px;
+  padding: 11px 12px;
+  color: #eef5ff;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.dashboard-finance-ring {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.dashboard-finance-ring > span {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: conic-gradient(#2ecb53 0 54%, #2185ff 54% 80%, #ffd12a 80% 100%);
+  box-shadow: inset 0 0 0 24px #071728;
+}
+
+.green-dot,
+.blue-dot,
+.yellow-dot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.green-dot { background: #2ecb53; }
+.blue-dot { background: #2185ff; }
+.yellow-dot { background: #ffd12a; }
+
+.dashboard-result-list,
+.dashboard-quick-list,
+.dashboard-notice-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-result-list div {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+}
+
+.dashboard-result-list strong {
+  color: var(--tc-yellow);
+}
+
+.dashboard-status-icons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.dashboard-status-icons div {
+  display: grid;
+  gap: 5px;
+}
+
+.dashboard-status-icons strong {
+  color: var(--tc-yellow);
+}
+
+.dashboard-percent {
+  display: grid;
+  gap: 14px;
+}
+
+.dashboard-percent strong {
+  font-size: 34px;
+}
+
+.dashboard-percent span {
+  height: 9px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #38d45b, #6bd348);
+  box-shadow: 0 0 12px rgba(49, 201, 82, 0.35);
+}
+
+.dashboard-time-card {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dashboard-time-grid div {
+  padding: 11px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.dashboard-time-grid small {
+  display: block;
+  color: var(--tc-muted);
+  margin-bottom: 4px;
+}
+
+.calendar-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.calendar-actions select,
+.calendar-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1180px) {
+  .content {
+    width: min(100%, calc(100vw - 230px));
+  }
+
+  .transfer-toolbar,
+  .transfer-player-hero,
+  .transfer-offer-panel,
+  body[data-shell-page="dashboard"] .two-col,
+  .dashboard-board-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .transfer-attributes {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  body[data-shell-page="dashboard"] .grid.stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1380px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .budget-widget,
+  .coin-widget,
+  .date-widget,
+  .manager-xp-widget,
+  .shell-leaderboard .leaderboard-toggle,
+  .continue-widget {
+    min-height: 48px;
+    padding: 8px 12px;
+  }
+
+  .date-widget {
+    min-width: 160px;
+  }
+
+  .manager-xp-widget {
+    max-width: 165px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    min-height: auto;
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+
+  .menu-btn {
+    display: inline-flex;
+  }
+
+  .layout {
+    display: block;
+  }
+
+  .sidebar {
+    width: min(86vw, 310px);
+    transform: translateX(-105%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .content {
+    width: 100%;
+    padding: 18px 12px 34px;
+  }
+
+  .budget-widget,
+  .coin-widget,
+  .date-widget,
+  .manager-xp-widget,
+  .shell-leaderboard .leaderboard-toggle,
+  .continue-widget {
+    min-height: 48px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .date-widget {
+    min-width: 150px;
+  }
+
+  .transfer-player-hero,
+  .transfer-offer-panel {
+    padding: 20px;
+  }
+
+  .transfer-offer-form,
+  .transfer-attributes,
+  .dashboard-time-grid,
+  .dashboard-status-icons {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-silhouette {
+    width: 105px;
+    height: 120px;
+  }
+
+  .transfer-player-copy h2 {
+    font-size: 30px;
+  }
+
+  body[data-shell-page="dashboard"] .grid.stats {
+    grid-template-columns: 1fr;
+  }
+}
+
 html,
 body {
   max-width: 100%;

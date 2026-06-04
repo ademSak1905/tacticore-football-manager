@@ -5,6 +5,7 @@ const { all, get, run } = require('../database');
 const { dynamicMarket, negotiateTransfer, pendingOffersForUser } = require('../utils/transferEngine');
 const { createTransferStory } = require('../utils/feedEngine');
 const { recordTaskProgress } = require('../utils/taskEngine');
+const { calculateBaseMarketValue } = require('../utils/financeEngine');
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ router.post('/sell', async (req, res, next) => {
     const player = await playerModel.getClubPlayer(club.id, playerId);
     if (!player) return res.status(404).json({ message: 'Oyuncu bulunamadı.' });
 
-    const price = Math.round(player.market_value * 0.82);
+    const price = Math.round(calculateBaseMarketValue(player) * 0.82);
     await run('UPDATE clubs SET budget = budget + ? WHERE id = ?', [price, club.id]);
     await run('DELETE FROM lineups WHERE player_id = ?', [player.id]);
     await run("UPDATE players SET team_id = NULL, club_id = NULL, is_starting_eleven = 0, lineup_role = 'reserve' WHERE id = ? AND team_id = ?", [player.id, club.team_id]);
