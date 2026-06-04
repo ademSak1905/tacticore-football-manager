@@ -54,6 +54,9 @@ const SHELL_NAV_ITEMS = [
   ['messages', '/messages.html', 'Mesajlar'],
   ['squad', '/squad.html', 'Kadro'],
   ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
+  ['spy', '/spy.html', 'Casus'],
+  ['daily-tasks', '/daily-tasks.html', 'Günlük Görevler'],
+  ['market', '/market.html', 'Market'],
   ['calendar', '/calendar.html', 'Takvim'],
   ['social', '/social.html', 'Sosyal Medya'],
   ['league', '/league.html', 'Lig'],
@@ -75,6 +78,12 @@ function updateManagerWidget(manager) {
     <strong>${manager.currentXp} / ${manager.nextXp} XP</strong>
     <em>${manager.lastXpGain ? `+${manager.lastXpGain} XP` : 'XP hazır'}</em>
   `;
+}
+
+function updateCoinWidget(balance) {
+  const widget = byId('coinWidget');
+  if (!widget) return;
+  widget.innerHTML = `<span>TactiCoins</span><strong>${Number(balance || 0).toLocaleString('tr-TR')}</strong>`;
 }
 
 function showXpToast(award) {
@@ -195,6 +204,15 @@ async function refreshMessageBadge() {
   } catch {}
 }
 
+async function refreshCoinWidget() {
+  try {
+    const data = await api.request('/api/coins');
+    updateCoinWidget(data.balance);
+  } catch {}
+}
+
+window.refreshCoinWidget = refreshCoinWidget;
+
 async function requireAuth() {
   try {
     const session = await api.request('/api/me');
@@ -203,6 +221,7 @@ async function requireAuth() {
     localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
     updateManagerWidget(session.manager);
     refreshMessageBadge();
+    refreshCoinWidget();
     return session;
   } catch (error) {
     window.location.href = '/login.html';
@@ -218,6 +237,12 @@ function wireShell(activePage) {
   const topbar = document.querySelector('.topbar');
   if (topbar && !byId('managerXpWidget')) {
     const logout = byId('logoutButton');
+    const coin = document.createElement('a');
+    coin.id = 'coinWidget';
+    coin.className = 'coin-widget';
+    coin.href = '/market.html';
+    coin.innerHTML = '<span>TactiCoins</span><strong>0</strong>';
+    topbar.insertBefore(coin, logout || null);
     const widget = document.createElement('a');
     widget.id = 'managerXpWidget';
     widget.className = 'manager-xp-widget';
@@ -226,6 +251,15 @@ function wireShell(activePage) {
     topbar.insertBefore(widget, logout || null);
     wireShellLeaderboard(topbar, logout);
   } else if (topbar) {
+    if (!byId('coinWidget')) {
+      const logout = byId('logoutButton');
+      const coin = document.createElement('a');
+      coin.id = 'coinWidget';
+      coin.className = 'coin-widget';
+      coin.href = '/market.html';
+      coin.innerHTML = '<span>TactiCoins</span><strong>0</strong>';
+      topbar.insertBefore(coin, byId('managerXpWidget') || logout || null);
+    }
     wireShellLeaderboard(topbar, byId('logoutButton'));
   }
   const nav = sidebar?.querySelector('.nav');

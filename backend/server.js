@@ -36,6 +36,9 @@ const gameRoutes = require('./routes/game');
 const europeRoutes = require('./routes/europe');
 const managerRoutes = require('./routes/manager');
 const messageRoutes = require('./routes/messages');
+const spyRoutes = require('./routes/spy');
+const marketRoutes = require('./routes/market');
+const dailyTaskRoutes = require('./routes/dailyTasks');
 const { FORMATIONS } = require('./utils/tacticEngine');
 
 const app = express();
@@ -70,6 +73,9 @@ app.use('/api', teamRoutes);
 app.use('/api', gameRoutes);
 app.use('/api', europeRoutes);
 app.use('/api', messageRoutes);
+app.use('/api', spyRoutes);
+app.use('/api', marketRoutes);
+app.use('/api', dailyTaskRoutes);
 app.get('/api/formations', (req, res) => {
   res.json(Object.entries(FORMATIONS).map(([id, item]) => ({ id, ...item })));
 });

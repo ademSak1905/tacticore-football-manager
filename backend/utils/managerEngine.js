@@ -342,6 +342,7 @@ async function incrementSeasonCount(userId) {
 
 module.exports = {
   ensureManagerProfile,
+  addXp,
   getManagerProfile,
   getManagerSummary,
   getManagerLeaderboard,

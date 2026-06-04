@@ -285,6 +285,87 @@ async function createSchema() {
   `);
 
   await run(`
+    CREATE TABLE IF NOT EXISTS coin_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      balance_after INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS spy_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      target_team_id INTEGER NOT NULL,
+      spy_type TEXT NOT NULL,
+      cost INTEGER NOT NULL,
+      success INTEGER NOT NULL DEFAULT 0,
+      report_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_team_id) REFERENCES teams(id)
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS daily_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_key TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      target INTEGER NOT NULL DEFAULT 1,
+      reward_type TEXT NOT NULL DEFAULT 'coins',
+      reward_amount INTEGER NOT NULL DEFAULT 0,
+      category TEXT NOT NULL DEFAULT 'daily'
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_daily_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_key TEXT NOT NULL,
+      date_key TEXT NOT NULL,
+      progress INTEGER NOT NULL DEFAULT 0,
+      claimed INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, task_key, date_key),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS market_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_key TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      item_type TEXT NOT NULL,
+      price INTEGER NOT NULL DEFAULT 0,
+      coin_amount INTEGER NOT NULL DEFAULT 0,
+      effect_json TEXT NOT NULL DEFAULT '{}',
+      active INTEGER NOT NULL DEFAULT 1
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_boosters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      item_key TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, item_key),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS teams (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
@@ -685,6 +766,7 @@ async function createSchema() {
   await ensureColumn('clubs', 'currency', "TEXT NOT NULL DEFAULT 'EUR'");
   await ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
   await ensureColumn('users', 'role', "TEXT NOT NULL DEFAULT 'user'");
+  await ensureColumn('users', 'tacticoins', 'INTEGER NOT NULL DEFAULT 100');
   await ensureColumn('players', 'team_id', 'INTEGER');
   await ensureColumn('players', 'nationality', "TEXT NOT NULL DEFAULT 'Türkiye'");
   await ensureColumn('players', 'preferred_foot', "TEXT NOT NULL DEFAULT 'right'");
@@ -1323,6 +1405,54 @@ async function clearAllUserAccountsOnce() {
   await run('INSERT INTO maintenance_flags (flag_key) VALUES (?)', [flagKey]);
 }
 
+async function seedCoinSystems() {
+  const tasks = [
+    ['win_match', '1 maç kazan', 'Bugün bir resmi maç kazan.', 1, 'coins', 30, 'match'],
+    ['training_done', 'Antrenman yap', 'Takım veya bireysel antrenman tamamla.', 1, 'coins', 15, 'training'],
+    ['lineup_saved', 'İlk 11 düzenle', 'İlk 11 ve dizilişi kaydet.', 1, 'coins', 10, 'lineup'],
+    ['transfer_offer', 'Transfer teklifi yap', 'Bir oyuncuya resmi transfer teklifi gönder.', 1, 'coins', 20, 'transfer'],
+    ['spy_send', 'Casus gönder', 'Bir rakip için casus raporu dene.', 1, 'xp', 10, 'spy']
+  ];
+  for (const task of tasks) {
+    await run(`
+      INSERT INTO daily_tasks (task_key, title, description, target, reward_type, reward_amount, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(task_key) DO UPDATE SET
+        title = excluded.title,
+        description = excluded.description,
+        target = excluded.target,
+        reward_type = excluded.reward_type,
+        reward_amount = excluded.reward_amount,
+        category = excluded.category
+    `, task);
+  }
+
+  const items = [
+    ['coins_100', '100 TactiCoins Paketi', 'Demo satın alma. Gerçek para alınmaz.', 'coin_pack', 0, 100, {}],
+    ['coins_500', '500 TactiCoins Paketi', 'Demo satın alma. Gerçek para alınmaz.', 'coin_pack', 0, 500, {}],
+    ['coins_1000', '1000 TactiCoins Paketi', 'Demo satın alma. Gerçek para alınmaz.', 'coin_pack', 0, 1000, {}],
+    ['fitness_boost', 'Kondisyon Güçlendirici', 'Seçilen oyuncuya +15 kondisyon verir.', 'booster', 45, 0, { stat: 'stamina', amount: 15 }],
+    ['morale_boost', 'Moral Güçlendirici', 'Seçilen oyuncuya +10 moral verir.', 'booster', 35, 0, { stat: 'morale', amount: 10 }],
+    ['training_bonus', 'Antrenman Bonusu', 'Sonraki antrenman için demo gelişim bonusu sağlar.', 'booster', 60, 0, { trainingBonus: 25 }],
+    ['scout_pack', 'Transfer Gözlem Paketi', 'Transfer pazarında gizli potansiyel notu açar.', 'booster', 55, 0, { scoutPack: true }],
+    ['injury_card', 'Sakatlık İyileştirme Kartı', 'Seçilen sakat oyuncunun durumunu iyileştirir.', 'booster', 70, 0, { healInjury: true }]
+  ];
+  for (const item of items) {
+    await run(`
+      INSERT INTO market_items (item_key, name, description, item_type, price, coin_amount, effect_json, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(item_key) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        item_type = excluded.item_type,
+        price = excluded.price,
+        coin_amount = excluded.coin_amount,
+        effect_json = excluded.effect_json,
+        active = 1
+    `, [item[0], item[1], item[2], item[3], item[4], item[5], JSON.stringify(item[6])]);
+  }
+}
+
 async function seedGalatasaraySon16Demo() {
   const oldDemo = await get("SELECT id FROM users WHERE username = 'gs_son16'");
   if (oldDemo?.id) await run('DELETE FROM users WHERE id = ?', [oldDemo.id]);
@@ -1491,9 +1621,11 @@ async function initDatabase() {
   await backfillMatchDays();
   await backfillSeasonPlans();
   await seedTransferMarket();
+  await seedCoinSystems();
   await clearAllUserAccountsOnce();
   const users = await all('SELECT id, username FROM users');
   for (const user of users) {
+    await run('UPDATE users SET tacticoins = 100 WHERE tacticoins IS NULL');
     await run('INSERT OR IGNORE INTO manager_profiles (user_id, manager_name) VALUES (?, ?)', [user.id, user.username]);
     await ensureCareerForUser(user.id);
     await ensureInitialCareerSave(user.id);

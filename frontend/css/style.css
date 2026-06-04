@@ -3510,8 +3510,219 @@ td {
     touch-action: manipulation;
   }
 
-  body[data-shell-page="lineup"] .bench-list {
+body[data-shell-page="lineup"] .bench-list {
     overflow-x: hidden;
+  }
+}
+
+.coin-widget {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.16), rgba(7, 20, 38, 0.9));
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.coin-widget span {
+  color: #b9d8ff;
+  font-size: 12px;
+}
+
+.coin-widget strong {
+  color: var(--yellow);
+}
+
+.nav a[data-page="spy"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20c1.7-4.2 4.3-6.3 8-6.3s6.3 2.1 8 6.3'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3Cpath d='M7.5 7h9M9 11l-2.2 2.2M15 11l2.2 2.2'/%3E%3C/g%3E%3C/svg%3E"); }
+.nav a[data-page="daily-tasks"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='3' width='16' height='18' rx='2'/%3E%3Cpath d='M8 8h8M8 12h5M8 16h7M17 3v4M7 3v4'/%3E%3C/g%3E%3C/svg%3E"); }
+.nav a[data-page="market"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 9h14l-1 12H6L5 9Z'/%3E%3Cpath d='M8 9a4 4 0 0 1 8 0M9 14h6M10 18h4'/%3E%3C/g%3E%3C/svg%3E"); }
+
+body[data-shell-page="lineup"] .content {
+  width: min(1320px, calc(100% - 28px));
+}
+
+body[data-shell-page="lineup"] .page-title {
+  align-items: center;
+}
+
+body[data-shell-page="lineup"] .page-title h1 {
+  font-size: 48px;
+}
+
+body[data-shell-page="lineup"] .page-title .actions {
+  display: grid;
+  gap: 12px;
+  min-width: 180px;
+}
+
+body[data-shell-page="lineup"] .lineup-tactic-layout {
+  grid-template-columns: minmax(560px, 1fr) minmax(360px, 460px);
+  gap: 28px;
+  padding: 24px 8px 10px;
+}
+
+body[data-shell-page="lineup"] .lineup-pitch {
+  min-height: 820px;
+  border-radius: 10px;
+  border: 1px solid rgba(119, 214, 101, 0.62);
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.32), inset 0 0 80px rgba(110, 255, 95, 0.1);
+  background:
+    linear-gradient(0deg, transparent 49.7%, rgba(255,255,255,.26) 50%, transparent 50.3%),
+    radial-gradient(circle at 50% 50%, transparent 0 74px, rgba(255,255,255,.24) 75px 78px, transparent 79px),
+    linear-gradient(90deg, rgba(255,255,255,.13) 0 2px, transparent 2px calc(100% - 2px), rgba(255,255,255,.13) calc(100% - 2px)),
+    repeating-linear-gradient(90deg, rgba(23, 130, 43, 0.95) 0 82px, rgba(38, 158, 55, 0.95) 82px 164px),
+    linear-gradient(180deg, #1d8f35, #17762f);
+}
+
+body[data-shell-page="lineup"] .lineup-pitch::before {
+  inset: 22px;
+  border: 3px solid rgba(221, 255, 218, 0.42);
+  border-radius: 2px;
+}
+
+body[data-shell-page="lineup"] .lineup-pitch::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  top: 22px;
+  bottom: 22px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.25) 0 3px, transparent 3px 112px, rgba(255,255,255,.22) 112px 115px, transparent 115px calc(100% - 115px), rgba(255,255,255,.22) calc(100% - 115px) calc(100% - 112px), transparent calc(100% - 112px) calc(100% - 3px), rgba(255,255,255,.25) calc(100% - 3px));
+  pointer-events: none;
+}
+
+body[data-shell-page="lineup"] .lineup-player {
+  width: 126px;
+  min-height: 92px;
+  border-radius: 9px;
+  border: 1px solid rgba(111, 166, 255, 0.75);
+  background: linear-gradient(155deg, rgba(6, 26, 54, 0.98), rgba(0, 12, 31, 0.98));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
+}
+
+body[data-shell-page="lineup"] .lineup-player .card-overall {
+  width: 34px;
+  height: 34px;
+  background: var(--yellow);
+  color: #061329;
+}
+
+body[data-shell-page="lineup"] .lineup-player strong {
+  font-size: 13px;
+}
+
+body[data-shell-page="lineup"] .lineup-player small {
+  color: #c7dbff;
+}
+
+body[data-shell-page="lineup"] .lineup-control-panel > .card,
+body[data-shell-page="lineup"] .compact-tactic-panel {
+  background: linear-gradient(145deg, rgba(6, 22, 48, 0.96), rgba(7, 42, 90, 0.86));
+  border: 1px solid rgba(60, 134, 239, 0.55);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+body[data-shell-page="lineup"] .bench-player {
+  min-height: 54px;
+  align-items: center;
+  border-color: rgba(72, 139, 238, 0.42);
+  background: rgba(7, 25, 54, 0.78);
+}
+
+body[data-shell-page="lineup"] .compact-tactic-panel h2 {
+  font-size: 19px;
+  letter-spacing: .04em;
+}
+
+body[data-shell-page="lineup"] .tactic-metrics .stat-card {
+  padding: 12px;
+  text-align: center;
+}
+
+.spy-grid {
+  grid-template-columns: minmax(300px, 0.82fr) minmax(360px, 1fr);
+}
+
+.spy-report,
+.spy-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.spy-lineup {
+  display: grid;
+  gap: 8px;
+}
+
+.spy-lineup span,
+.inbox-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.spy-lineup em {
+  color: #b9d8ff;
+  font-style: normal;
+}
+
+.market-item,
+.task-card {
+  display: grid;
+  gap: 12px;
+}
+
+.task-progress {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.task-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #36d35f, #ffd21a);
+}
+
+.task-card.done {
+  border-color: rgba(54, 211, 95, 0.5);
+}
+
+@media (max-width: 900px) {
+  .coin-widget {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  body[data-shell-page="lineup"] .page-title h1 {
+    font-size: 34px;
+  }
+
+  body[data-shell-page="lineup"] .lineup-tactic-layout,
+  .spy-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body[data-shell-page="lineup"] .lineup-pitch {
+    min-height: 620px;
+  }
+
+  body[data-shell-page="lineup"] .lineup-player {
+    width: 78px;
+    min-height: 62px;
   }
 }
 

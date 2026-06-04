@@ -2,6 +2,7 @@
 const clubModel = require('../models/clubModel');
 const { all, get, run } = require('../database');
 const { formations, validateLineup } = require('../utils/lineupValidator');
+const { recordTaskProgress } = require('../utils/taskEngine');
 
 const router = express.Router();
 
@@ -98,6 +99,7 @@ router.post('/teams/:id/lineup', requireAuth, async (req, res, next) => {
       await run('UPDATE players SET is_starting_eleven = 1, lineup_role = "starter" WHERE id = ?', [row.player.id]);
     }
     await run('UPDATE teams SET default_formation = ? WHERE id = ?', [formation, teamId]);
+    await recordTaskProgress(req.session.userId, 'lineup_saved');
     res.json({ message: 'Diziliş kaydedildi.', warnings: validation.warnings });
   } catch (error) {
     next(error);

@@ -86,6 +86,7 @@ function renderGeneralDashboard() {
     : data.nextOpponent;
   const stats = [
     ['Bütçe', money(data.club.budget)],
+    ['TactiCoins', Number(dashboardCache.coins?.balance || 0).toLocaleString('tr-TR')],
     ['Lig sırası', `${data.rank}.`],
     ['Son maç', data.club.last_match || 'Yok'],
     [isDrawNext ? 'Sıradaki olay' : 'Sıradaki rakip', nextOpponent],
@@ -480,7 +481,8 @@ async function loadDashboard() {
     league: [],
     calendar: { next5Matches: [] },
     lineupData: { lineup: [] },
-    inbox: { messages: [], unreadCount: 0 }
+    inbox: { messages: [], unreadCount: 0 },
+    coins: { balance: 0 }
   };
   renderDashboard();
   showSeasonScreens();
@@ -490,14 +492,16 @@ async function loadDashboard() {
     api.request('/api/europe/overview'),
     api.request('/api/league/table'),
     api.request('/api/calendar'),
-    api.request('/api/messages?limit=3&unreadOnly=1')
+    api.request('/api/messages?limit=3&unreadOnly=1'),
+    api.request('/api/coins')
   ]);
-  const [lineupResult, europeResult, leagueResult, calendarResult, inboxResult] = detailResults;
+  const [lineupResult, europeResult, leagueResult, calendarResult, inboxResult, coinsResult] = detailResults;
   if (lineupResult.status === 'fulfilled') dashboardCache.lineupData = lineupResult.value;
   if (europeResult.status === 'fulfilled') dashboardCache.europe = europeResult.value;
   if (leagueResult.status === 'fulfilled') dashboardCache.league = leagueResult.value;
   if (calendarResult.status === 'fulfilled') dashboardCache.calendar = calendarResult.value;
   if (inboxResult.status === 'fulfilled') dashboardCache.inbox = inboxResult.value;
+  if (coinsResult.status === 'fulfilled') dashboardCache.coins = coinsResult.value;
   renderDashboard();
   showDueDashboardDraw();
 }

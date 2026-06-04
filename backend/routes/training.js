@@ -2,6 +2,7 @@
 const clubModel = require('../models/clubModel');
 const { all, get, run, getCareerState } = require('../database');
 const { applyTeamTraining, applyPlayerTraining } = require('../utils/trainingEngine');
+const { recordTaskProgress } = require('../utils/taskEngine');
 
 const router = express.Router();
 const trainingTypes = ['attack', 'defense', 'pressing', 'passing', 'fitness', 'set_piece', 'shooting', 'morale'];
@@ -22,6 +23,7 @@ router.post('/', async (req, res, next) => {
     const last = await get("SELECT * FROM training WHERE club_id = ? AND datetime(created_at) > datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 1", [club.id]);
     if (last) return res.status(429).json({ message: 'Haftada bir antrenman yapabilirsiniz.' });
     const results = await applyTeamTraining(club, type, intensity);
+    await recordTaskProgress(req.session.userId, 'training_done');
     res.json({ message: 'Antrenman tamamlandi.', type, intensity, results });
   } catch (error) {
     next(error);
@@ -38,6 +40,7 @@ router.post('/team', async (req, res, next) => {
     if (last) return res.status(429).json({ message: 'Bugünkü antrenman bitti. Yeni antrenman için gün ilerletmelisiniz.' });
     const results = await applyTeamTraining(club, type, intensity);
     await run('UPDATE training SET game_day = ? WHERE club_id = ? AND game_day IS NULL', [state.current_day, club.id]);
+    await recordTaskProgress(req.session.userId, 'training_done');
     res.json({ message: 'Takım antrenmanı tamamlandı.', results });
   } catch (error) {
     next(error);
@@ -53,6 +56,7 @@ router.post('/player', async (req, res, next) => {
     const intensity = intensities.includes(req.body.intensity) ? req.body.intensity : 'normal';
     const results = await applyPlayerTraining(club, Number(req.body.playerId), req.body.type, intensity);
     await run('UPDATE training SET game_day = ? WHERE club_id = ? AND game_day IS NULL', [state.current_day, club.id]);
+    await recordTaskProgress(req.session.userId, 'training_done');
     res.json({ message: 'Bireysel antrenman tamamlandı.', results });
   } catch (error) {
     next(error);

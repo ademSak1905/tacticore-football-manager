@@ -4,6 +4,7 @@ const playerModel = require('../models/playerModel');
 const { all, get, run } = require('../database');
 const { dynamicMarket, negotiateTransfer, pendingOffersForUser } = require('../utils/transferEngine');
 const { createTransferStory } = require('../utils/feedEngine');
+const { recordTaskProgress } = require('../utils/taskEngine');
 
 const router = express.Router();
 
@@ -38,6 +39,7 @@ router.post('/buy', async (req, res, next) => {
     if (result.status === 'error') return res.status(400).json(result);
     if (result.status === 'closed') return res.status(409).json(result);
     if (result.status === 'counter') return res.status(202).json(result);
+    if (result.status === 'pending') await recordTaskProgress(req.session.userId, 'transfer_offer');
     res.json(result);
   } catch (error) {
     next(error);

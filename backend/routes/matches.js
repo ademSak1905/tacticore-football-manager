@@ -9,6 +9,7 @@ const { ensureEuropeanSeason, dueEuropeanMatch, playDueEuropeanMatch, nextEurope
 const { awardMatchXp } = require('../utils/managerEngine');
 const { leagueMatchDayMap, syncCareerLeagueMatchDay } = require('../utils/scheduleEngine');
 const { processPendingTransferOffers } = require('../utils/transferEngine');
+const { recordTaskProgress } = require('../utils/taskEngine');
 
 const router = express.Router();
 const EUROPE_TYPE_BY_CODE = {
@@ -26,6 +27,16 @@ function withDisplayDate(match) {
   if (!match) return match;
   const displayDate = match.match_day ? seasonDate(match.match_day) : String(match.match_date || '').slice(0, 10);
   return { ...match, display_date: displayDate };
+}
+
+function userWonFeatured(result, teamId) {
+  const featured = result?.featured;
+  if (!featured?.match) return false;
+  const homeId = Number(featured.home?.id || featured.home?.team_id || featured.match.home_team_id || featured.match.home_club_id || 0);
+  const awayId = Number(featured.away?.id || featured.away?.team_id || featured.match.away_team_id || featured.match.away_club_id || 0);
+  const homeGoals = Number(featured.match.home_score || 0);
+  const awayGoals = Number(featured.match.away_score || 0);
+  return (homeId === Number(teamId) && homeGoals > awayGoals) || (awayId === Number(teamId) && awayGoals > homeGoals);
 }
 
 async function recentMatchesForClub(userId, teamId, limit = 20) {
@@ -95,6 +106,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
       const europeanResult = await playDueEuropeanMatch(req.session.userId, club.team_id, state.current_day);
       const xpAward = await awardMatchXp(req.session.userId, club, europeanResult);
       if (xpAward) europeanResult.xpAward = xpAward;
+      if (userWonFeatured(europeanResult, club.team_id)) await recordTaskProgress(req.session.userId, 'win_match');
       const stateAfterEurope = await getCareerState(req.session.userId);
       const leagueFinishedAfterEurope = Number(stateAfterEurope.week || 1) > totalLeagueWeeks;
       const nextEuropeAfterMatch = await nextEuropeanMatch(req.session.userId, club.team_id);
@@ -125,6 +137,7 @@ router.post('/match/play', requireAuth, async (req, res, next) => {
     }
     const xpAward = await awardMatchXp(req.session.userId, club, result);
     if (xpAward) result.xpAward = xpAward;
+    if (userWonFeatured(result, club.team_id)) await recordTaskProgress(req.session.userId, 'win_match');
     await createMatchStories(result, club.team_id, req.session.userId);
     await processPendingTransferOffers(req.session.userId);
     res.json(result);
