@@ -3,7 +3,10 @@ const clubModel = require('../models/clubModel');
 const playerModel = require('../models/playerModel');
 const { get, all, getCareerState } = require('../database');
 const { calculateTeamStrength } = require('../utils/overallCalculator');
-const { lineupForTeam, getLeaguePairingsForWeek } = require('../utils/matchEngine');
+const { lineupForTeam, leagueWeeksForTeamCount } = require('../utils/matchEngine');
+const { ensureEuropeanSeason } = require('../utils/europeEngine');
+const { syncCareerLeagueMatchDay } = require('../utils/scheduleEngine');
+const { nextOpponentFixture } = require('../utils/inboxEngine');
 
 const router = express.Router();
 
@@ -19,13 +22,13 @@ router.get('/', async (req, res, next) => {
     const club = await clubModel.getByUserId(req.session.userId);
     const table = await clubModel.table(req.session.userId);
     const rank = table.findIndex((item) => item.id === club.team_id) + 1;
-    const state = await getCareerState(req.session.userId);
-    const teams = await all('SELECT id, name FROM teams ORDER BY id');
-    const userFixture = getLeaguePairingsForWeek(teams, state.week)
-      .find(([home, away]) => home.id === club.team_id || away.id === club.team_id);
-    const opponent = userFixture
-      ? (userFixture[0].id === club.team_id ? userFixture[1] : userFixture[0])
-      : null;
+    await ensureEuropeanSeason(req.session.userId, club.team_id);
+    const teamCount = await get('SELECT COUNT(*) AS count FROM teams');
+    let state = await getCareerState(req.session.userId);
+    state = await syncCareerLeagueMatchDay(req.session.userId, club.team_id, state, leagueWeeksForTeamCount(teamCount?.count || 18));
+    const fixture = await nextOpponentFixture(req.session.userId, club, state);
+    const isHome = Number(fixture?.home_team_id || 0) === Number(club.team_id);
+    const opponentName = fixture ? (isHome ? fixture.away_name : fixture.home_name) : null;
     const team = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
     const lineup = await lineupForTeam(club.team_id);
     const power = calculateTeamStrength(lineup, team, {});
@@ -36,7 +39,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       club,
       rank,
-      nextOpponent: opponent?.name || 'Rakip bekleniyor',
+      nextOpponent: opponentName || 'Rakip bekleniyor',
       teamPower: power.total,
       power,
       weeklySalary: salaries.total || 0,

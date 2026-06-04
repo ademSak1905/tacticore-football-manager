@@ -4,6 +4,7 @@ const { seasonDate } = require('./seasonCalendar');
 const { parseSeasonPlan } = require('./seasonPlanning');
 const { money: transferMoney } = require('./transferEngine');
 const { calculateBaseMarketValue, roundInternalEuro, seededRatio } = require('./financeEngine');
+const { getLeaguePairingsForWeek, leagueWeeksForTeamCount } = require('./matchEngine');
 
 const CATEGORIES = [
   { id: 'all', label: 'Tümü' },
@@ -217,35 +218,39 @@ function matchLine(match, teamId, europeanTeamId = null) {
 async function nextOpponentFixture(userId, club, state) {
   const teamId = Number(club.team_id);
   const currentDay = Math.max(1, Number(state.current_day || 1));
-  const domestic = await get(`
-    SELECT
-      'league' AS source,
-      'Süper Lig' AS competition,
-      m.id,
-      m.match_day,
-      m.home_club_id AS home_team_id,
-      m.away_club_id AS away_team_id,
-      NULL AS home_european_team_id,
-      NULL AS away_european_team_id,
-      ht.name AS home_name,
-      at.name AS away_name,
-      ht.default_formation AS home_formation,
-      at.default_formation AS away_formation,
-      ht.overall AS home_overall,
-      at.overall AS away_overall,
-      ht.attack_overall AS home_attack,
-      at.attack_overall AS away_attack,
-      ht.midfield_overall AS home_midfield,
-      at.midfield_overall AS away_midfield,
-      ht.defense_overall AS home_defense,
-      at.defense_overall AS away_defense
-    FROM matches m
-    LEFT JOIN teams ht ON ht.id = m.home_club_id
-    LEFT JOIN teams at ON at.id = m.away_club_id
-    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
-    ORDER BY m.match_day ASC, m.id ASC
-    LIMIT 1
-  `, [userId, teamId, teamId, currentDay]);
+  const teams = await all('SELECT * FROM teams ORDER BY id ASC');
+  const week = Number(state.week || 1);
+  const totalLeagueWeeks = leagueWeeksForTeamCount(teams.length);
+  let domestic = null;
+  if (week <= totalLeagueWeeks) {
+    const fixture = getLeaguePairingsForWeek(teams, week)
+      .find(([home, away]) => Number(home.id) === teamId || Number(away.id) === teamId);
+    if (fixture) {
+      const [home, away] = fixture;
+      domestic = {
+        source: 'league',
+        competition: 'Süper Lig',
+        id: `week_${week}_${home.id}_${away.id}`,
+        match_day: Number(state.next_match_day || currentDay),
+        home_team_id: home.id,
+        away_team_id: away.id,
+        home_european_team_id: null,
+        away_european_team_id: null,
+        home_name: home.name,
+        away_name: away.name,
+        home_formation: home.default_formation,
+        away_formation: away.default_formation,
+        home_overall: home.overall,
+        away_overall: away.overall,
+        home_attack: home.attack_overall,
+        away_attack: away.attack_overall,
+        home_midfield: home.midfield_overall,
+        away_midfield: away.midfield_overall,
+        home_defense: home.defense_overall,
+        away_defense: away.defense_overall
+      };
+    }
+  }
   const europe = await get(`
     SELECT
       'europe' AS source,
@@ -696,6 +701,7 @@ async function handleMessageAction(userId, messageId, action) {
 
 module.exports = {
   createInboxMessage,
+  nextOpponentFixture,
   ensureAutomaticInbox,
   listInboxMessages,
   unreadCount,
