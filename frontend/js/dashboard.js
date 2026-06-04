@@ -139,6 +139,7 @@ function renderDashboardInbox() {
   const card = byId('dashboardInboxCard');
   if (!card) return;
   card.hidden = true;
+  renderDashboardSideNotifications();
   return;
   const inbox = dashboardCache?.inbox;
   const messages = (inbox?.messages || []).slice(0, 3);
@@ -164,6 +165,24 @@ function renderDashboardInbox() {
         </article>
       `).join('')}
     </div>
+  `;
+}
+
+function renderDashboardSideNotifications() {
+  const target = byId('dashboardSideNotifications');
+  if (!target) return;
+  const messages = (dashboardCache?.inbox?.messages || []).slice(0, 3);
+  target.innerHTML = `
+    <h2>Bildirimler</h2>
+    <div class="dashboard-notice-list">
+      ${messages.length ? messages.map((item) => `
+        <a href="/messages.html">
+          <strong>${item.title}</strong>
+          <span>${item.summary || 'Yeni bildirim'}</span>
+        </a>
+      `).join('') : '<p class="muted">Yeni bildirim yok.</p>'}
+    </div>
+    <a class="dashboard-small-link notification-link" href="/messages.html">Tüm bildirimleri gör</a>
   `;
 }
 
@@ -440,21 +459,6 @@ function renderDashboardPitch(lineup = []) {
           `).join('') : '<p class="muted">Henuz oynanmis mac yok.</p>'}
         </div>
         <a class="dashboard-small-link" href="/calendar.html">Tum sonuclari gor</a>
-      </article>
-      <article class="dashboard-main-card quick-card">
-        <h3>Hizli menu</h3>
-        <div class="dashboard-quick-list">
-          <a href="/transfers.html">Transfer Merkezi</a>
-          <a href="/calendar.html">Takvim</a>
-          <a href="/training.html">Antrenman</a>
-          <a href="/economy.html">Ekonomi</a>
-        </div>
-        <h3>Bildirimler</h3>
-        <div class="dashboard-notice-list">
-          ${messages.length ? messages.map((item) => `
-            <a href="/messages.html"><strong>${item.title}</strong><span>${item.summary || 'Yeni bildirim'}</span></a>
-          `).join('') : '<p class="muted">Yeni bildirim yok.</p>'}
-        </div>
       </article>
       <article class="dashboard-main-card transfer-status-card">
         <h3>Transfer durumu</h3>

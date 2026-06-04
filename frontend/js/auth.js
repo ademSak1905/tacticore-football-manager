@@ -54,16 +54,21 @@ const SHELL_NAV_ITEMS = [
   ['calendar', '/calendar.html', 'Maçlar'],
   ['transfers', '/transfers.html', 'Transferler'],
   ['training', '/training.html', 'Tesisler'],
-  ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
-  ['league', '/league.html', 'Ligler'],
+  ['lineup', '/lineup.html', 'Akademi'],
   ['manager', '/manager.html', 'Menajer'],
+  ['messages', '/messages.html', 'Mesajlar'],
   ['daily-tasks', '/daily-tasks.html', 'Görevler'],
   ['spy', '/spy.html', 'Casus'],
-  ['messages', '/messages.html', 'Mesajlar'],
   ['market', '/market.html', 'Market'],
   ['economy', '/economy.html', 'Ekonomi'],
+  ['league', '/league.html', 'Ligler'],
   ['social', '/social.html', 'Sosyal Medya']
 ];
+
+function moneyEuro(value) {
+  const converted = Number(value || 0) / 35;
+  return `${converted.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} EUR`;
+}
 
 function managerXpText(manager) {
   if (!manager) return 'Lv. 1 Menajer';
@@ -89,7 +94,7 @@ function updateCoinWidget(balance) {
 function updateBudgetWidget(club) {
   const widget = byId('budgetWidget');
   if (!widget || !club) return;
-  widget.innerHTML = `<span class="shell-money-icon"></span><strong>${money(club.budget || 0)}</strong>`;
+  widget.innerHTML = `<span class="shell-money-icon"></span><strong>${moneyEuro(club.budget || 0)}</strong>`;
 }
 
 function updateDateWidget(state) {
@@ -321,6 +326,7 @@ function wireShell(activePage) {
       <a data-page="${page}" href="${href}" class="${page === activePage ? 'active' : ''}">
         <span class="nav-label">${label}</span>
         ${page === 'messages' ? '<span class="nav-badge" data-message-badge hidden></span>' : ''}
+        ${page === 'daily-tasks' ? '<span class="nav-badge task-alert" data-task-badge></span>' : ''}
       </a>
     `).join('');
   }

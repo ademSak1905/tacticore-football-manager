@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard | TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260605-transfer-dashboard-theme">
+    <link rel="stylesheet" href="/css/style.css?v=20260605-exact-dashboard-theme">
   </head>
   <body data-shell-page="dashboard">
     <header class="topbar">
@@ -27,10 +27,9 @@
         <section id="dashboardGeneralPanel" class="dashboard-panel">
           <section id="europeWeekCard" class="europe-week-card" hidden></section>
           <section id="dashboardInboxCard" class="card inbox-dashboard-card" hidden></section>
-          <section id="dashboardStats" class="grid stats"></section>
-          <section class="grid two-col" style="margin-top:16px">
-            <div id="dashboardPitch" class="card pitch dashboard-pitch"></div>
-            <div class="card">
+          <section class="dashboard-head-grid">
+            <section id="dashboardStats" class="grid stats"></section>
+            <div class="card dashboard-side-panel">
               <h2 id="nextMatchTitle">Siradaki mac</h2>
               <div id="nextMatchCard" class="next-match-card"></div>
               <div class="actions calendar-actions" style="margin-top:16px">
@@ -42,13 +41,11 @@
                 <a id="goMatch" class="btn green" href="/match.html">Maca Cik</a>
               </div>
               <p id="gameState" class="message"></p>
-              <h2 style="margin-top:18px">Hizli menu</h2>
-              <div class="quick-menu modern-menu">
-                <a class="btn secondary" href="/manager.html">Menajerim</a><a class="btn secondary" href="/messages.html">Mesajlar</a><a class="btn secondary" href="/squad.html">Kadrom</a><a class="btn secondary" href="/lineup.html">Ilk 11</a><a class="btn secondary" href="/tactics.html">Taktikler</a><a class="btn secondary" href="/calendar.html">Takvim</a><a class="btn secondary" href="/europe.html">Avrupa Merkezi</a><a class="btn secondary" href="/transfers.html">Transfer Pazari</a><a class="btn secondary" href="/spy.html">Casus</a><a class="btn secondary" href="/daily-tasks.html">Gunluk Gorevler</a><a class="btn secondary" href="/market.html">Market</a><a class="btn secondary" href="/training.html">Antrenman</a><a class="btn secondary" href="/league.html">Lig Tablosu</a><a class="btn secondary" href="/economy.html">Ekonomi</a><a class="btn secondary" href="/social.html">Sosyal Medya</a>
-              </div>
+              <section id="dashboardSideNotifications" class="dashboard-side-notifications"></section>
               <div id="clubSummary" style="margin-top:18px"></div>
             </div>
           </section>
+          <div id="dashboardPitch" class="card pitch dashboard-pitch"></div>
         </section>
         <section id="dashboardLeaguePanel" class="dashboard-panel" hidden>
           <div class="card"><h2>Super Lig</h2><div id="dashboardLeagueTable" class="table-wrap"></div></div>
@@ -61,7 +58,7 @@
         </section>
       </main>
     </div>
-    <script src="/js/auth.js?v=20260605-shell-theme"></script>
-    <script src="/js/dashboard.js?v=20260605-dashboard-theme"></script>
+    <script src="/js/auth.js?v=20260605-exact-shell-theme"></script>
+    <script src="/js/dashboard.js?v=20260605-exact-dashboard-theme"></script>
   </body>
 </html>
