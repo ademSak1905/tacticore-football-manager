@@ -4,20 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard | TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=20260605-exact-dashboard-theme">
   </head>
-  <body>
+  <body data-shell-page="dashboard">
     <header class="topbar">
-      <button id="menuButton" class="btn secondary menu-btn">Menü</button>
-      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kulüp</span></div>
-      <button id="logoutButton" class="btn secondary">Çıkış</button>
+      <button id="menuButton" class="btn secondary menu-btn">Menu</button>
+      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kulup</span></div>
+      <button id="logoutButton" class="btn secondary">Cikis</button>
     </header>
     <div class="layout">
       <aside id="sidebar" class="sidebar"><nav class="nav">
-        <a data-page="dashboard" href="/dashboard.html">Dashboard</a><a data-page="squad" href="/squad.html">Kadro</a><a data-page="lineup" href="/lineup.html">İlk 11</a><a data-page="tactics" href="/tactics.html">Taktik</a><a data-page="calendar" href="/calendar.html">Takvim</a><a data-page="league" href="/league.html">Lig</a><a data-page="transfers" href="/transfers.html">Transfer</a><a data-page="training" href="/training.html">Antrenman</a><a data-page="economy" href="/economy.html">Ekonomi</a>
+        <a data-page="dashboard" href="/dashboard.html">Dashboard</a><a data-page="manager" href="/manager.html">Menajerim</a><a data-page="squad" href="/squad.html">Kadro</a><a data-page="lineup" href="/lineup.html">Ilk 11</a><a data-page="tactics" href="/tactics.html">Taktik</a><a data-page="calendar" href="/calendar.html">Takvim</a><a data-page="league" href="/league.html">Lig</a><a data-page="transfers" href="/transfers.html">Transfer</a><a data-page="messages" href="/messages.html">Mesajlar</a><a data-page="spy" href="/spy.html">Casus</a><a data-page="daily-tasks" href="/daily-tasks.html">Gorevler</a><a data-page="market" href="/market.html">Market</a><a data-page="training" href="/training.html">Antrenman</a><a data-page="economy" href="/economy.html">Ekonomi</a>
       </nav></aside>
       <main class="content">
-        <section class="page-title"><div><h1>Yönetim paneli</h1><p class="muted">Kulübünün bugünkü durumu.</p></div></section>
+        <section class="page-title"><div><h1>Yonetim paneli</h1><p class="muted">Kulubunun bugunku durumu.</p></div></section>
         <section class="dashboard-tabs">
           <button class="btn secondary active" data-dashboard-tab="general">Genel</button>
           <button class="btn secondary" data-dashboard-tab="league">Lig</button>
@@ -26,28 +26,29 @@
         </section>
         <section id="dashboardGeneralPanel" class="dashboard-panel">
           <section id="europeWeekCard" class="europe-week-card" hidden></section>
-          <section id="dashboardStats" class="grid stats"></section>
-          <section class="grid two-col" style="margin-top:16px">
-            <div id="dashboardPitch" class="card pitch dashboard-pitch"></div>
-            <div class="card">
-              <h2>Sıradaki maç</h2>
+          <section id="dashboardInboxCard" class="card inbox-dashboard-card" hidden></section>
+          <section class="dashboard-head-grid">
+            <section id="dashboardStats" class="grid stats"></section>
+            <div class="card dashboard-side-panel">
+              <h2 id="nextMatchTitle">Siradaki mac</h2>
               <div id="nextMatchCard" class="next-match-card"></div>
-              <div class="actions" style="margin-top:16px">
+              <div class="actions calendar-actions" style="margin-top:16px">
                 <select id="currencySelect"><option value="EUR" selected>Euro</option><option value="USD">Dolar</option><option value="TRY">TL</option></select>
-                <button id="nextWeek" class="btn secondary">Haftayı İlerle</button>
-                <a id="goMatch" class="btn green" href="/match.html">Maça Geç</a>
+                <button id="nextDay" class="btn secondary time-advance">Sonraki Gun</button>
+                <button id="next3Days" class="btn secondary time-advance">3 Gun Ilerle</button>
+                <button id="goMatchDay" class="btn secondary time-advance">Mac Gunune Git</button>
+                <button id="nextWeek" class="btn secondary time-advance">Haftayi Ilerle</button>
+                <a id="goMatch" class="btn green" href="/match.html">Maca Cik</a>
               </div>
               <p id="gameState" class="message"></p>
-              <h2 style="margin-top:18px">Hızlı menü</h2>
-              <div class="quick-menu modern-menu">
-                <a class="btn secondary" href="/squad.html">Kadrom</a><a class="btn secondary" href="/lineup.html">İlk 11</a><a class="btn secondary" href="/tactics.html">Taktikler</a><a class="btn secondary" href="/calendar.html">Takvim</a><a class="btn secondary" href="/europe.html">Avrupa Merkezi</a><a class="btn secondary" href="/transfers.html">Transfer Pazarı</a><a class="btn secondary" href="/training.html">Antrenman</a><a class="btn secondary" href="/league.html">Lig Tablosu</a><a class="btn secondary" href="/economy.html">Ekonomi</a><a class="btn secondary" href="/social.html">Sosyal Medya</a>
-              </div>
+              <section id="dashboardSideNotifications" class="dashboard-side-notifications"></section>
               <div id="clubSummary" style="margin-top:18px"></div>
             </div>
           </section>
+          <div id="dashboardPitch" class="card pitch dashboard-pitch"></div>
         </section>
         <section id="dashboardLeaguePanel" class="dashboard-panel" hidden>
-          <div class="card"><h2>Süper Lig</h2><div id="dashboardLeagueTable" class="table-wrap"></div></div>
+          <div class="card"><h2>Super Lig</h2><div id="dashboardLeagueTable" class="table-wrap"></div></div>
         </section>
         <section id="dashboardEuropePanel" class="dashboard-panel" hidden>
           <div class="card"><h2>Avrupa</h2><div id="dashboardEuropeContent"></div></div>
@@ -57,10 +58,7 @@
         </section>
       </main>
     </div>
-    <script src="/js/auth.js?v=20260517-no-match-nav"></script>
-    <script src="/js/dashboard.js?v=20260517-dashboard-tabs"></script>
+    <script src="/js/auth.js?v=20260605-exact-shell-theme"></script>
+    <script src="/js/dashboard.js?v=20260605-exact-dashboard-theme"></script>
   </body>
 </html>
-
-
-
