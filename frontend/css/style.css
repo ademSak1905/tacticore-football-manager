@@ -3477,6 +3477,44 @@ td {
   }
 }
 
+@media (max-width: 760px) {
+  .menu-btn {
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .sidebar.open {
+    display: block !important;
+    position: sticky;
+    top: 68px;
+    z-index: 80;
+  }
+
+  body[data-shell-page="lineup"] .lineup-pitch,
+  body[data-shell-page="lineup"] .bench-list {
+    touch-action: manipulation;
+    overscroll-behavior: contain;
+  }
+
+  body[data-shell-page="lineup"] .lineup-player,
+  body[data-shell-page="lineup"] .bench-player {
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  body[data-shell-page="lineup"] .bench-list {
+    overflow-x: hidden;
+  }
+}
+
 .nav a[data-page]::before {
   content: "";
   width: 28px;

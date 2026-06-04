@@ -216,9 +216,8 @@ function matchLine(match, teamId, europeanTeamId = null) {
 
 async function nextOpponentFixture(userId, club, state) {
   const teamId = Number(club.team_id);
-  const currentDay = Math.max(1, Number(state.current_day || 1) - 1);
-  const nextLeagueDay = Number(state.next_match_day || 0);
-  let domestic = await get(`
+  const currentDay = Math.max(1, Number(state.current_day || 1));
+  const domestic = await get(`
     SELECT
       'league' AS source,
       'Süper Lig' AS competition,
@@ -243,42 +242,10 @@ async function nextOpponentFixture(userId, club, state) {
     FROM matches m
     LEFT JOIN teams ht ON ht.id = m.home_club_id
     LEFT JOIN teams at ON at.id = m.away_club_id
-    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?)
-      AND (? <= 0 OR m.match_day = ?)
-    ORDER BY ABS(m.match_day - ?) ASC, m.match_day ASC, m.id ASC
+    WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
+    ORDER BY m.match_day ASC, m.id ASC
     LIMIT 1
-  `, [userId, teamId, teamId, nextLeagueDay, nextLeagueDay, nextLeagueDay || currentDay]);
-  if (!domestic) {
-    domestic = await get(`
-      SELECT
-        'league' AS source,
-        'Süper Lig' AS competition,
-        m.id,
-        m.match_day,
-        m.home_club_id AS home_team_id,
-        m.away_club_id AS away_team_id,
-        NULL AS home_european_team_id,
-        NULL AS away_european_team_id,
-        ht.name AS home_name,
-        at.name AS away_name,
-        ht.default_formation AS home_formation,
-        at.default_formation AS away_formation,
-        ht.overall AS home_overall,
-        at.overall AS away_overall,
-        ht.attack_overall AS home_attack,
-        at.attack_overall AS away_attack,
-        ht.midfield_overall AS home_midfield,
-        at.midfield_overall AS away_midfield,
-        ht.defense_overall AS home_defense,
-        at.defense_overall AS away_defense
-      FROM matches m
-      LEFT JOIN teams ht ON ht.id = m.home_club_id
-      LEFT JOIN teams at ON at.id = m.away_club_id
-      WHERE m.user_id = ? AND m.played = 0 AND (m.home_club_id = ? OR m.away_club_id = ?) AND m.match_day >= ?
-      ORDER BY m.match_day ASC, m.id ASC
-      LIMIT 1
-    `, [userId, teamId, teamId, currentDay]);
-  }
+  `, [userId, teamId, teamId, currentDay]);
   const europe = await get(`
     SELECT
       'europe' AS source,
@@ -370,7 +337,10 @@ async function lastFiveForOpponent(userId, opponentTeamId, opponentEuropeanTeamI
 
 async function createOpponentReportMessages(userId, club, state) {
   const fixture = await nextOpponentFixture(userId, club, state);
-  if (!fixture) return;
+  if (!fixture) {
+    await run('DELETE FROM inbox_messages WHERE user_id = ? AND unique_key LIKE ?', [userId, 'opponent_report_%']);
+    return;
+  }
   const teamId = Number(club.team_id);
   const isHome = Number(fixture.home_team_id || 0) === teamId;
   const opponentTeamId = isHome ? fixture.away_team_id : fixture.home_team_id;
@@ -390,21 +360,27 @@ async function createOpponentReportMessages(userId, club, state) {
     ? lastFive.map((match) => `- ${matchLine(match, opponentTeamId, opponentEuropeanTeamId)}`).join('\n')
     : '- Bu kariyerde kayitli son mac bulunamadi.';
   const daysUntil = Number(fixture.match_day || state.current_day || 1) - Number(state.current_day || 1);
+  const uniqueKey = `opponent_report_v3_${club.team_id}_${fixture.source}_${fixture.id}_${fixture.match_day}`;
+  await run(
+    'DELETE FROM inbox_messages WHERE user_id = ? AND unique_key LIKE ? AND unique_key != ?',
+    [userId, 'opponent_report_%', uniqueKey]
+  );
   await createInboxMessage(userId, {
     teamId: club.team_id,
     day: state.current_day,
     category: 'scout',
     priority: daysUntil <= 7 ? 'important' : 'normal',
-    uniqueKey: `opponent_report_v2_${club.team_id}_${fixture.source}_${fixture.id}_${fixture.match_day}`,
+    uniqueKey,
     title: `${opponentName} mac onu raporu`,
-    summary: 'Siradaki rakibin son 5 maci ve sevdigi taktik hazir.',
+    summary: `Siradaki rakibin ${opponentName}. Son 5 maci ve taktik raporu hazir.`,
     body: [
+      `Rakip: ${opponentName}`,
       `Siradaki mac: ${fixture.competition || 'Mac'} - ${opponentName}`,
       `Mac tarihi: ${formatDate(fixture.match_day || state.current_day)}`,
       `Sevdigi dizilis: ${tactic.formation}`,
       `Taktik egilim: ${tactic.style}`,
       `Guc notu: Hucum ${tactic.attack} / Orta saha ${tactic.midfield} / Savunma ${tactic.defense}`,
-      'Son 5 mac:',
+      `${opponentName} son 5 mac:`,
       lastFiveText
     ].join('\n'),
     payload: { opponentTeamId, opponentEuropeanTeamId, opponentName, matchId: fixture.id, source: fixture.source }

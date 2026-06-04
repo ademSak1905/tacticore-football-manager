@@ -210,6 +210,8 @@ async function requireAuth() {
   }
 }
 
+let lastMenuTouchAt = 0;
+
 function wireShell(activePage) {
   const sidebar = byId('sidebar');
   const button = byId('menuButton');
@@ -236,7 +238,26 @@ function wireShell(activePage) {
     `).join('');
   }
 
-  if (button && sidebar) button.addEventListener('click', () => sidebar.classList.toggle('open'));
+  if (button && sidebar && !button.dataset.shellMenuWired) {
+    const toggleSidebar = (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      sidebar.classList.toggle('open');
+      button.setAttribute('aria-expanded', String(sidebar.classList.contains('open')));
+    };
+    button.dataset.shellMenuWired = '1';
+    button.setAttribute('aria-controls', 'sidebar');
+    button.setAttribute('aria-expanded', String(sidebar.classList.contains('open')));
+    button.addEventListener('pointerup', (event) => {
+      if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+      lastMenuTouchAt = Date.now();
+      toggleSidebar(event);
+    });
+    button.addEventListener('click', (event) => {
+      if (Date.now() - lastMenuTouchAt < 450) return;
+      toggleSidebar(event);
+    });
+  }
 
   document.querySelectorAll('[data-page]').forEach((link) => {
     if (link.dataset.page === activePage) link.classList.add('active');
