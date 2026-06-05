@@ -100,7 +100,7 @@ function updateCoinWidget(balance) {
 function updateBudgetWidget(club) {
   const widget = byId('budgetWidget');
   if (!widget || !club) return;
-  widget.innerHTML = `<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>${moneyEuroParts(club.budget || 0)} <b>EUR</b></strong></span>`;
+  widget.innerHTML = `<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>${moneyEuroParts(club.budget || 0)} <b>€</b></strong></span>`;
 }
 
 function updateDateWidget(state) {
@@ -271,7 +271,7 @@ function wireShell(activePage) {
     budget.id = 'budgetWidget';
     budget.className = 'budget-widget';
     budget.href = '/economy.html';
-    budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>EUR</b></strong></span>';
+    budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>€</b></strong></span>';
     topbar.insertBefore(budget, logout || null);
     const coin = document.createElement('a');
     coin.id = 'coinWidget';
@@ -299,7 +299,7 @@ function wireShell(activePage) {
       budget.id = 'budgetWidget';
       budget.className = 'budget-widget';
       budget.href = '/economy.html';
-      budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>EUR</b></strong></span>';
+      budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>€</b></strong></span>';
       topbar.insertBefore(budget, logout || null);
       const coin = document.createElement('a');
       coin.id = 'coinWidget';

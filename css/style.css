@@ -6884,6 +6884,289 @@ body[data-shell-page="dashboard"] .dashboard-main-card h3 {
   margin-bottom: 9px !important;
 }
 
+/* 2026-06-05 compact polished topbar and dashboard table */
+@media (min-width: 1101px) {
+  body .topbar {
+    height: 108px !important;
+    min-height: 108px !important;
+    gap: 14px !important;
+    padding: 15px 18px !important;
+  }
+
+  body .topbar .brand,
+  body .topbar .budget-widget,
+  body .topbar .coin-widget,
+  body .topbar .date-widget,
+  body .topbar .manager-xp-widget,
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    height: 78px !important;
+    min-height: 78px !important;
+  }
+
+  body .topbar .brand {
+    width: 270px !important;
+    min-width: 270px !important;
+    grid-template-columns: 56px 1fr 26px !important;
+    gap: 12px !important;
+    padding: 9px 12px !important;
+  }
+
+  body .topbar .brand::after {
+    width: 26px !important;
+    height: 31px !important;
+  }
+
+  body .topbar .brand-mark {
+    width: 54px !important;
+    height: 54px !important;
+    font-size: 24px !important;
+    border-width: 2px !important;
+  }
+
+  body .topbar #userBadge strong {
+    font-size: 22px !important;
+  }
+
+  body .topbar #userBadge small {
+    margin-top: 2px !important;
+    font-size: 15px !important;
+  }
+
+  body .topbar .budget-widget {
+    width: 200px !important;
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px 13px !important;
+  }
+
+  body .topbar .coin-widget {
+    width: 158px !important;
+    grid-template-columns: 38px minmax(0, 1fr) 28px !important;
+    gap: 9px !important;
+    padding: 12px 12px !important;
+  }
+
+  body .topbar .date-widget {
+    width: 178px !important;
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px 12px !important;
+  }
+
+  body .topbar .manager-xp-widget {
+    width: 170px !important;
+    grid-template-columns: 38px 1fr auto !important;
+    gap: 3px 8px !important;
+    padding: 10px 10px !important;
+  }
+
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    width: 88px !important;
+    font-size: 14px !important;
+  }
+
+  body .topbar .shell-widget-copy small {
+    font-size: 14px !important;
+  }
+
+  body .topbar .shell-widget-copy strong {
+    font-size: 21px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  body .topbar .budget-widget b {
+    font-size: 15px !important;
+  }
+
+  body .topbar .shell-money-icon,
+  body .topbar .shell-coin-icon,
+  body .topbar .shell-calendar-icon,
+  body .topbar .manager-icon {
+    width: 36px !important;
+    height: 36px !important;
+    position: relative !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+  }
+
+  body .topbar .shell-money-icon {
+    border: 2px solid #20e85a !important;
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, rgba(7, 39, 24, 0.98), rgba(4, 20, 17, 0.98)) !important;
+    box-shadow: 0 0 16px rgba(34, 238, 90, 0.25) !important;
+  }
+
+  body .topbar .shell-money-icon::before {
+    content: "€" !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    color: #21f05a !important;
+    font-size: 23px !important;
+    font-weight: 950 !important;
+    -webkit-mask: none !important;
+    mask: none !important;
+    background: none !important;
+  }
+
+  body .topbar .shell-coin-icon {
+    border-radius: 999px !important;
+    background: radial-gradient(circle at 34% 28%, #fff6a0 0 12%, #ffd742 36%, #d79b07 70%, #8a6100 100%) !important;
+    box-shadow: 0 0 20px rgba(255, 211, 49, 0.42) !important;
+  }
+
+  body .topbar .shell-coin-icon::before {
+    content: "TC" !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    color: #5a3b00 !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    letter-spacing: 0 !important;
+    background: none !important;
+  }
+
+  body .topbar .shell-calendar-icon {
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, #315fc2, #15306b) !important;
+    border: 1px solid rgba(124, 163, 255, 0.55) !important;
+  }
+
+  body .topbar .shell-calendar-icon::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 9px 8px 7px !important;
+    width: auto !important;
+    height: auto !important;
+    border: 2px solid #b7cdfb !important;
+    border-top-width: 6px !important;
+    border-radius: 4px !important;
+    background:
+      linear-gradient(90deg, transparent 31%, rgba(183,205,251,.75) 32% 36%, transparent 37% 63%, rgba(183,205,251,.75) 64% 68%, transparent 69%),
+      linear-gradient(180deg, transparent 45%, rgba(183,205,251,.55) 46% 52%, transparent 53%) !important;
+    -webkit-mask: none !important;
+    mask: none !important;
+  }
+
+  body .topbar .shell-calendar-icon::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 7px !important;
+    left: 11px !important;
+    right: 11px !important;
+    height: 4px !important;
+    border-radius: 99px !important;
+    background: #d7e5ff !important;
+  }
+
+  body .topbar .manager-icon::before {
+    -webkit-mask: none !important;
+    mask: none !important;
+    background: none !important;
+  }
+
+  body .topbar .shell-plus {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 22px !important;
+    border-width: 1px !important;
+  }
+
+  body .topbar .manager-xp-widget span:not(.manager-icon) {
+    font-size: 14px !important;
+  }
+
+  body .topbar .manager-xp-widget strong {
+    font-size: 12px !important;
+  }
+
+  body .topbar .manager-xp-widget em {
+    font-size: 11px !important;
+  }
+
+  body .topbar .manager-xp-widget::after {
+    height: 7px !important;
+  }
+}
+
+body[data-shell-page="dashboard"] .dashboard-head-grid {
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-content: start !important;
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card,
+body[data-shell-page="dashboard"] .grid.stats > .stat-card {
+  height: 88px !important;
+  min-height: 88px !important;
+  max-height: 88px !important;
+  padding: 12px 10px !important;
+  display: grid !important;
+  place-items: center !important;
+  align-self: start !important;
+}
+
+body[data-shell-page="dashboard"] .league-card {
+  height: 245px !important;
+  max-height: 245px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table th,
+body[data-shell-page="dashboard"] .dashboard-mini-table td {
+  height: 25px !important;
+  padding: 3px 4px !important;
+  vertical-align: middle !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table th:first-child,
+body[data-shell-page="dashboard"] .dashboard-mini-table td:first-child {
+  width: 24px !important;
+  text-align: center !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table th:nth-child(2),
+body[data-shell-page="dashboard"] .dashboard-mini-table td:nth-child(2) {
+  width: auto !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table td:nth-child(2) {
+  gap: 7px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table .team-logo {
+  width: 22px !important;
+  height: 22px !important;
+  flex: 0 0 22px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-mini-table th:nth-child(n+3),
+body[data-shell-page="dashboard"] .dashboard-mini-table td:nth-child(n+3) {
+  width: 28px !important;
+  text-align: center !important;
+}
+
 @media (max-width: 1500px) {
   body .topbar {
     height: 128px !important;
@@ -6952,4 +7235,90 @@ body[data-shell-page="dashboard"] .dashboard-main-card h3 {
   body .topbar .shell-widget-copy strong {
     font-size: 22px !important;
   }
+}
+
+/* 2026-06-05 final compact correction */
+@media (min-width: 1101px) {
+  body .topbar {
+    height: 108px !important;
+    min-height: 108px !important;
+    gap: 14px !important;
+    padding: 15px 18px !important;
+  }
+
+  body .topbar .brand,
+  body .topbar .budget-widget,
+  body .topbar .coin-widget,
+  body .topbar .date-widget,
+  body .topbar .manager-xp-widget,
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    height: 78px !important;
+    min-height: 78px !important;
+  }
+
+  body .topbar .brand {
+    width: 268px !important;
+    min-width: 268px !important;
+    grid-template-columns: 54px 1fr 25px !important;
+  }
+
+  body .topbar .brand-mark {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 23px !important;
+  }
+
+  body .topbar .budget-widget { width: 205px !important; }
+  body .topbar .coin-widget { width: 162px !important; }
+  body .topbar .date-widget { width: 180px !important; }
+  body .topbar .manager-xp-widget { width: 170px !important; }
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton { width: 88px !important; }
+
+  body .topbar #userBadge strong { font-size: 21px !important; }
+  body .topbar #userBadge small { font-size: 14px !important; }
+  body .topbar .shell-widget-copy small { font-size: 14px !important; }
+  body .topbar .shell-widget-copy strong { font-size: 20px !important; }
+}
+
+body[data-shell-page="dashboard"] .league-card {
+  overflow: hidden !important;
+}
+
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table,
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table thead,
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table tbody {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table tr {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) repeat(5, 23px) !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table th,
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table td {
+  width: auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding: 3px 2px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table th:nth-child(n+3),
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table td:nth-child(n+3) {
+  text-align: center !important;
+}
+
+body[data-shell-page="dashboard"] .league-card .dashboard-mini-table td:nth-child(2) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
