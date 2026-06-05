@@ -96,17 +96,13 @@ function renderGeneralDashboard() {
     : data.nextOpponent;
   const stats = [
     ['Bütçe', money(data.club.budget)],
-    ['TactiCoins', Number(dashboardCache.coins?.balance || 0).toLocaleString('tr-TR')],
-    ['Bugun', formatSeasonDate(state.current_date, `Gun ${state.current_day}`)],
-    ['Taraftar memnuniyeti', `%${Number(state.club?.fan_satisfaction ?? data.club.fan_satisfaction ?? 65)}`],
-    ['Yonetim guveni', `${state.club?.board_status || data.club.board_status || 'Guvende'} (%${Number(state.club?.board_confidence ?? data.club.board_confidence ?? 70)})`],
     ['Lig sırası', `${data.rank}.`],
     ['Son maç', data.club.last_match || 'Yok'],
-    [isDrawNext ? 'Sıradaki olay' : 'Sıradaki rakip', nextOpponent],
-    ['Takım overall', data.teamPower],
     ['Taraftar', Number(data.club.fans).toLocaleString('tr-TR')],
+    ['Takım overall', data.teamPower],
     ['Form durumu', data.club.form || '-'],
-    ['En iyi oyuncu', data.bestPlayer?.name || '-']
+    ['En iyi oyuncu', data.bestPlayer?.name || '-'],
+    [isDrawNext ? 'Sıradaki olay' : 'Sıradaki rakip', nextOpponent]
   ];
 
   byId('dashboardStats').innerHTML = stats.map(([label, value]) => `

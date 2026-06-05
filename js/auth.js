@@ -70,6 +70,11 @@ function moneyEuro(value) {
   return `${converted.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} EUR`;
 }
 
+function moneyEuroParts(value) {
+  const converted = Number(value || 0) / 35;
+  return converted.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+}
+
 function managerXpText(manager) {
   if (!manager) return 'Lv. 1 Menajer';
   return `Lv. ${manager.level} Menajer`;
@@ -79,8 +84,9 @@ function updateManagerWidget(manager) {
   const widget = byId('managerXpWidget');
   if (!widget || !manager) return;
   widget.innerHTML = `
+    <span class="manager-icon"></span>
     <span>${managerXpText(manager)}</span>
-    <strong>${manager.currentXp} / ${manager.nextXp} XP</strong>
+    <strong>${manager.currentXp} / ${manager.nextXp}<br>XP</strong>
     <em>${manager.lastXpGain ? `+${manager.lastXpGain} XP` : 'XP hazır'}</em>
   `;
 }
@@ -88,13 +94,13 @@ function updateManagerWidget(manager) {
 function updateCoinWidget(balance) {
   const widget = byId('coinWidget');
   if (!widget) return;
-  widget.innerHTML = `<span class="shell-coin-icon"></span><strong>${Number(balance || 0).toLocaleString('tr-TR')}</strong><span class="shell-plus">+</span>`;
+  widget.innerHTML = `<span class="shell-coin-icon"></span><span class="shell-widget-copy"><small>Altın</small><strong>${Number(balance || 0).toLocaleString('tr-TR')}</strong></span><span class="shell-plus">+</span>`;
 }
 
 function updateBudgetWidget(club) {
   const widget = byId('budgetWidget');
   if (!widget || !club) return;
-  widget.innerHTML = `<span class="shell-money-icon"></span><strong>${moneyEuro(club.budget || 0)}</strong>`;
+  widget.innerHTML = `<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>${moneyEuroParts(club.budget || 0)} <b>EUR</b></strong></span>`;
 }
 
 function updateDateWidget(state) {
@@ -103,7 +109,7 @@ function updateDateWidget(state) {
   const date = state.current_date ? new Date(`${String(state.current_date).slice(0, 10)}T12:00:00`) : null;
   const dateText = date ? date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : `Gün ${state.current_day || 1}`;
   const dayText = date ? date.toLocaleDateString('tr-TR', { weekday: 'long' }) : '';
-  widget.innerHTML = `<span class="shell-calendar-icon"></span><strong>${dateText}</strong><small>${dayText}</small>`;
+  widget.innerHTML = `<span class="shell-calendar-icon"></span><span class="shell-widget-copy"><strong>${dateText}</strong><small>${dayText}</small></span>`;
 }
 
 function showXpToast(award) {
@@ -237,7 +243,9 @@ async function requireAuth() {
   try {
     const session = await api.request('/api/me');
     const badge = byId('userBadge');
-    if (badge && session.club) badge.textContent = session.club.name;
+    if (badge && session.club) {
+      badge.innerHTML = `<strong>${session.club.name}</strong><small>Menajer Paneli</small>`;
+    }
     localStorage.setItem('tacticoreCurrency', session.club?.currency || 'EUR');
     updateBudgetWidget(session.club);
     updateManagerWidget(session.manager);
@@ -263,31 +271,25 @@ function wireShell(activePage) {
     budget.id = 'budgetWidget';
     budget.className = 'budget-widget';
     budget.href = '/economy.html';
-    budget.innerHTML = '<span class="shell-money-icon"></span><strong>0 EUR</strong>';
+    budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>EUR</b></strong></span>';
     topbar.insertBefore(budget, logout || null);
     const coin = document.createElement('a');
     coin.id = 'coinWidget';
     coin.className = 'coin-widget';
     coin.href = '/market.html';
-    coin.innerHTML = '<span class="shell-coin-icon"></span><strong>0</strong><span class="shell-plus">+</span>';
+    coin.innerHTML = '<span class="shell-coin-icon"></span><span class="shell-widget-copy"><small>Altın</small><strong>0</strong></span><span class="shell-plus">+</span>';
     topbar.insertBefore(coin, logout || null);
     const date = document.createElement('a');
     date.id = 'dateWidget';
     date.className = 'date-widget';
     date.href = '/calendar.html';
-    date.innerHTML = '<span class="shell-calendar-icon"></span><strong>Takvim</strong><small>Hazırlanıyor</small>';
+    date.innerHTML = '<span class="shell-calendar-icon"></span><span class="shell-widget-copy"><strong>Takvim</strong><small>Hazırlanıyor</small></span>';
     topbar.insertBefore(date, logout || null);
-    const continueButton = document.createElement('a');
-    continueButton.id = 'continueWidget';
-    continueButton.className = 'continue-widget btn green';
-    continueButton.href = '/dashboard.html';
-    continueButton.textContent = 'DEVAM ET';
-    topbar.insertBefore(continueButton, logout || null);
     const widget = document.createElement('a');
     widget.id = 'managerXpWidget';
     widget.className = 'manager-xp-widget';
     widget.href = '/manager.html';
-    widget.innerHTML = '<span>Lv. 1 Menajer</span><strong>0 / 500 XP</strong><em>XP hazır</em>';
+    widget.innerHTML = '<span class="manager-icon"></span><span>Lv. 1 Menajer</span><strong>0 / 500<br>XP</strong><em>XP hazır</em>';
     topbar.insertBefore(widget, logout || null);
     wireShellLeaderboard(topbar, logout);
   } else if (topbar) {
@@ -297,26 +299,20 @@ function wireShell(activePage) {
       budget.id = 'budgetWidget';
       budget.className = 'budget-widget';
       budget.href = '/economy.html';
-      budget.innerHTML = '<span class="shell-money-icon"></span><strong>0 EUR</strong>';
+      budget.innerHTML = '<span class="shell-money-icon"></span><span class="shell-widget-copy"><small>Bakiye</small><strong>0 <b>EUR</b></strong></span>';
       topbar.insertBefore(budget, logout || null);
       const coin = document.createElement('a');
       coin.id = 'coinWidget';
       coin.className = 'coin-widget';
       coin.href = '/market.html';
-      coin.innerHTML = '<span class="shell-coin-icon"></span><strong>0</strong><span class="shell-plus">+</span>';
+      coin.innerHTML = '<span class="shell-coin-icon"></span><span class="shell-widget-copy"><small>Altın</small><strong>0</strong></span><span class="shell-plus">+</span>';
       topbar.insertBefore(coin, byId('managerXpWidget') || logout || null);
       const date = document.createElement('a');
       date.id = 'dateWidget';
       date.className = 'date-widget';
       date.href = '/calendar.html';
-      date.innerHTML = '<span class="shell-calendar-icon"></span><strong>Takvim</strong><small>Hazırlanıyor</small>';
+      date.innerHTML = '<span class="shell-calendar-icon"></span><span class="shell-widget-copy"><strong>Takvim</strong><small>Hazırlanıyor</small></span>';
       topbar.insertBefore(date, logout || null);
-      const continueButton = document.createElement('a');
-      continueButton.id = 'continueWidget';
-      continueButton.className = 'continue-widget btn green';
-      continueButton.href = '/dashboard.html';
-      continueButton.textContent = 'DEVAM ET';
-      topbar.insertBefore(continueButton, logout || null);
     }
     wireShellLeaderboard(topbar, byId('logoutButton'));
   }
