@@ -6573,3 +6573,383 @@ body[data-shell-page="dashboard"] .dashboard-main-card { min-height: 146px !impo
   body[data-shell-page="dashboard"] .dashboard-board-grid { grid-template-columns: 1fr !important; }
   body[data-shell-page="dashboard"] #dashboardStats.grid.stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+/* 2026-06-05 reference topbar without continue button */
+body .topbar {
+  height: 156px !important;
+  min-height: 156px !important;
+  padding: 24px 24px !important;
+  gap: 16px !important;
+  align-items: center !important;
+  background:
+    radial-gradient(circle at 4% 50%, rgba(0, 255, 66, 0.16), transparent 17%),
+    linear-gradient(180deg, #081422 0%, #06101b 100%) !important;
+  border: 1px solid rgba(49, 91, 134, 0.55) !important;
+  border-radius: 0 0 8px 8px !important;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.48),
+    inset 0 -1px 0 rgba(69, 149, 255, 0.34) !important;
+}
+
+body .topbar .menu-btn,
+body .topbar #continueWidget,
+body .topbar .continue-widget {
+  display: none !important;
+}
+
+body .topbar .brand,
+body .topbar .budget-widget,
+body .topbar .coin-widget,
+body .topbar .date-widget,
+body .topbar .manager-xp-widget,
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  height: 106px !important;
+  min-height: 106px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(66, 84, 112, 0.62) !important;
+  background: linear-gradient(145deg, rgba(10, 24, 39, 0.98), rgba(7, 15, 26, 0.98)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 0 22px rgba(0,0,0,.16) !important;
+}
+
+body .topbar .brand {
+  width: 390px !important;
+  min-width: 390px !important;
+  display: grid !important;
+  grid-template-columns: 76px 1fr 34px !important;
+  gap: 18px !important;
+  align-items: center !important;
+  padding: 14px 18px !important;
+  border-color: rgba(39, 144, 75, 0.38) !important;
+  box-shadow:
+    inset 0 -5px 0 #18e84d,
+    inset 0 0 0 1px rgba(255,255,255,.025),
+    0 0 30px rgba(35, 240, 78, 0.08) !important;
+}
+
+body .topbar .brand::after {
+  content: "" !important;
+  width: 32px !important;
+  height: 38px !important;
+  border-radius: 8px 8px 14px 14px !important;
+  border: 1px solid rgba(100, 255, 124, 0.58) !important;
+  background:
+    radial-gradient(circle at 50% 42%, #73ff7b 0 5px, transparent 6px),
+    linear-gradient(180deg, #20d454 0%, #08732c 100%) !important;
+}
+
+body .topbar .brand-mark {
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 999px !important;
+  border: 3px solid #14f24c !important;
+  color: #fff !important;
+  background: linear-gradient(145deg, #38c834, #118329) !important;
+  box-shadow: 0 0 34px rgba(22, 244, 76, 0.62) !important;
+  font-size: 32px !important;
+  font-weight: 950 !important;
+}
+
+body .topbar #userBadge strong {
+  font-size: 31px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+body .topbar #userBadge small {
+  margin-top: 6px !important;
+  color: #d8e2ee !important;
+  font-size: 20px !important;
+  font-weight: 750 !important;
+}
+
+body .topbar .budget-widget {
+  width: 285px !important;
+  display: grid !important;
+  grid-template-columns: 48px 1fr !important;
+  gap: 14px !important;
+  padding: 18px 22px !important;
+  border-left: 2px solid #13d747 !important;
+}
+
+body .topbar .coin-widget {
+  width: 230px !important;
+  display: grid !important;
+  grid-template-columns: 48px 1fr 44px !important;
+  gap: 12px !important;
+  padding: 18px 18px !important;
+  border-left: 1px solid rgba(255, 214, 48, 0.48) !important;
+}
+
+body .topbar .date-widget {
+  width: 250px !important;
+  display: grid !important;
+  grid-template-columns: 48px 1fr !important;
+  gap: 14px !important;
+  padding: 18px 20px !important;
+}
+
+body .topbar .manager-xp-widget {
+  width: 230px !important;
+  display: grid !important;
+  grid-template-columns: 48px 1fr auto !important;
+  grid-template-rows: auto auto auto !important;
+  gap: 4px 10px !important;
+  padding: 16px 16px !important;
+}
+
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  width: 118px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+}
+
+body .topbar .shell-leaderboard .leaderboard-toggle {
+  background: linear-gradient(180deg, #175fc4, #103a82) !important;
+  border-color: rgba(93, 143, 255, 0.78) !important;
+  box-shadow: inset 0 0 0 1px rgba(126,166,255,.16), 0 0 20px rgba(38, 107, 245, 0.22) !important;
+}
+
+body .topbar #logoutButton {
+  border-color: rgba(245, 114, 78, 0.58) !important;
+  background: linear-gradient(145deg, rgba(35, 25, 22, 0.98), rgba(13, 17, 24, 0.98)) !important;
+}
+
+body .topbar .shell-widget-copy small {
+  color: #cbd4df !important;
+  font-size: 20px !important;
+  font-weight: 760 !important;
+  line-height: 1 !important;
+}
+
+body .topbar .shell-widget-copy strong {
+  color: #fff !important;
+  font-size: 31px !important;
+  font-weight: 950 !important;
+  line-height: 1.05 !important;
+}
+
+body .topbar .budget-widget b {
+  color: #22ee5a !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+}
+
+body .topbar .shell-money-icon,
+body .topbar .shell-coin-icon,
+body .topbar .shell-calendar-icon,
+body .topbar .manager-icon {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+body .topbar .shell-money-icon {
+  border-radius: 8px !important;
+  background:
+    linear-gradient(#061421, #061421) padding-box,
+    linear-gradient(180deg, #22ee5a, #0f9136) border-box !important;
+  border: 3px solid transparent !important;
+  box-shadow: 0 0 18px rgba(31, 232, 85, 0.28) !important;
+}
+
+body .topbar .shell-coin-icon {
+  border-radius: 999px !important;
+  background: radial-gradient(circle at 36% 30%, #fff27a, #ffd131 42%, #b98500 100%) !important;
+  box-shadow: 0 0 24px rgba(255, 211, 49, 0.48) !important;
+}
+
+body .topbar .shell-calendar-icon,
+body .topbar .manager-icon {
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, #365fbe, #152e66) !important;
+  border: 1px solid rgba(112, 153, 255, 0.55) !important;
+}
+
+body .topbar .shell-plus {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 9px !important;
+  font-size: 28px !important;
+  border: 2px solid #ffe044 !important;
+  color: #ffe044 !important;
+}
+
+body .topbar .manager-xp-widget span:not(.manager-icon) {
+  grid-column: 2 !important;
+  color: #fff !important;
+  font-size: 19px !important;
+  font-weight: 950 !important;
+  line-height: 1.05 !important;
+}
+
+body .topbar .manager-xp-widget strong {
+  grid-column: 3 !important;
+  color: #ffdf34 !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+  line-height: 1.05 !important;
+  text-align: right !important;
+}
+
+body .topbar .manager-xp-widget em {
+  grid-column: 3 !important;
+  color: #3fff61 !important;
+  font-size: 16px !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  text-align: right !important;
+}
+
+body .topbar .manager-xp-widget::after {
+  content: "" !important;
+  grid-column: 2 / 4 !important;
+  height: 9px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #183653, #0d2134) !important;
+}
+
+body[data-shell-page="dashboard"] .content {
+  width: min(1180px, calc(100% - 34px)) !important;
+  padding-top: 22px !important;
+}
+
+body[data-shell-page="dashboard"] .page-title {
+  margin-bottom: 14px !important;
+}
+
+body[data-shell-page="dashboard"] .page-title h1 {
+  font-size: 26px !important;
+  line-height: 1.1 !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-tabs {
+  margin-bottom: 14px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-head-grid {
+  grid-template-columns: minmax(0, 1fr) 310px !important;
+  gap: 12px !important;
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-self: start !important;
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card {
+  height: 86px !important;
+  min-height: 86px !important;
+  max-height: 86px !important;
+  padding: 12px 11px !important;
+  align-self: start !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card strong {
+  font-size: clamp(14px, 1.1vw, 20px) !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel {
+  padding: 13px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-board-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-main-card {
+  height: 178px !important;
+  min-height: 178px !important;
+  max-height: 178px !important;
+  padding: 13px !important;
+  overflow: hidden !important;
+  align-self: start !important;
+}
+
+body[data-shell-page="dashboard"] .league-card,
+body[data-shell-page="dashboard"] .quick-card {
+  grid-row: auto !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-main-card h3 {
+  font-size: 13px !important;
+  margin-bottom: 9px !important;
+}
+
+@media (max-width: 1500px) {
+  body .topbar {
+    height: 128px !important;
+    min-height: 128px !important;
+    gap: 10px !important;
+    padding: 18px 12px !important;
+  }
+
+  body .topbar .brand,
+  body .topbar .budget-widget,
+  body .topbar .coin-widget,
+  body .topbar .date-widget,
+  body .topbar .manager-xp-widget,
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    height: 90px !important;
+    min-height: 90px !important;
+  }
+
+  body .topbar .brand {
+    width: 310px !important;
+    min-width: 310px !important;
+    grid-template-columns: 60px 1fr 28px !important;
+  }
+
+  body .topbar .brand-mark {
+    width: 58px !important;
+    height: 58px !important;
+    font-size: 26px !important;
+  }
+
+  body .topbar #userBadge strong {
+    font-size: 24px !important;
+  }
+
+  body .topbar #userBadge small {
+    font-size: 17px !important;
+  }
+
+  body .topbar .budget-widget {
+    width: 224px !important;
+  }
+
+  body .topbar .coin-widget {
+    width: 168px !important;
+  }
+
+  body .topbar .date-widget {
+    width: 188px !important;
+  }
+
+  body .topbar .manager-xp-widget {
+    width: 188px !important;
+  }
+
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    width: 92px !important;
+    font-size: 16px !important;
+  }
+
+  body .topbar .shell-widget-copy small {
+    font-size: 15px !important;
+  }
+
+  body .topbar .shell-widget-copy strong {
+    font-size: 22px !important;
+  }
+}
