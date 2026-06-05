@@ -4,33 +4,33 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260525-save-slots">
+    <link rel="stylesheet" href="/css/style.css?v=20260605-final-topbar-login-dashboard">
   </head>
   <body class="auth-page start-page">
     <main class="auth-panel start-panel">
       <div class="brand"><span class="brand-mark">TC</span><span>TactiCore</span></div>
-      <h1>Kariyer merkezine hoş geldin.</h1>
-      <p class="muted" id="startText">Takımını seç, kadronu kur ve sezona hazırlan.</p>
+      <h1>Kariyer merkezine hos geldin.</h1>
+      <p class="muted" id="startText">Takimini sec, kadronu kur ve sezona hazirlan.</p>
       <div id="careerCard" class="start-card"></div>
       <div class="start-actions">
-        <a id="startGameButton" class="btn green" href="/dashboard.html" hidden>Oyuna Başla</a>
-        <a id="loginButton" class="btn" href="/login.html">Giriş Yap</a>
-        <a id="registerButton" class="btn secondary" href="/register.html">Yeni Kariyer Başlat</a>
-        <button id="newCareerButton" class="btn secondary" type="button" hidden>Yeni Kariyer Başlat</button>
+        <a id="startGameButton" class="btn green" href="/dashboard.html" hidden>Oyuna Basla</a>
+        <a id="loginButton" class="btn" href="/login.html">Giris Yap</a>
+        <a id="registerButton" class="btn secondary" href="/register.html">Yeni Kariyer Baslat</a>
+        <button id="newCareerButton" class="btn secondary" type="button" hidden>Yeni Kariyer Baslat</button>
       </div>
     </main>
-    <script src="/js/auth.js?v=20260525-save-slots"></script>
+    <script src="/js/auth.js?v=20260605-final-topbar-login-dashboard"></script>
     <script>
       (async () => {
         const careerCard = byId('careerCard');
         try {
           const session = await api.request('/api/me');
           const careers = await api.request('/api/careers');
-          byId('startText').textContent = 'Kayıtlı kariyerlerin hazır. Birini yükle veya yeni kariyer başlat.';
+          byId('startText').textContent = 'Kayitli kariyerlerin hazir. Birini yukle veya yeni kariyer baslat.';
           careerCard.innerHTML = `
             <div class="stat-card">
               <span class="muted">Aktif kariyer</span>
-              <strong>${session.club?.name || 'Kulüp'}</strong>
+              <strong>${session.club?.name || 'Kulup'}</strong>
             </div>
             <div class="career-list">
               ${careers.map((career) => `
@@ -38,10 +38,10 @@
                   <div>
                     <span class="muted">Slot ${career.slot_number}</span>
                     <strong>${career.name}</strong>
-                    <small>${career.week}. hafta - ${career.current_day}. gün</small>
+                    <small>${career.week}. hafta - ${career.current_day}. gun</small>
                   </div>
                   <button class="btn ${career.is_active ? 'green' : 'secondary'}" data-career-id="${career.id}" type="button">
-                    ${career.is_active ? 'Aktif' : 'Yükle'}
+                    ${career.is_active ? 'Aktif' : 'Yukle'}
                   </button>
                 </div>
               `).join('')}
@@ -59,7 +59,7 @@
           byId('registerButton').hidden = true;
           byId('newCareerButton').hidden = false;
         } catch {
-          careerCard.innerHTML = '<div class="empty">Devam etmek için giriş yap veya yeni kariyer başlat.</div>';
+          careerCard.innerHTML = '<div class="empty">Devam etmek icin giris yap veya yeni kariyer baslat.</div>';
         }
 
         byId('newCareerButton')?.addEventListener('click', () => {
