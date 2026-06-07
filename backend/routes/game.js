@@ -635,7 +635,8 @@ async function updateAdminTeam(teamId, body = {}) {
   const formation = allowedFormations.includes(body.default_formation) ? body.default_formation : team.default_formation;
   const name = cleanText(body.name, team.name);
   const shortName = cleanText(body.short_name, team.short_name || name.slice(0, 3).toUpperCase()).slice(0, 24);
-  const logoUrl = cleanText(body.logo_url, team.logo_url || '');
+  const incomingLogo = typeof body.logo_url === 'string' ? body.logo_url.trim() : null;
+  const logoUrl = incomingLogo ? cleanText(incomingLogo, team.logo_url || '') : (team.logo_url || '');
   const city = cleanText(body.city, team.city || '');
   const stadium = cleanText(body.stadium, team.stadium || '');
   const budget = numberInRange(body.budget, team.budget, 0, 999999999);
