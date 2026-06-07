@@ -16,7 +16,7 @@
         <div class="signing-copy">
           <span class="badge">Resmi aciklama</span>
           <h1 id="introTitle">Yeni teknik direktor goreve basladi</h1>
-          <p id="introText">Kulup yeni sezona taze bir planla giriyor.</p>
+          <p id="introText">Kulüp yeni sezona taze bir planla giriyor.</p>
         </div>
         <div class="signature-scene">
           <div class="paper">
@@ -45,12 +45,12 @@
           const plan = await api.request('/api/game/season-plan').catch(() => null);
           const club = session.club || {};
           byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
-          byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
+          byId('introTitle').textContent = `${club.name || 'Kulüp'} yeni teknik direktörünü açıkladı`;
           byId('introText').textContent = plan
-            ? `Lig hedefi: ${plan.league?.label || 'Orta sira'} - Transfer butcesi: ${money(plan.transferBudget)}`
+            ? `Lig hedefi: ${plan.league?.label || 'Orta sıra'} - Transfer bütçesi: ${money(plan.transferBudget)}`
             : 'Yonetim yeni sezon planini hazirladi.';
           byId('signatureClub').textContent = club.name || 'TactiCore';
-          byId('introNews').textContent = `${club.name || 'Kulup'} tesislerinde imza toreni tamamlandi.`;
+          byId('introNews').textContent = `${club.name || 'Kulüp'} tesislerinde imza toreni tamamlandi.`;
           byId('continueIntro').addEventListener('click', async () => {
             await api.request('/api/game/season-plan/seen', { method: 'POST' }).catch(() => {});
             localStorage.removeItem('tacticorePendingIntro');

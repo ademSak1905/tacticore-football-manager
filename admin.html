@@ -12,11 +12,11 @@
         <div>
           <div class="brand"><span class="brand-mark">TC</span><span>TactiCore Admin</span></div>
           <h1>Kontrol paneli</h1>
-          <p class="muted">Oyunun g?n?n?, tak?mlar?, kul?pleri, oyuncular? ve sosyal ak??? buradan y?net.</p>
+          <p class="muted">Oyunun gününü, takımları, kulüpleri, oyuncuları ve sosyal akışı buradan yönet.</p>
         </div>
         <form id="adminForm" class="admin-login">
           <label class="field"><span>Admin kodu</span><input id="adminCode" value="tacticore-admin"></label>
-          <button class="btn" type="submit">Paneli a?</button>
+          <button class="btn" type="submit">Paneli aç</button>
         </form>
       </section>
 
@@ -27,72 +27,72 @@
         <article class="card">
           <h2>Oyun tarihi</h2>
           <form id="gameStateForm" class="form compact-form">
-            <label class="field"><span>G?n</span><input id="currentDay" type="number" min="1"></label>
-            <label class="field"><span>Sonraki ma? g?n?</span><input id="nextMatchDay" type="number" min="1"></label>
+            <label class="field"><span>Gün</span><input id="currentDay" type="number" min="1"></label>
+            <label class="field"><span>Sonraki maç günü</span><input id="nextMatchDay" type="number" min="1"></label>
             <label class="field"><span>Hafta</span><input id="week" type="number" min="1"></label>
-            <button class="btn green" type="submit">G?n? kaydet</button>
+            <button class="btn green" type="submit">Günü kaydet</button>
           </form>
         </article>
 
         <article class="card">
-          <h2>Kul?p y?netimi</h2>
+          <h2>Kulüp yönetimi</h2>
           <form id="clubForm" class="form compact-form">
-            <label class="field"><span>Kul?p</span><select id="clubSelect"></select></label>
-            <label class="field"><span>Kul?p ad?</span><input id="clubName"></label>
-            <label class="field"><span>B?t?e</span><input id="clubBudget" type="number" min="0"></label>
+            <label class="field"><span>Kulüp</span><select id="clubSelect"></select></label>
+            <label class="field"><span>Kulüp adı</span><input id="clubName"></label>
+            <label class="field"><span>Bütçe</span><input id="clubBudget" type="number" min="0"></label>
             <label class="field"><span>Taraftar</span><input id="clubFans" type="number" min="0"></label>
             <label class="field"><span>Stadyum kapasitesi</span><input id="clubStadium" type="number" min="1000"></label>
             <label class="field"><span>Para birimi</span><select id="clubCurrency"><option>TRY</option><option>USD</option><option>EUR</option></select></label>
-            <button class="btn green" type="submit">Kul?b? kaydet</button>
+            <button class="btn green" type="submit">Kulübü kaydet</button>
           </form>
         </article>
 
         <article class="card">
-          <h2>?ifre yenile</h2>
-          <p class="muted">Eski ?ifre g?r?nmez. Se?ilen kullan?c?ya yeni ?ifre atan?r.</p>
+          <h2>Şifre yenile</h2>
+          <p class="muted">Eski şifre görünmez. Seçilen kullanıcıya yeni şifre atanır.</p>
           <form id="passwordForm" class="form compact-form">
-            <label class="field"><span>Kullan?c?</span><select id="passwordUserSelect"></select></label>
-            <label class="field"><span>Yeni ?ifre</span><input id="newPassword" type="password" minlength="6" placeholder="En az 6 karakter"></label>
-            <button class="btn green" type="submit">?ifreyi yenile</button>
+            <label class="field"><span>Kullanıcı</span><select id="passwordUserSelect"></select></label>
+            <label class="field"><span>Yeni Şifre</span><input id="newPassword" type="password" minlength="6" placeholder="En az 6 karakter"></label>
+            <button class="btn green" type="submit">Şifreyi yenile</button>
           </form>
         </article>
 
         <article class="card">
-          <h2>Tak?m g??leri</h2>
+          <h2>Takım güçleri</h2>
           <form id="teamForm" class="form compact-form">
-            <label class="field"><span>Tak?m</span><select id="teamSelect"></select></label>
+            <label class="field"><span>Takım</span><select id="teamSelect"></select></label>
             <label class="field"><span>Genel</span><input id="teamOverall" type="number" min="1" max="99"></label>
-            <label class="field"><span>H?cum</span><input id="teamAttack" type="number" min="1" max="99"></label>
+            <label class="field"><span>Hücum</span><input id="teamAttack" type="number" min="1" max="99"></label>
             <label class="field"><span>Orta saha</span><input id="teamMidfield" type="number" min="1" max="99"></label>
             <label class="field"><span>Savunma</span><input id="teamDefense" type="number" min="1" max="99"></label>
             <label class="field"><span>Kaleci</span><input id="teamGoalkeeper" type="number" min="1" max="99"></label>
-            <label class="field"><span>B?t?e</span><input id="teamBudget" type="number" min="0"></label>
+            <label class="field"><span>Bütçe</span><input id="teamBudget" type="number" min="0"></label>
             <label class="field"><span>Taraftar</span><input id="teamFans" type="number" min="0"></label>
-            <label class="field"><span>Dizili?</span><select id="teamFormation"><option>4-4-2</option><option>4-3-3</option><option>4-2-3-1</option><option>3-5-2</option><option>3-4-3</option><option>5-3-2</option><option>4-1-4-1</option></select></label>
-            <button class="btn green" type="submit">Tak?m? kaydet</button>
+            <label class="field"><span>Diziliş</span><select id="teamFormation"><option>4-4-2</option><option>4-3-3</option><option>4-2-3-1</option><option>3-5-2</option><option>3-4-3</option><option>5-3-2</option><option>4-1-4-1</option></select></label>
+            <button class="btn green" type="submit">Takımı kaydet</button>
           </form>
         </article>
 
         <article class="card">
-          <h2>Oyuncu edit?r?</h2>
+          <h2>Oyuncu editörü</h2>
           <div class="form compact-form">
-            <label class="field"><span>Tak?ma g?re ara</span><select id="playerTeamSelect"></select></label>
-            <label class="field"><span>Oyuncu ad?</span><input id="playerSearch" placeholder="?rnek: Kerem"></label>
-            <button id="loadPlayers" class="btn secondary" type="button">Oyuncular? getir</button>
+            <label class="field"><span>Takıma göre ara</span><select id="playerTeamSelect"></select></label>
+            <label class="field"><span>Oyuncu adı</span><input id="playerSearch" placeholder="Örnek: Kerem"></label>
+            <button id="loadPlayers" class="btn secondary" type="button">Oyuncuları getir</button>
           </div>
           <form id="playerForm" class="form compact-form" style="margin-top:16px">
             <label class="field"><span>Oyuncu</span><select id="playerSelect"></select></label>
             <label class="field"><span>Overall</span><input id="playerOverall" type="number" min="1" max="99"></label>
-            <label class="field"><span>H?z</span><input id="playerPace" type="number" min="1" max="99"></label>
-            <label class="field"><span>?ut</span><input id="playerShooting" type="number" min="1" max="99"></label>
+            <label class="field"><span>Hız</span><input id="playerPace" type="number" min="1" max="99"></label>
+            <label class="field"><span>Şut</span><input id="playerShooting" type="number" min="1" max="99"></label>
             <label class="field"><span>Pas</span><input id="playerPassing" type="number" min="1" max="99"></label>
-            <label class="field"><span>Top s?rme</span><input id="playerDribbling" type="number" min="1" max="99"></label>
+            <label class="field"><span>Top sürme</span><input id="playerDribbling" type="number" min="1" max="99"></label>
             <label class="field"><span>Savunma</span><input id="playerDefending" type="number" min="1" max="99"></label>
             <label class="field"><span>Fizik</span><input id="playerPhysical" type="number" min="1" max="99"></label>
             <label class="field"><span>Kondisyon</span><input id="playerStamina" type="number" min="1" max="100"></label>
             <label class="field"><span>Moral</span><input id="playerMorale" type="number" min="1" max="100"></label>
-            <label class="field"><span>Maa?</span><input id="playerSalary" type="number" min="0"></label>
-            <label class="field"><span>Piyasa de?eri</span><input id="playerMarket" type="number" min="0"></label>
+            <label class="field"><span>Maaş</span><input id="playerSalary" type="number" min="0"></label>
+            <label class="field"><span>Piyasa değeri</span><input id="playerMarket" type="number" min="0"></label>
             <label class="field checkbox-field"><input id="playerInjured" type="checkbox"><span>Sakat</span></label>
             <button class="btn green" type="submit">Oyuncuyu kaydet</button>
           </form>
@@ -101,19 +101,19 @@
         <article class="card">
           <h2>Sosyal medya / gazete</h2>
           <form id="socialForm" class="form compact-form">
-            <label class="field"><span>T?r</span><select id="socialType"><option value="social">Sosyal medya</option><option value="newspaper">Gazete man?eti</option></select></label>
-            <label class="field"><span>G?n</span><input id="socialDay" type="number" min="1"></label>
+            <label class="field"><span>Tür</span><select id="socialType"><option value="social">Sosyal medya</option><option value="newspaper">Gazete manşeti</option></select></label>
+            <label class="field"><span>Gün</span><input id="socialDay" type="number" min="1"></label>
             <label class="field"><span>Yazar</span><input id="socialAuthor" value="Admin"></label>
-            <label class="field wide-field"><span>Metin</span><input id="socialContent" placeholder="Bug?n?n yorumu..."></label>
-            <button class="btn green" type="submit">Payla?</button>
+            <label class="field wide-field"><span>Metin</span><input id="socialContent" placeholder="Bugünün yorumu..."></label>
+            <button class="btn green" type="submit">Paylaş</button>
           </form>
           <div id="latestPosts" class="admin-list"></div>
         </article>
 
         <article class="card">
-          <h2>Lig ara?lar?</h2>
-          <p class="muted">Ligi s?f?rlarsan skorlar, ma? olaylar? ve puan durumu yeni sezona d?ner.</p>
-          <button id="resetLeague" class="btn danger" type="button">Ligi s?f?rla</button>
+          <h2>Lig araçları</h2>
+          <p class="muted">Ligi sıfırlarsan skorlar, maç olayları ve puan durumu yeni sezona döner.</p>
+          <button id="resetLeague" class="btn danger" type="button">Ligi sıfırla</button>
           <div id="recentMatches" class="table-wrap" style="margin-top:16px"></div>
         </article>
       </section>

@@ -10,15 +10,15 @@ const {
 } = require('./financeEngine');
 
 const CATEGORY_LABELS = {
-  listed: 'Sat?l?k oyuncular',
-  loan: 'Kiral?k oyuncular',
-  expiring: 'S?zle?mesi biten oyuncular',
+  listed: 'Satılık oyuncular',
+  loan: 'Kiralık oyuncular',
+  expiring: 'Sözleşmesi biten oyuncular',
   youth: 'Gen? yetenekler',
   free: 'Serbest oyuncular',
-  swap: 'Takas ?nerileri',
-  unhappy: 'Kul?b?yle sorun ya?ayan oyuncular',
-  premium: 'Y?ksek potansiyelli pahal? oyuncular',
-  bargain: 'Ucuz f?rsat transferleri'
+  swap: 'Takas önerileri',
+  unhappy: 'Kulübüyle sorun yaşayan oyuncular',
+  premium: 'Yüksek potansiyelli pahalı oyuncular',
+  bargain: 'Ucuz fırsat transferleri'
 };
 
 function clamp(value, min, max) {
@@ -35,7 +35,7 @@ function transferWindow(day) {
   const winter = numeric >= 153 && numeric <= 184;
   return {
     isOpen: summer || winter,
-    name: summer ? 'Yaz transfer d?nemi' : winter ? 'Devre aras? transfer d?nemi' : 'Transfer d?nemi kapal?'
+    name: summer ? 'Yaz transfer dönemi' : winter ? 'Devre arası transfer dönemi' : 'Transfer dönemi kapalı'
   };
 }
 
@@ -98,17 +98,17 @@ function askingPrice(player, category = null, buyerTeam = null, fromTeam = null)
 
 function listingReason(player, category, window) {
   const reasons = {
-    free: 'Kul?b? yok, imza paras? ve maa? ?artlar? belirleyici olur.',
+    free: 'Kulübü yok, imza parası ve maaş şartları belirleyici olur.',
     loan: 'Daha fazla s?re bulmas? i?in kiral?k ??kabilir.',
     expiring: 'S?zle?mesi yak?nda bitiyor, kul?b? makul teklife a??k.',
-    youth: 'Scout ekibi y?ksek geli?im potansiyeli g?r?yor.',
-    premium: 'Pahal? ama potansiyeli ligin ?st seviyesinde.',
-    bargain: 'Ya?/s?zle?me dengesi nedeniyle f?rsat olabilir.',
-    unhappy: 'Oyuncu s?re ve rol konusunda mutsuz.',
-    swap: 'Kul?b? takas opsiyonunu masada tutuyor.',
+    youth: 'Scout ekibi yüksek gelişim potansiyeli görüyor.',
+    premium: 'Pahalı ama potansiyeli ligin üst seviyesinde.',
+    bargain: 'Yaş/sözleşme dengesi nedeniyle fırsat olabilir.',
+    unhappy: 'Oyuncu süre ve rol konusunda mutsuz.',
+    swap: 'Kulübü takas opsiyonunu masada tutuyor.',
     listed: 'Kul?b? do?ru bonservisle g?r??meye haz?r.'
   };
-  return window.isOpen ? reasons[category] : `${reasons[category]} Resmi teklif i?in d?nem beklenmeli.`;
+  return window.isOpen ? reasons[category] : `${reasons[category]} Resmi teklif için dönem beklenmeli.`;
 }
 
 async function pendingOffersForUser(userId) {
@@ -226,7 +226,7 @@ async function negotiateTransfer(club, body = {}) {
   const category = categoryForPlayer(player, state.current_day);
   if (!window.isOpen && category !== 'free') {
     await createTransferStory({ teamId: club.team_id, playerId: player.id, category: 'transfer', status: 'rumor' });
-    return { status: 'closed', message: 'Transfer d?nemi kapal?. Resmi teklif g?nderilemez.' };
+    return { status: 'closed', message: 'Transfer dönemi kapalı. Resmi teklif gönderilemez.' };
   }
 
   const existing = await get(`
@@ -234,7 +234,7 @@ async function negotiateTransfer(club, body = {}) {
     WHERE user_id = ? AND player_id = ? AND status IN ('pending', 'counter', 'club_accepted')
     ORDER BY id DESC LIMIT 1
   `, [userId, player.id]);
-  if (existing) return { status: 'pending', message: 'Bu oyuncu i?in zaten bekleyen bir teklif var.' };
+  if (existing) return { status: 'pending', message: 'Bu oyuncu için zaten bekleyen bir teklif var.' };
 
   const buyerTeam = await get('SELECT * FROM teams WHERE id = ?', [club.team_id]);
   const fromTeam = player.team_id ? await get('SELECT * FROM teams WHERE id = ?', [player.team_id]) : null;
@@ -247,8 +247,8 @@ async function negotiateTransfer(club, body = {}) {
   const sellOnPercent = clamp(body.sellOnPercent ?? 0, 0, 40);
   const firstTeamPromise = body.firstTeamPromise ? 1 : 0;
   const totalCost = offerPrice + signingBonus + loanFee;
-  if (club.budget < totalCost) return { status: 'error', message: 'Transfer b?t?en bu teklif i?in yeterli de?il.' };
-  if (Number(club.salary_budget || 0) < wageOffer) return { status: 'error', message: 'Maa? b?t?en bu s?zle?me teklifi i?in yeterli de?il.' };
+  if (club.budget < totalCost) return { status: 'error', message: 'Transfer bütçen bu teklif için yeterli değil.' };
+  if (Number(club.salary_budget || 0) < wageOffer) return { status: 'error', message: 'Maaş bütçen bu sözleşme teklifi için yeterli değil.' };
 
   const responseWeek = Number(state.week || 1) + 1;
   const responseDay = Number(state.current_day || 1) + 6;
@@ -314,7 +314,7 @@ async function processPendingTransferOffers(userId) {
       await createTransferInboxMessage(userId, {
         teamId: club.team_id,
         day: state.current_day,
-        title: 'Transfer Teklifi Ge?ersiz',
+        title: 'Transfer Teklifi Geçersiz',
         summary: `${offer.player_name} art?k farkl? bir tak?mda oldu?u i?in teklif kapand?.`,
         priority: 'normal',
         uniqueKey: `outgoing_offer_expired_${offer.id}`
@@ -355,8 +355,8 @@ async function processPendingTransferOffers(userId) {
         teamId: club.team_id,
         day: state.current_day,
         title: 'Teklif Kabul Edildi',
-        summary: `${offer.from_team_name || 'Kul?p'} teklifinizi kabul etti. Oyuncuyla s?zle?me g?r??mesine ge?ebilirsiniz.`,
-        body: `${offer.from_team_name || 'Kul?p'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini kabul etti. Maa? teklifiniz ${money(offer.wage_offer)}. Transferi tamamlamak i?in bu mesajdaki aksiyonu kullanabilirsiniz.`,
+        summary: `${offer.from_team_name || 'Kulüp'} teklifinizi kabul etti. Oyuncuyla s?zle?me g?r??mesine ge?ebilirsiniz.`,
+        body: `${offer.from_team_name || 'Kulüp'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini kabul etti. Maa? teklifiniz ${money(offer.wage_offer)}. Transferi tamamlamak i?in bu mesajdaki aksiyonu kullanabilirsiniz.`,
         priority: 'important',
         actionType: 'outgoing_transfer_finalize',
         payload: { transferInterestId: offer.id },
@@ -373,8 +373,8 @@ async function processPendingTransferOffers(userId) {
         teamId: club.team_id,
         day: state.current_day,
         title: 'Kar?? Teklif',
-        summary: `${offer.from_team_name || 'Kul?p'} oyuncu i?in ${money(counter)} talep ediyor.`,
-        body: `${offer.from_team_name || 'Kul?p'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini d???k buldu ve ${money(counter)} talep etti.`,
+        summary: `${offer.from_team_name || 'Kulüp'} oyuncu için ${money(counter)} talep ediyor.`,
+        body: `${offer.from_team_name || 'Kulüp'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini d???k buldu ve ${money(counter)} talep etti.`,
         priority: 'important',
         actionType: 'outgoing_transfer_counter',
         payload: { transferInterestId: offer.id, counterOffer: counter },
@@ -389,8 +389,8 @@ async function processPendingTransferOffers(userId) {
       teamId: club.team_id,
       day: state.current_day,
       title: 'Transfer Teklifi Reddedildi',
-      summary: `${offer.from_team_name || 'Kul?p'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini yetersiz buldu.`,
-      body: `${offer.from_team_name || 'Kul?p'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini yetersiz buldu. Kul?b?n bekledi?i seviye yakla??k ${money(requiredFee)}.`,
+      summary: `${offer.from_team_name || 'Kulüp'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini yetersiz buldu.`,
+      body: `${offer.from_team_name || 'Kulüp'}, ${offer.player_name} i?in yapt???n?z ${money(offer.offer_price)} teklifini yetersiz buldu. Kul?b?n bekledi?i seviye yakla??k ${money(requiredFee)}.`,
       priority: 'normal',
       uniqueKey: `outgoing_offer_rejected_${offer.id}`
     });

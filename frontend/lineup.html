@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>?lk 11 & Taktik | TactiCore</title>
+    <title>İlk 11 & Taktik | TactiCore</title>
     <link rel="stylesheet" href="/css/style.css?v=20260607-compact-fixes">
   </head>
   <body data-shell-page="lineup">
     <header class="topbar">
-      <button id="menuButton" class="btn secondary menu-btn">Men?</button>
-      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kul?p</span></div>
-      <button id="logoutButton" class="btn secondary">??k??</button>
+      <button id="menuButton" class="btn secondary menu-btn">Menü</button>
+      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kulüp</span></div>
+      <button id="logoutButton" class="btn secondary">Çıkış</button>
     </header>
     <div class="layout">
       <aside id="sidebar" class="sidebar">
@@ -20,12 +20,12 @@
         <section class="lineup-studio">
           <section class="page-title lineup-title">
             <div>
-              <h1>?lk 11 & Taktik</h1>
-              <p class="muted">Sahadaki oyuncular?, yedek kul?besi ve ma? plan? ayn? ekranda.</p>
+              <h1>İlk 11 & Taktik</h1>
+              <p class="muted">Sahadaki oyuncuları, yedek kulübesi ve maç planı aynı ekranda.</p>
             </div>
             <div class="actions lineup-title-actions">
               <select id="formationSelect"></select>
-              <button id="saveLineup" class="btn" type="button">?lk 11'i Kaydet</button>
+              <button id="saveLineup" class="btn" type="button">İlk 11'i Kaydet</button>
             </div>
           </section>
 
@@ -35,31 +35,31 @@
 
               <aside class="lineup-side">
                 <section class="card lineup-side-card bench-card">
-                  <h2>Yedek Kul?besi</h2>
-                  <p class="muted">Oyuncuyu sahadaki kart?n ?st?ne s?r?kle.</p>
+                  <h2>Yedek Kulübesi</h2>
+                  <p class="muted">Oyuncuyu sahadaki kartın üstüne sürükle.</p>
                   <div id="bench" class="bench-list"></div>
                 </section>
 
                 <section class="card lineup-side-card">
-                  <h2>Tak?m G?c?</h2>
+                  <h2>Takım Gücü</h2>
                   <div id="lineupPower" class="mini-stats lineup-power-grid"></div>
                   <p id="lineupMessage" class="message"></p>
                 </section>
 
                 <section class="card lineup-side-card tactic-instructions-card">
-                  <h2>TAKT?KSEL TAL?MATLAR</h2>
+                  <h2>TAKTİKSEL TALİMATLAR</h2>
                   <div class="instruction-grid">
                     <label class="field icon-field"><span>Oyun Stili</span><select id="mentality"><option value="defensive">Defansif</option><option value="balanced">Dengeli</option><option value="attacking">Ofansif</option></select></label>
-                    <label class="field icon-field"><span>Pres Yo?unlu?u</span><select id="tempo_label"></select></label>
+                    <label class="field icon-field"><span>Pres Yoğunluğu</span><select id="tempo_label"></select></label>
                     <label class="field icon-field"><span>Ofansif Tarz</span><select id="attack_style"></select></label>
-                    <label class="field icon-field"><span>Defans ?izgisi</span><select id="defense_style"></select></label>
-                    <label class="field icon-field"><span>Topla Oyun</span><select id="passing_style"><option value="short">K?sa Pas</option><option value="mixed">Kar???k Pas</option><option value="direct">Direkt Oyun</option></select></label>
-                    <label class="field icon-field"><span>Dizili?</span><select id="formation"></select></label>
+                    <label class="field icon-field"><span>Defans Çizgisi</span><select id="defense_style"></select></label>
+                    <label class="field icon-field"><span>Topla Oyun</span><select id="passing_style"><option value="short">Kısa Pas</option><option value="mixed">Karışık Pas</option><option value="direct">Direkt Oyun</option></select></label>
+                    <label class="field icon-field"><span>Diziliş</span><select id="formation"></select></label>
                   </div>
                   <div class="tactic-setting-strip">
-                    <button class="tactic-setting-tile" data-setting="setPieces" data-options="Standart,Korner Odakl?,Serbest Vuru?" type="button"><strong>?</strong><span>Duran Toplar</span><small>Standart</small></button>
+                    <button class="tactic-setting-tile" data-setting="setPieces" data-options="Standart,Korner Odaklı,Serbest Vuruş" type="button"><strong>?</strong><span>Duran Toplar</span><small>Standart</small></button>
                     <button class="tactic-setting-tile" data-setting="marking" data-options="Alan,Adam Adama,Karma" type="button"><strong>?</strong><span>Markaj</span><small>Alan</small></button>
-                    <button class="tactic-setting-tile" data-setting="offsideTrap" data-options="Kapal?,A??k,Agresif" type="button"><strong>?</strong><span>Ofsayt Tuza??</span><small>Kapal?</small></button>
+                    <button class="tactic-setting-tile" data-setting="offsideTrap" data-options="Kapalı,Açık,Agresif" type="button"><strong>?</strong><span>Ofsayt Tuzağı</span><small>Kapalı</small></button>
                   </div>
                 </section>
               </aside>
@@ -67,9 +67,9 @@
 
             <section class="card tactic-bottom-panel">
               <div class="tactic-preset-box">
-                <h2>TAKT?K</h2>
-                <label class="field"><span>Haz?r Taktik</span><select><option>?zel Taktik</option><option>Dengeli Bask?</option><option>H?zl? H?cum</option></select></label>
-                <div class="icon-actions" aria-label="Taktik k?sa i?lemleri">
+                <h2>TAKTİK</h2>
+                <label class="field"><span>Hazır Taktik</span><select><option>Özel Taktik</option><option>Dengeli Baskı</option><option>Hızlı Hücum</option></select></label>
+                <div class="icon-actions" aria-label="Taktik kısa işlemleri">
                   <button class="btn icon-only secondary" type="button">?</button>
                   <button class="btn icon-only secondary" type="button">?</button>
                   <button class="btn icon-only danger" type="button">?</button>
@@ -78,8 +78,8 @@
 
               <div class="tactic-slider-grid">
                 <label class="field range-field"><span>Mentalite <em>Dengeli</em><strong id="pressingValue">55</strong></span><input id="pressing" type="range" min="0" max="100"></label>
-                <label class="field range-field"><span>Geni?lik <strong id="widthValue">60</strong></span><input id="width" type="range" min="0" max="100"></label>
-                <label class="field range-field"><span>Sald?r? <strong id="aggressionValue">50</strong></span><input id="aggression" type="range" min="0" max="100"></label>
+                <label class="field range-field"><span>Genişlik <strong id="widthValue">60</strong></span><input id="width" type="range" min="0" max="100"></label>
+                <label class="field range-field"><span>Saldırı <strong id="aggressionValue">50</strong></span><input id="aggression" type="range" min="0" max="100"></label>
                 <label class="field range-field"><span>Savunma <strong id="defensiveLineValue">50</strong></span><input id="defensive_line" type="range" min="0" max="100"></label>
               </div>
 
@@ -87,7 +87,7 @@
                 <input id="tempo" type="hidden" value="55">
                 <div id="tacticMetrics" class="grid stats tactic-metrics"></div>
                 <div id="tacticHints" class="tactic-hints"></div>
-                <button class="btn" type="submit">Takti?i Kaydet</button>
+                <button class="btn" type="submit">Taktiği Kaydet</button>
                 <p id="message" class="message"></p>
               </aside>
             </section>

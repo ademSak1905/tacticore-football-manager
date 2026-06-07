@@ -16,7 +16,7 @@
         <div class="signing-copy">
           <span class="badge">Resmi aciklama</span>
           <h1 id="introTitle">Yeni teknik direktor goreve basladi</h1>
-          <p id="introText">Kulup yeni sezona taze bir planla giriyor.</p>
+          <p id="introText">Kulüp yeni sezona taze bir planla giriyor.</p>
         </div>
         <div class="signature-scene">
           <div class="paper">
@@ -44,14 +44,14 @@
           const session = await requireAuth();
           const plan = await api.request('/api/game/season-plan').catch(() => null);
           const club = session.club || {};
-          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direkt?r';
+          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direktör';
           byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
-          byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
+          byId('introTitle').textContent = `${club.name || 'Kulüp'} yeni teknik direktörünü açıkladı`;
           byId('introText').textContent = plan
-            ? `${managerName} icin lig hedefi: ${plan.league?.label || 'Orta sira'} - Transfer butcesi: ${money(plan.transferBudget)}`
+            ? `${managerName} için lig hedefi: ${plan.league?.label || 'Orta sıra'} - Transfer bütçesi: ${money(plan.transferBudget)}`
             : `${managerName} yeni sezon planini yonetimle paylasti.`;
           byId('signatureClub').textContent = managerName;
-          byId('introNews').textContent = `${club.name || 'Kulup'}, yeni teknik direktoru ${managerName}'i resmen acikladi.`;
+          byId('introNews').textContent = `${club.name || 'Kulüp'}, yeni teknik direktörü ${managerName}'i resmen açıkladı.`;
           byId('continueIntro').addEventListener('click', async () => {
             await api.request('/api/game/season-plan/seen', { method: 'POST' }).catch(() => {});
             localStorage.removeItem('tacticorePendingIntro');

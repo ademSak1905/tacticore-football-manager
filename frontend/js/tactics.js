@@ -42,7 +42,7 @@ function renderMetrics() {
 
   byId('tempo').value = tempoValue;
   byId('tacticMetrics').innerHTML = [
-    ['H?cum', attack],
+    ['Hücum', attack],
     ['Orta saha', control],
     ['Savunma', defense],
     ['Pres riski', Math.round(pressing * 0.55 + aggression * 0.25)]
@@ -59,10 +59,10 @@ function renderMetrics() {
 function attackHint(value) {
   const hints = {
     counter: 'H?zl? forvetlerle g??l?d?r. Rakip savunma ?izgisi ?ndeyse ekstra tehlike ?retir.',
-    tiki_taka: 'Y?ksek pas ve top s?rme de?erleriyle topa sahip olmay? art?r?r.',
-    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkas?na erken oynar.',
-    wide: 'Geni?lik y?kseldik?e kanat ortalar? ve korner bask?s? artar.',
-    press_attack: '?nde top kazan?r ama y?ksek kondisyon ister.',
+    tiki_taka: 'Yüksek pas ve top sürme değerleriyle topa sahip olmayı artırır.',
+    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkasına erken oynar.',
+    wide: 'Genişlik yükseldikçe kanat ortaları ve korner baskısı artar.',
+    press_attack: 'Önde top kazanır ama yüksek kondisyon ister.',
     balanced: 'Riskleri d???k, ma? i?inde dengeli tepki veren plan.'
   };
   return hints[value] || hints.balanced;
@@ -70,8 +70,8 @@ function attackHint(value) {
 
 function defenseHint(value) {
   const hints = {
-    deep_block: 'Skoru korumaya iyidir, rakibe top b?rak?r.',
-    zonal: 'Dengeli savunma yerle?imi sa?lar.',
+    deep_block: 'Skoru korumaya iyidir, rakibe top bırakır.',
+    zonal: 'Dengeli savunma yerleşimi sağlar.',
     man_marking: 'Rakibin pas ritmini bozar ama faul riski artar.',
     high_press: 'Rakibi ??karken bo?ar, arkada bo?luk b?rakabilir.',
     ultra_defense: '?ok g?venli ama h?cum ?retimini d???r?r.'
@@ -211,7 +211,7 @@ byId('useBooster')?.addEventListener('click', async () => {
   const itemKey = byId('boosterSelect')?.value;
   const playerId = byId('boosterPlayer')?.value;
   if (!itemKey || !playerId) return;
-  byId('boosterMessage').textContent = 'Boost uygulan?yor...';
+  byId('boosterMessage').textContent = 'Boost uygulanıyor...';
   try {
     const result = await api.request('/api/boosters/use', {
       method: 'POST',

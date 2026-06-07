@@ -152,7 +152,7 @@ const MATCH_NEWS_TEMPLATES = [
   }
 ];
 
-const WIN_ONLY_WORDS = ['3 puan', 'galibiyet', 'zafer', 'kazand?', 'kazandı', 'kutlad?', 'kutladı', 'kutlama', '3 puan?n sahibi', '3 puanın sahibi'];
+const WIN_ONLY_WORDS = ['3 puan', 'galibiyet', 'zafer', 'kazandı', 'kazandı', 'kutladı', 'kutladı', 'kutlama', '3 puanın sahibi', '3 puanın sahibi'];
 
 for (const template of [...MATCH_SOCIAL_TEMPLATES, ...MATCH_NEWS_TEMPLATES]) {
   template.forbiddenWords = template.requiredResult === 'win' ? [] : WIN_ONLY_WORDS;
@@ -182,7 +182,7 @@ function fallbackMatchTemplate(resultType, feedType) {
       key: `${feedType}_fallback_win`,
       requiredResult: 'win',
       forbiddenWords: [],
-      title: '{team} Sahadan Galibiyetle Ayr?ld?',
+      title: '{team} Sahadan Galibiyetle Ayrıldı',
       text: '{team}, sahadan galibiyetle ayr?ld?.'
     };
   }
@@ -191,7 +191,7 @@ function fallbackMatchTemplate(resultType, feedType) {
       key: `${feedType}_fallback_draw`,
       requiredResult: 'draw',
       forbiddenWords: WIN_ONLY_WORDS,
-      title: '{team} Sahadan Beraberlikle Ayr?ld?',
+      title: '{team} Sahadan Beraberlikle Ayrıldı',
       text: '{team}, sahadan beraberlikle ayr?ld? ve hanesine 1 puan yazd?rd?.'
     };
   }
@@ -199,7 +199,7 @@ function fallbackMatchTemplate(resultType, feedType) {
     key: `${feedType}_fallback_loss`,
     requiredResult: 'loss',
     forbiddenWords: WIN_ONLY_WORDS,
-    title: '{team} Sahadan Puans?z Ayr?ld?',
+    title: '{team} Sahadan Puansız Ayrıldı',
     text: '{team}, sahadan puans?z ayr?ld?.'
   };
 }

@@ -26,11 +26,11 @@
         try {
           const session = await api.request('/api/me');
           const careers = await api.request('/api/careers');
-          byId('startText').textContent = 'Kayitli kariyerlerin hazir. Birini yukle veya yeni kariyer baslat.';
+          byId('startText').textContent = 'Kayıtli kariyerlerin hazir. Birini yukle veya yeni kariyer baslat.';
           careerCard.innerHTML = `
             <div class="stat-card">
               <span class="muted">Aktif kariyer</span>
-              <strong>${session.club?.name || 'Kulup'}</strong>
+              <strong>${session.club?.name || 'Kulüp'}</strong>
             </div>
             <div class="career-list">
               ${careers.map((career) => `
@@ -41,7 +41,7 @@
                     <small>${career.week}. hafta - ${career.current_day}. gun</small>
                   </div>
                   <button class="btn ${career.is_active ? 'green' : 'secondary'}" data-career-id="${career.id}" type="button">
-                    ${career.is_active ? 'Aktif' : 'Yukle'}
+                    ${career.is_active ? 'Aktif' : 'Yükle'}
                   </button>
                 </div>
               `).join('')}
