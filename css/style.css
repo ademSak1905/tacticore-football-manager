@@ -8836,3 +8836,72 @@ body[data-shell-page="dashboard"] .dashboard-finance-ring > span {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* 2026-06-07 absolute final override: shell and dashboard */
+body .topbar {
+  position: sticky !important; top: 0 !important; z-index: 100 !important;
+  height: 76px !important; min-height: 76px !important; max-height: 76px !important;
+  display: flex !important; align-items: center !important; gap: 10px !important;
+  padding: 8px 14px !important; overflow-x: auto !important; overflow-y: hidden !important; white-space: nowrap !important;
+}
+body .topbar #continueWidget, body .topbar .continue-widget, body .topbar [data-action="continue"] { display: none !important; }
+body .topbar .brand, body .topbar .budget-widget, body .topbar .coin-widget, body .topbar .date-widget, body .topbar .manager-xp-widget, body .topbar .shell-leaderboard .leaderboard-toggle, body .topbar #logoutButton {
+  height: 58px !important; min-height: 58px !important; max-height: 58px !important; border-radius: 11px !important;
+  padding: 7px 10px !important; flex: 0 0 auto !important; align-items: center !important; overflow: hidden !important;
+}
+body .topbar .brand { width: 292px !important; min-width: 292px !important; grid-template-columns: 48px minmax(0, 1fr) 24px !important; }
+body .topbar .brand-mark { width: 46px !important; height: 46px !important; min-width: 46px !important; font-size: 22px !important; }
+body .topbar #userBadge strong { display: block !important; max-width: 172px !important; overflow: hidden !important; text-overflow: ellipsis !important; font-size: 22px !important; line-height: 1.08 !important; }
+body .topbar #userBadge small, body .topbar .shell-widget-copy small { display: block !important; font-size: 13px !important; line-height: 1.05 !important; color: #cfe1f7 !important; }
+body .topbar .budget-widget { width: 224px !important; min-width: 224px !important; grid-template-columns: 38px minmax(0, 1fr) !important; }
+body .topbar .coin-widget { width: 156px !important; min-width: 156px !important; grid-template-columns: 38px minmax(0, 1fr) 26px !important; }
+body .topbar .date-widget { width: 226px !important; min-width: 226px !important; grid-template-columns: 38px minmax(0, 1fr) !important; }
+body .topbar .manager-xp-widget { width: 178px !important; min-width: 178px !important; grid-template-columns: 34px minmax(0, 1fr) auto !important; }
+body .topbar .shell-leaderboard .leaderboard-toggle, body .topbar #logoutButton { width: 92px !important; min-width: 92px !important; justify-content: center !important; font-size: 14px !important; line-height: 1 !important; }
+body .topbar .shell-money-icon, body .topbar .shell-coin-icon, body .topbar .shell-calendar-icon, body .topbar .manager-icon { width: 34px !important; height: 34px !important; min-width: 34px !important; }
+body .topbar .shell-widget-copy { min-width: 0 !important; }
+body .topbar .shell-widget-copy strong, body .topbar .date-widget .shell-widget-copy strong { display: block !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; font-size: 20px !important; line-height: 1.08 !important; }
+body .topbar .date-widget .shell-widget-copy strong { font-size: 18px !important; }
+body .topbar .budget-widget b { font-size: 14px !important; color: #22ef5a !important; }
+body .topbar .shell-plus { width: 24px !important; height: 24px !important; min-width: 24px !important; font-size: 17px !important; }
+body .topbar .manager-xp-widget span:not(.manager-icon) { font-size: 13px !important; line-height: 1.02 !important; white-space: normal !important; }
+body .topbar .manager-xp-widget strong { font-size: 12px !important; line-height: 1.02 !important; }
+body .topbar .manager-xp-widget em { font-size: 11px !important; line-height: 1.02 !important; }
+body[data-shell-page="match"] .topbar, body.match-page .topbar { display: none !important; }
+body[data-shell-page="dashboard"] .content { max-width: none !important; width: 100% !important; padding: 12px 16px 32px !important; }
+body[data-shell-page="dashboard"] .page-title { margin-bottom: 8px !important; }
+body[data-shell-page="dashboard"] .dashboard-tabs { margin: 8px 0 12px !important; }
+body[data-shell-page="dashboard"] .dashboard-head-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) 330px !important; gap: 12px !important; align-items: start !important; margin-bottom: 12px !important; }
+body[data-shell-page="dashboard"] #dashboardStats.grid.stats { display: grid !important; grid-template-columns: repeat(4, minmax(130px, 1fr)) !important; gap: 10px !important; }
+body[data-shell-page="dashboard"] #dashboardStats .stat-card { height: 145px !important; min-height: 145px !important; max-height: 145px !important; padding: 12px !important; display: grid !important; align-content: center !important; }
+body[data-shell-page="dashboard"] #dashboardStats .stat-card strong, body[data-shell-page="dashboard"] #dashboardStats .stat-card .stat-value { font-size: 24px !important; line-height: 1.05 !important; overflow-wrap: anywhere !important; }
+body[data-shell-page="dashboard"] .dashboard-side-panel { min-height: 0 !important; max-height: 310px !important; padding: 14px !important; overflow: visible !important; }
+body[data-shell-page="dashboard"] #clubSummary, body[data-shell-page="dashboard"] #dashboardSideNotifications, body[data-shell-page="dashboard"] .dashboard-side-notifications, body[data-shell-page="dashboard"] .dashboard-notice-list, body[data-shell-page="dashboard"] .notification-link { display: none !important; }
+body[data-shell-page="dashboard"] #dashboardPitch, body[data-shell-page="dashboard"] .dashboard-pitch { min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+body[data-shell-page="dashboard"] #dashboardPitch::before, body[data-shell-page="dashboard"] #dashboardPitch::after { display: none !important; }
+body[data-shell-page="dashboard"] .dashboard-board-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; margin: 0 !important; }
+body[data-shell-page="dashboard"] .dashboard-main-card { min-height: 210px !important; padding: 14px !important; }
+body[data-shell-page="dashboard"] .finance-card { min-height: 210px !important; }
+body[data-shell-page="dashboard"] .dashboard-finance-ring { grid-template-columns: 92px minmax(0, 1fr) !important; gap: 12px !important; align-items: center !important; }
+body[data-shell-page="dashboard"] .dashboard-finance-ring > span { width: 90px !important; height: 90px !important; }
+.nav a[data-page="lineup"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='black' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='2.4'/%3E%3Ccircle cx='6' cy='14' r='2.4'/%3E%3Ccircle cx='18' cy='14' r='2.4'/%3E%3Cpath d='M12 7.6v4.1M8.2 13.1l3-2.5m5.6 2.5-3-2.5M6 16.5v2.5m12-2.5v2.5m-9 0h6'/%3E%3C/g%3E%3C/svg%3E") !important; }
+.nav a[data-page="academy"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5Zm-7 8.2v3.2c2.1 2.2 4.5 3.3 7 3.3s4.9-1.1 7-3.3v-3.2l-7 3.5zM20 10v6h2v-7z' fill='black'/%3E%3C/svg%3E") !important; }
+.nav a::before { content: "" !important; width: 26px !important; height: 26px !important; min-width: 26px !important; background: currentColor !important; -webkit-mask: var(--nav-icon) center / contain no-repeat !important; mask: var(--nav-icon) center / contain no-repeat !important; }
+.dashboard-mini-table td:nth-child(2), #leagueTable td:nth-child(2), #dashboardLeagueTable td:nth-child(2) { display: grid !important; grid-template-columns: 32px minmax(0, 1fr) !important; align-items: center !important; gap: 10px !important; }
+.dashboard-mini-table .team-logo, #leagueTable .team-logo, #dashboardLeagueTable .team-logo { width: 30px !important; height: 30px !important; min-width: 30px !important; object-fit: contain !important; border-radius: 50% !important; }
+@media (max-width: 1360px) {
+  body .topbar .brand { width: 236px !important; min-width: 236px !important; }
+  body .topbar .budget-widget { width: 184px !important; min-width: 184px !important; }
+  body .topbar .coin-widget { width: 128px !important; min-width: 128px !important; }
+  body .topbar .date-widget { width: 186px !important; min-width: 186px !important; }
+  body .topbar .manager-xp-widget { width: 150px !important; min-width: 150px !important; }
+  body .topbar .shell-leaderboard .leaderboard-toggle, body .topbar #logoutButton { width: 78px !important; min-width: 78px !important; }
+  body .topbar .shell-widget-copy strong { font-size: 17px !important; }
+  body .topbar #userBadge strong { font-size: 19px !important; }
+}
+@media (max-width: 980px) {
+  body .topbar { height: auto !important; max-height: none !important; flex-wrap: wrap !important; overflow: visible !important; }
+  body .topbar .brand, body .topbar .budget-widget, body .topbar .coin-widget, body .topbar .date-widget, body .topbar .manager-xp-widget, body .topbar .shell-leaderboard .leaderboard-toggle, body .topbar #logoutButton { width: auto !important; min-width: 150px !important; flex: 1 1 150px !important; }
+  body[data-shell-page="dashboard"] .dashboard-head-grid, body[data-shell-page="dashboard"] .dashboard-board-grid { grid-template-columns: 1fr !important; }
+  body[data-shell-page="dashboard"] #dashboardStats.grid.stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
