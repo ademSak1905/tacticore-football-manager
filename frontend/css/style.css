@@ -8566,3 +8566,273 @@ body.match-page .content {
   body .topbar .shell-widget-copy strong { font-size: 14px !important; }
   body .topbar #userBadge strong { font-size: 15px !important; }
 }
+
+/* 2026-06-07 admin repair: stable shell, dashboard spacing and table logos */
+body .topbar {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
+  overflow: visible !important;
+}
+
+body .topbar .brand,
+body .topbar .budget-widget,
+body .topbar .coin-widget,
+body .topbar .date-widget,
+body .topbar .manager-xp-widget,
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  border-radius: 9px !important;
+  padding: 5px 8px !important;
+  align-items: center !important;
+}
+
+body .topbar .brand {
+  width: 210px !important;
+  min-width: 210px !important;
+  grid-template-columns: 38px minmax(0, 1fr) 18px !important;
+}
+
+body .topbar .brand-mark {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  font-size: 17px !important;
+}
+
+body .topbar #userBadge strong {
+  font-size: 17px !important;
+  max-width: 132px !important;
+}
+
+body .topbar #userBadge small,
+body .topbar .shell-widget-copy small {
+  font-size: 10px !important;
+}
+
+body .topbar .budget-widget {
+  width: 168px !important;
+  min-width: 168px !important;
+  grid-template-columns: 30px minmax(0, 1fr) !important;
+}
+
+body .topbar .coin-widget {
+  width: 116px !important;
+  min-width: 116px !important;
+  grid-template-columns: 30px minmax(0, 1fr) 20px !important;
+}
+
+body .topbar .date-widget {
+  width: 188px !important;
+  min-width: 188px !important;
+  grid-template-columns: 30px minmax(0, 1fr) !important;
+}
+
+body .topbar .manager-xp-widget {
+  width: 132px !important;
+  min-width: 132px !important;
+  grid-template-columns: 28px minmax(0, 1fr) auto !important;
+}
+
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  width: 76px !important;
+  min-width: 76px !important;
+  font-size: 11px !important;
+}
+
+body .topbar .shell-money-icon,
+body .topbar .shell-coin-icon,
+body .topbar .shell-calendar-icon,
+body .topbar .manager-icon {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+}
+
+body .topbar .shell-widget-copy strong,
+body .topbar .date-widget .shell-widget-copy strong {
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+body .topbar .date-widget .shell-widget-copy strong {
+  font-size: 14px !important;
+}
+
+body .topbar .manager-xp-widget span:not(.manager-icon),
+body .topbar .manager-xp-widget strong,
+body .topbar .manager-xp-widget em {
+  line-height: 1 !important;
+}
+
+body .topbar .manager-xp-widget span:not(.manager-icon) { font-size: 10px !important; }
+body .topbar .manager-xp-widget strong { font-size: 9px !important; }
+body .topbar .manager-xp-widget em { font-size: 8px !important; }
+
+body[data-shell-page="dashboard"] .content {
+  padding-top: 8px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-head-grid {
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+  grid-template-columns: repeat(8, minmax(94px, 1fr)) !important;
+  gap: 8px !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card {
+  height: 86px !important;
+  min-height: 86px !important;
+  max-height: 86px !important;
+  display: grid !important;
+  align-content: center !important;
+  text-align: center !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 7px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions .btn,
+body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions select {
+  height: 34px !important;
+  min-height: 34px !important;
+  font-size: 11px !important;
+}
+
+body[data-shell-page="dashboard"] #goMatch {
+  grid-column: 1 / -1 !important;
+  justify-content: center !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardPitch,
+body[data-shell-page="dashboard"] .dashboard-pitch {
+  min-height: 0 !important;
+  height: auto !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-board-grid {
+  margin-top: 0 !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-main-card {
+  min-height: 190px !important;
+  padding: 13px !important;
+}
+
+body[data-shell-page="dashboard"] .finance-card {
+  min-height: 190px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-finance-ring {
+  grid-template-columns: 78px minmax(0, 1fr) !important;
+  align-items: center !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-finance-ring > span {
+  width: 76px !important;
+  height: 76px !important;
+}
+
+.dashboard-mini-table td:nth-child(2),
+#leagueTable td:nth-child(2),
+#dashboardLeagueTable td:nth-child(2) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.dashboard-mini-table .team-logo,
+#leagueTable .team-logo,
+#dashboardLeagueTable .team-logo {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  object-fit: contain !important;
+  border-radius: 50% !important;
+}
+
+.dashboard-mini-table td:nth-child(2) a,
+#leagueTable td:nth-child(2) a,
+#dashboardLeagueTable td:nth-child(2) a {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.nav a[data-page="matches"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 3h2v2h10V3h2v2h1.5A1.5 1.5 0 0 1 22 6.5v13A1.5 1.5 0 0 1 20.5 21h-17A1.5 1.5 0 0 1 2 19.5v-13A1.5 1.5 0 0 1 3.5 5H5zm-1 8v8h16v-8zm0-2h16V7H4zm3 4h3v3H7zm5 0h3v3h-3z' fill='black'/%3E%3C/svg%3E"); }
+.nav a[data-page="academy"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5Zm-7 8.2v3.2c2.1 2.2 4.5 3.3 7 3.3s4.9-1.1 7-3.3v-3.2l-7 3.5zM20 10v6h2v-7z' fill='black'/%3E%3C/svg%3E"); }
+.nav a[data-page="spy"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 7a4 4 0 0 1 8 0v1h2.5l1 3H4.5l1-3H8zm2 1h4V7a2 2 0 0 0-4 0zm-4 5h12v2a6 6 0 0 1-12 0zm2.2 1.7a2 2 0 0 0 3.6 0zm4 0a2 2 0 0 0 3.6 0z' fill='black'/%3E%3C/svg%3E"); }
+.nav a[data-page="settings"] { --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19.4 13.5a7.7 7.7 0 0 0 .1-1.5 7.7 7.7 0 0 0-.1-1.5l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2.5-1.4L14.2 2h-4.4l-.4 3.1A7.8 7.8 0 0 0 7 6.5l-2.4-1-2 3.5 2 1.5a7.7 7.7 0 0 0-.1 1.5 7.7 7.7 0 0 0 .1 1.5l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2.5 1.4l.4 3.1h4.4l.4-3.1a7.8 7.8 0 0 0 2.5-1.4l2.4 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z' fill='black'/%3E%3C/svg%3E"); }
+
+.nav a::before {
+  content: "" !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  background: currentColor !important;
+  -webkit-mask: var(--nav-icon) center / contain no-repeat !important;
+  mask: var(--nav-icon) center / contain no-repeat !important;
+}
+
+@media (max-width: 900px) {
+  body .topbar {
+    height: auto !important;
+    max-height: none !important;
+    flex-wrap: wrap !important;
+  }
+
+  body .topbar .menu-btn {
+    display: inline-grid !important;
+    width: 52px !important;
+    min-width: 52px !important;
+  }
+
+  body .topbar .brand,
+  body .topbar .budget-widget,
+  body .topbar .coin-widget,
+  body .topbar .date-widget,
+  body .topbar .manager-xp-widget,
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton {
+    flex: 1 1 145px !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  body[data-shell-page="dashboard"] .dashboard-head-grid,
+  body[data-shell-page="dashboard"] .dashboard-board-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

@@ -941,7 +941,7 @@ router.patch('/admin/players/:id', requireAdmin, async (req, res, next) => {
         payload.injury_return_day, payload.image_url, payload.lineup_role, payload.is_starting_eleven, player.id
       ]
     );
-    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.is_starting_eleven) {
+    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.team_id || payload.is_starting_eleven) {
       if (player.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [player.team_id]);
       if (payload.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [payload.team_id]);
     }
@@ -970,7 +970,7 @@ router.post('/admin/players/:id', requireAdmin, async (req, res, next) => {
         payload.injury_return_day, payload.image_url, payload.lineup_role, payload.is_starting_eleven, player.id
       ]
     );
-    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.is_starting_eleven) {
+    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.team_id || payload.is_starting_eleven) {
       if (player.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [player.team_id]);
       if (payload.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [payload.team_id]);
     }

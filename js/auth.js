@@ -50,19 +50,20 @@ function setMessage(text, type = 'info') {
 
 const SHELL_NAV_ITEMS = [
   ['dashboard', '/dashboard.html', 'Dashboard'],
+  ['messages', '/messages.html', 'Mesajlar'],
   ['squad', '/squad.html', 'Takım'],
-  ['calendar', '/calendar.html', 'Maçlar'],
+  ['lineup', '/lineup.html', 'İlk 11 & Taktik'],
+  ['matches', '/calendar.html', 'Maçlar'],
   ['transfers', '/transfers.html', 'Transferler'],
   ['training', '/training.html', 'Tesisler'],
   ['academy', '/academy.html', 'Akademi'],
   ['manager', '/manager.html', 'Menajer'],
-  ['messages', '/messages.html', 'Mesajlar'],
-  ['daily-tasks', '/daily-tasks.html', 'Görevler'],
-  ['spy', '/spy.html', 'Casus'],
-  ['market', '/market.html', 'Market'],
+  ['league', '/league.html', 'Lig'],
   ['economy', '/economy.html', 'Ekonomi'],
-  ['league', '/league.html', 'Ligler'],
-  ['social', '/social.html', 'Sosyal Medya']
+  ['calendar', '/calendar.html', 'Takvim'],
+  ['social', '/social.html', 'Sosyal Medya'],
+  ['spy', '/spy.html', 'Casus'],
+  ['settings', '/settings.html', 'Ayarlar']
 ];
 
 function moneyEuro(value) {
