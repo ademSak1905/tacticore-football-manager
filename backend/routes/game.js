@@ -620,6 +620,117 @@ router.get('/admin/overview', requireAdmin, async (req, res, next) => {
   }
 });
 
+router.get('/admin/teams', requireAdmin, async (req, res, next) => {
+  try {
+    res.json(await all('SELECT * FROM teams ORDER BY name ASC'));
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function updateAdminTeam(teamId, body = {}) {
+  const team = await get('SELECT * FROM teams WHERE id = ?', [teamId]);
+  if (!team) return null;
+  const allowedFormations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '3-4-3', '5-3-2', '4-1-4-1'];
+  const formation = allowedFormations.includes(body.default_formation) ? body.default_formation : team.default_formation;
+  const name = cleanText(body.name, team.name);
+  const shortName = cleanText(body.short_name, team.short_name || name.slice(0, 3).toUpperCase()).slice(0, 24);
+  const logoUrl = cleanText(body.logo_url, team.logo_url || '');
+  const city = cleanText(body.city, team.city || '');
+  const stadium = cleanText(body.stadium, team.stadium || '');
+  const budget = numberInRange(body.budget, team.budget, 0, 999999999);
+  const fans = numberInRange(body.fans, team.fans, 0, 999999999);
+  const points = numberInRange(body.points, team.points, 0, 200);
+  const overall = numberInRange(body.overall, team.overall, 1, 99);
+  const attack = numberInRange(body.attack_overall, team.attack_overall, 1, 99);
+  const midfield = numberInRange(body.midfield_overall, team.midfield_overall, 1, 99);
+  const defense = numberInRange(body.defense_overall, team.defense_overall, 1, 99);
+  const goalkeeper = numberInRange(body.goalkeeper_overall, team.goalkeeper_overall, 1, 99);
+
+  await run(
+    `UPDATE teams SET name = ?, short_name = ?, logo_url = ?, city = ?, stadium = ?, budget = ?, fans = ?,
+      points = ?, overall = ?, attack_overall = ?, midfield_overall = ?, defense_overall = ?,
+      goalkeeper_overall = ?, default_formation = ? WHERE id = ?`,
+    [name, shortName, logoUrl, city, stadium, budget, fans, points, overall, attack, midfield, defense, goalkeeper, formation, team.id]
+  );
+  await run('UPDATE league_standings SET points = ? WHERE team_id = ?', [points, team.id]);
+  await run(
+    `UPDATE clubs SET name = ?, budget = ?, fans = ?, stadium_capacity = MAX(stadium_capacity, 12000)
+     WHERE team_id = ?`,
+    [name, budget, fans, team.id]
+  );
+  return get('SELECT * FROM teams WHERE id = ?', [team.id]);
+}
+
+router.post('/admin/teams', requireAdmin, async (req, res, next) => {
+  try {
+    const name = cleanText(req.body.name);
+    if (name.length < 2) return res.status(400).json({ message: 'Takım adı gerekli.' });
+    const shortName = cleanText(req.body.short_name, name.slice(0, 3).toUpperCase()).slice(0, 24);
+    const budget = numberInRange(req.body.budget, 0, 0, 999999999);
+    const fans = numberInRange(req.body.fans, 0, 0, 999999999);
+    const overall = numberInRange(req.body.overall, 60, 1, 99);
+    const attack = numberInRange(req.body.attack_overall, overall, 1, 99);
+    const midfield = numberInRange(req.body.midfield_overall, overall, 1, 99);
+    const defense = numberInRange(req.body.defense_overall, overall, 1, 99);
+    const goalkeeper = numberInRange(req.body.goalkeeper_overall, overall, 1, 99);
+    const result = await run(
+      `INSERT INTO teams
+        (name, short_name, logo_url, city, stadium, budget, fans, overall, attack_overall, midfield_overall,
+         defense_overall, goalkeeper_overall, default_formation, points)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        shortName,
+        cleanText(req.body.logo_url),
+        cleanText(req.body.city),
+        cleanText(req.body.stadium),
+        budget,
+        fans,
+        overall,
+        attack,
+        midfield,
+        defense,
+        goalkeeper,
+        cleanText(req.body.default_formation, '4-2-3-1'),
+        numberInRange(req.body.points, 0, 0, 200)
+      ]
+    );
+    await run('INSERT OR IGNORE INTO league_standings (user_id, team_id, points) SELECT id, ?, ? FROM users', [result.id, numberInRange(req.body.points, 0, 0, 200)]);
+    res.status(201).json(await adminOverview());
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ message: 'Bu takım adı zaten var.' });
+    next(error);
+  }
+});
+
+router.patch('/admin/teams/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const team = await updateAdminTeam(req.params.id, req.body);
+    if (!team) return res.status(404).json({ message: 'Takım bulunamadı.' });
+    res.json(await adminOverview());
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ message: 'Bu takım adı zaten var.' });
+    next(error);
+  }
+});
+
+router.delete('/admin/teams/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const team = await get('SELECT * FROM teams WHERE id = ?', [req.params.id]);
+    if (!team) return res.status(404).json({ message: 'Takım bulunamadı.' });
+    const activeClub = await get('SELECT id FROM clubs WHERE team_id = ? LIMIT 1', [team.id]);
+    if (activeClub) return res.status(409).json({ message: 'Bu takım bir kullanıcı kariyerinde kullanılıyor. Önce kullanıcı kariyerini değiştirin veya silin.' });
+    await run('DELETE FROM league_standings WHERE team_id = ?', [team.id]);
+    await run('DELETE FROM lineups WHERE team_id = ?', [team.id]);
+    await run('UPDATE players SET team_id = NULL, lineup_role = "reserve", is_starting_eleven = 0 WHERE team_id = ?', [team.id]);
+    await run('DELETE FROM teams WHERE id = ?', [team.id]);
+    res.json(await adminOverview());
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/admin/players', requireAdmin, async (req, res, next) => {
   try {
     const teamId = Number(req.query.teamId || 0);
@@ -650,6 +761,65 @@ router.get('/admin/players', requireAdmin, async (req, res, next) => {
       LIMIT 80
     `, params);
     res.json(players);
+  } catch (error) {
+    next(error);
+  }
+});
+
+function adminPlayerPayload(body = {}, player = {}) {
+  const position = ['GK', 'DEF', 'MID', 'FWD'].includes(body.position) ? body.position : (player.position || 'MID');
+  const overall = numberInRange(body.overall, player.overall || 65, 1, 99);
+  return {
+    name: cleanText(body.name, player.name || 'Yeni Oyuncu'),
+    team_id: Number(body.team_id || player.team_id || 0) || null,
+    club_id: Number(body.club_id || player.club_id || 0) || null,
+    age: numberInRange(body.age, player.age || 22, 15, 45),
+    nationality: cleanText(body.nationality, player.nationality || 'Türkiye'),
+    position,
+    overall,
+    pace: numberInRange(body.pace, player.pace || overall, 1, 99),
+    shooting: numberInRange(body.shooting, player.shooting || overall, 1, 99),
+    passing: numberInRange(body.passing, player.passing || overall, 1, 99),
+    dribbling: numberInRange(body.dribbling, player.dribbling || overall, 1, 99),
+    defending: numberInRange(body.defending, player.defending || overall, 1, 99),
+    physical: numberInRange(body.physical, player.physical || overall, 1, 99),
+    stamina: numberInRange(body.stamina, player.stamina || 75, 1, 100),
+    morale: numberInRange(body.morale, player.morale || 70, 1, 100),
+    salary: numberInRange(body.salary, player.salary || 0, 0, 999999999),
+    market_value: numberInRange(body.market_value, player.market_value || 0, 0, 999999999),
+    potential: numberInRange(body.potential, player.potential || overall, overall, 99),
+    contract_until: numberInRange(body.contract_until, player.contract_until || 2027, 2025, 2040),
+    injured: body.injured ? 1 : 0,
+    injury_type: body.injured ? cleanText(body.injury_type, player.injury_type || 'Hafif sakatlık') : '',
+    injury_return_day: body.injured ? numberInRange(body.injury_return_day, player.injury_return_day || 7, 0, 999) : 0,
+    image_url: cleanText(body.image_url, player.image_url || ''),
+    lineup_role: body.is_starting_eleven || body.lineup_role === 'starter' ? 'starter' : (player.lineup_role || 'reserve'),
+    is_starting_eleven: body.is_starting_eleven || body.lineup_role === 'starter' ? 1 : 0
+  };
+}
+
+router.post('/admin/players', requireAdmin, async (req, res, next) => {
+  try {
+    const payload = adminPlayerPayload(req.body);
+    if (!payload.team_id && !payload.club_id) return res.status(400).json({ message: 'Oyuncu için takım seçmelisin.' });
+    const result = await run(
+      `INSERT INTO players
+        (club_id, team_id, name, age, nationality, position, overall, pace, shooting, passing, dribbling,
+         defending, physical, stamina, morale, salary, market_value, base_market_value, potential,
+         contract_until, injured, injury_type, injury_return_day, image_url, lineup_role, is_starting_eleven)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        payload.club_id, payload.team_id, payload.name, payload.age, payload.nationality, payload.position,
+        payload.overall, payload.pace, payload.shooting, payload.passing, payload.dribbling, payload.defending,
+        payload.physical, payload.stamina, payload.morale, payload.salary, payload.market_value,
+        payload.market_value, payload.potential, payload.contract_until, payload.injured, payload.injury_type,
+        payload.injury_return_day, payload.image_url, payload.lineup_role, payload.is_starting_eleven
+      ]
+    );
+    if (payload.is_starting_eleven && payload.team_id) {
+      await run('DELETE FROM lineups WHERE team_id = ?', [payload.team_id]);
+    }
+    res.status(201).json({ player: await get('SELECT * FROM players WHERE id = ?', [result.id]), overview: await adminOverview() });
   } catch (error) {
     next(error);
   }
@@ -744,26 +914,38 @@ router.delete('/admin/users/:id', requireAdmin, async (req, res, next) => {
 
 router.post('/admin/teams/:id', requireAdmin, async (req, res, next) => {
   try {
-    const team = await get('SELECT * FROM teams WHERE id = ?', [req.params.id]);
+    const team = await updateAdminTeam(req.params.id, req.body);
     if (!team) return res.status(404).json({ message: 'Takım bulunamadı.' });
-    const allowedFormations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '3-4-3', '5-3-2', '4-1-4-1'];
-    const formation = allowedFormations.includes(req.body.default_formation) ? req.body.default_formation : team.default_formation;
+    res.json(await adminOverview());
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/admin/players/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const player = await get('SELECT * FROM players WHERE id = ?', [req.params.id]);
+    if (!player) return res.status(404).json({ message: 'Oyuncu bulunamadı.' });
+    const payload = adminPlayerPayload(req.body, player);
     await run(
-      `UPDATE teams SET budget = ?, fans = ?, overall = ?, attack_overall = ?, midfield_overall = ?,
-        defense_overall = ?, goalkeeper_overall = ?, default_formation = ? WHERE id = ?`,
+      `UPDATE players SET club_id = ?, team_id = ?, name = ?, age = ?, nationality = ?, position = ?,
+        overall = ?, pace = ?, shooting = ?, passing = ?, dribbling = ?, defending = ?, physical = ?,
+        stamina = ?, morale = ?, salary = ?, market_value = ?, base_market_value = ?, potential = ?,
+        contract_until = ?, injured = ?, injury_type = ?, injury_return_day = ?, image_url = ?,
+        lineup_role = ?, is_starting_eleven = ? WHERE id = ?`,
       [
-        numberInRange(req.body.budget, team.budget, 0, 999999999),
-        numberInRange(req.body.fans, team.fans, 0, 99999999),
-        numberInRange(req.body.overall, team.overall, 1, 99),
-        numberInRange(req.body.attack_overall, team.attack_overall, 1, 99),
-        numberInRange(req.body.midfield_overall, team.midfield_overall, 1, 99),
-        numberInRange(req.body.defense_overall, team.defense_overall, 1, 99),
-        numberInRange(req.body.goalkeeper_overall, team.goalkeeper_overall, 1, 99),
-        formation,
-        team.id
+        payload.club_id, payload.team_id, payload.name, payload.age, payload.nationality, payload.position,
+        payload.overall, payload.pace, payload.shooting, payload.passing, payload.dribbling, payload.defending,
+        payload.physical, payload.stamina, payload.morale, payload.salary, payload.market_value,
+        payload.market_value, payload.potential, payload.contract_until, payload.injured, payload.injury_type,
+        payload.injury_return_day, payload.image_url, payload.lineup_role, payload.is_starting_eleven, player.id
       ]
     );
-    res.json(await adminOverview());
+    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.is_starting_eleven) {
+      if (player.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [player.team_id]);
+      if (payload.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [payload.team_id]);
+    }
+    res.json({ message: 'Oyuncu güncellendi.', player: await get('SELECT * FROM players WHERE id = ?', [player.id]) });
   } catch (error) {
     next(error);
   }
@@ -773,26 +955,41 @@ router.post('/admin/players/:id', requireAdmin, async (req, res, next) => {
   try {
     const player = await get('SELECT * FROM players WHERE id = ?', [req.params.id]);
     if (!player) return res.status(404).json({ message: 'Oyuncu bulunamadı.' });
+    const payload = adminPlayerPayload(req.body, player);
     await run(
-      `UPDATE players SET overall = ?, pace = ?, shooting = ?, passing = ?, dribbling = ?, defending = ?,
-        physical = ?, stamina = ?, morale = ?, salary = ?, market_value = ?, injured = ? WHERE id = ?`,
+      `UPDATE players SET club_id = ?, team_id = ?, name = ?, age = ?, nationality = ?, position = ?,
+        overall = ?, pace = ?, shooting = ?, passing = ?, dribbling = ?, defending = ?, physical = ?,
+        stamina = ?, morale = ?, salary = ?, market_value = ?, base_market_value = ?, potential = ?,
+        contract_until = ?, injured = ?, injury_type = ?, injury_return_day = ?, image_url = ?,
+        lineup_role = ?, is_starting_eleven = ? WHERE id = ?`,
       [
-        numberInRange(req.body.overall, player.overall, 1, 99),
-        numberInRange(req.body.pace, player.pace, 1, 99),
-        numberInRange(req.body.shooting, player.shooting, 1, 99),
-        numberInRange(req.body.passing, player.passing, 1, 99),
-        numberInRange(req.body.dribbling, player.dribbling, 1, 99),
-        numberInRange(req.body.defending, player.defending, 1, 99),
-        numberInRange(req.body.physical, player.physical, 1, 99),
-        numberInRange(req.body.stamina, player.stamina, 1, 100),
-        numberInRange(req.body.morale, player.morale, 1, 100),
-        numberInRange(req.body.salary, player.salary, 0, 99999999),
-        numberInRange(req.body.market_value, player.market_value, 0, 999999999),
-        req.body.injured ? 1 : 0,
-        player.id
+        payload.club_id, payload.team_id, payload.name, payload.age, payload.nationality, payload.position,
+        payload.overall, payload.pace, payload.shooting, payload.passing, payload.dribbling, payload.defending,
+        payload.physical, payload.stamina, payload.morale, payload.salary, payload.market_value,
+        payload.market_value, payload.potential, payload.contract_until, payload.injured, payload.injury_type,
+        payload.injury_return_day, payload.image_url, payload.lineup_role, payload.is_starting_eleven, player.id
       ]
     );
+    if (Number(player.team_id || 0) !== Number(payload.team_id || 0) || payload.is_starting_eleven) {
+      if (player.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [player.team_id]);
+      if (payload.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [payload.team_id]);
+    }
     res.json({ message: 'Oyuncu güncellendi.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/admin/players/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const player = await get('SELECT * FROM players WHERE id = ?', [req.params.id]);
+    if (!player) return res.status(404).json({ message: 'Oyuncu bulunamadı.' });
+    if (player.team_id) await run('DELETE FROM lineups WHERE team_id = ?', [player.team_id]);
+    await run('DELETE FROM match_player_ratings WHERE player_id = ?', [player.id]);
+    await run('UPDATE match_events SET scorer_id = NULL WHERE scorer_id = ?', [player.id]);
+    await run('UPDATE match_events SET assist_id = NULL WHERE assist_id = ?', [player.id]);
+    await run('DELETE FROM players WHERE id = ?', [player.id]);
+    res.json({ message: 'Oyuncu silindi.', overview: await adminOverview() });
   } catch (error) {
     next(error);
   }

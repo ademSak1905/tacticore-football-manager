@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8">
@@ -11,12 +11,12 @@
       <section class="admin-hero">
         <div>
           <div class="brand"><span class="brand-mark">TC</span><span>TactiCore Admin</span></div>
-          <h1>Kontrol paneli</h1>
-          <p class="muted">Oyunun gününü, takımları, kulüpleri, oyuncuları ve sosyal akışı buradan yönet.</p>
+          <h1>Veri yönetimi</h1>
+          <p class="muted">Takım, oyuncu, ekonomi ve kullanıcı verilerini düzenle.</p>
         </div>
         <form id="adminForm" class="admin-login">
-          <label class="field"><span>Admin kullanici adi</span><input id="adminUsername" autocomplete="username"></label>
-          <label class="field"><span>Admin sifresi</span><input id="adminPassword" type="password" autocomplete="current-password"></label>
+          <label class="field"><span>Admin kullanıcı adı</span><input id="adminUsername" autocomplete="username"></label>
+          <label class="field"><span>Admin şifresi</span><input id="adminPassword" type="password" autocomplete="current-password"></label>
           <button class="btn" type="submit">Paneli aç</button>
         </form>
       </section>
@@ -24,116 +24,145 @@
       <p id="adminMessage" class="message"></p>
       <section id="adminSummary" class="grid stats"></section>
 
-      <section id="adminPanel" class="admin-grid" hidden>
-        <article class="card wide-admin-card">
-          <h2>Kullanici yonetimi</h2>
-          <div id="userManagement" class="table-wrap"></div>
-        </article>
+      <section id="adminPanel" class="admin-layout" hidden>
+        <aside class="admin-menu">
+          <button class="admin-menu-item active" data-admin-tab="teams" type="button">Takım Yönetimi</button>
+          <button class="admin-menu-item" data-admin-tab="players" type="button">Oyuncu Yönetimi</button>
+          <button class="admin-menu-item" data-admin-tab="league" type="button">Lig Ayarları</button>
+          <button class="admin-menu-item" data-admin-tab="transfers" type="button">Transfer Ayarları</button>
+          <button class="admin-menu-item" data-admin-tab="economy" type="button">Ekonomi Ayarları</button>
+          <button class="admin-menu-item" data-admin-tab="users" type="button">Kullanıcı Yönetimi</button>
+          <button class="admin-menu-item" data-admin-tab="system" type="button">Sistem Ayarları</button>
+        </aside>
 
-        <article class="card wide-admin-card" hidden>
-          <h2>Transfer kontrolu</h2>
-          <div id="transferControl" class="table-wrap"></div>
-        </article>
+        <div class="admin-content">
+          <section class="admin-section active" data-admin-section="teams">
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Takım Yönetimi</h2>
+                  <p class="muted">Takım ekle, düzenle veya sil. Değişiklikler lig, dashboard ve takım listelerine yansır.</p>
+                </div>
+                <button id="newTeamButton" class="btn secondary" type="button">Yeni takım</button>
+              </div>
+              <form id="teamForm" class="form compact-form admin-edit-form">
+                <input id="teamId" type="hidden">
+                <label class="field"><span>Takım adı</span><input id="teamName" required></label>
+                <label class="field"><span>Kısa ad</span><input id="teamShortName"></label>
+                <label class="field"><span>Logo URL</span><input id="teamLogo" placeholder="/assets/logo.png"></label>
+                <label class="field"><span>Şehir</span><input id="teamCity"></label>
+                <label class="field"><span>Stadyum</span><input id="teamStadium"></label>
+                <label class="field"><span>Bütçe</span><input id="teamBudget" type="number" min="0"></label>
+                <label class="field"><span>Taraftar</span><input id="teamFans" type="number" min="0"></label>
+                <label class="field"><span>Lig puanı</span><input id="teamPoints" type="number" min="0"></label>
+                <label class="field"><span>Genel overall</span><input id="teamOverall" type="number" min="1" max="99"></label>
+                <label class="field"><span>Hücum</span><input id="teamAttack" type="number" min="1" max="99"></label>
+                <label class="field"><span>Orta saha</span><input id="teamMidfield" type="number" min="1" max="99"></label>
+                <label class="field"><span>Savunma</span><input id="teamDefense" type="number" min="1" max="99"></label>
+                <label class="field"><span>Kaleci</span><input id="teamGoalkeeper" type="number" min="1" max="99"></label>
+                <label class="field"><span>Diziliş</span><select id="teamFormation"><option>4-4-2</option><option>4-3-3</option><option>4-2-3-1</option><option>3-5-2</option><option>3-4-3</option><option>5-3-2</option><option>4-1-4-1</option></select></label>
+                <div class="actions wide-field">
+                  <button class="btn green" type="submit">Takımı kaydet</button>
+                  <button id="deleteTeamButton" class="btn danger" type="button">Takımı sil</button>
+                </div>
+              </form>
+            </article>
+            <article class="card table-wrap">
+              <h2>Takım listesi</h2>
+              <div id="teamTable"></div>
+            </article>
+          </section>
 
-        <article class="card" hidden>
-          <h2>Oyun tarihi</h2>
-          <form id="gameStateForm" class="form compact-form">
-            <label class="field"><span>Gün</span><input id="currentDay" type="number" min="1"></label>
-            <label class="field"><span>Sonraki maç günü</span><input id="nextMatchDay" type="number" min="1"></label>
-            <label class="field"><span>Hafta</span><input id="week" type="number" min="1"></label>
-            <button class="btn green" type="submit">Günü kaydet</button>
-          </form>
-        </article>
+          <section class="admin-section" data-admin-section="players">
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Oyuncu Yönetimi</h2>
+                  <p class="muted">Oyuncu ekle, düzenle veya sil. Kadro, transfer ve ilk 11 ekranları güncel veriyi kullanır.</p>
+                </div>
+                <button id="newPlayerButton" class="btn secondary" type="button">Yeni oyuncu</button>
+              </div>
+              <div class="form compact-form">
+                <label class="field"><span>Takım filtresi</span><select id="playerTeamFilter"></select></label>
+                <label class="field"><span>Oyuncu ara</span><input id="playerSearch" placeholder="İsim yaz..."></label>
+                <button id="loadPlayers" class="btn secondary" type="button">Oyuncuları getir</button>
+              </div>
+              <form id="playerForm" class="form compact-form admin-edit-form" style="margin-top:16px">
+                <input id="playerId" type="hidden">
+                <label class="field"><span>Takım</span><select id="playerTeam"></select></label>
+                <label class="field"><span>İsim</span><input id="playerName" required></label>
+                <label class="field"><span>Yaş</span><input id="playerAge" type="number" min="15" max="45"></label>
+                <label class="field"><span>Mevki</span><select id="playerPosition"><option>GK</option><option>DEF</option><option>MID</option><option>FWD</option></select></label>
+                <label class="field"><span>Overall</span><input id="playerOverall" type="number" min="1" max="99"></label>
+                <label class="field"><span>Potansiyel</span><input id="playerPotential" type="number" min="1" max="99"></label>
+                <label class="field"><span>Maaş</span><input id="playerSalary" type="number" min="0"></label>
+                <label class="field"><span>Piyasa değeri</span><input id="playerMarket" type="number" min="0"></label>
+                <label class="field"><span>Kondisyon</span><input id="playerStamina" type="number" min="1" max="100"></label>
+                <label class="field"><span>Moral</span><input id="playerMorale" type="number" min="1" max="100"></label>
+                <label class="field"><span>Fotoğraf URL</span><input id="playerImage" placeholder="/assets/player.png"></label>
+                <label class="field"><span>Sakatlık türü</span><input id="playerInjuryType" placeholder="Boş bırakılabilir"></label>
+                <label class="field"><span>Dönüş günü</span><input id="playerInjuryReturn" type="number" min="0"></label>
+                <label class="field checkbox-field"><input id="playerInjured" type="checkbox"><span>Sakat</span></label>
+                <label class="field checkbox-field"><input id="playerStarter" type="checkbox"><span>İlk 11 oyuncusu</span></label>
+                <div class="actions wide-field">
+                  <button class="btn green" type="submit">Oyuncuyu kaydet</button>
+                  <button id="deletePlayerButton" class="btn danger" type="button">Oyuncuyu sil</button>
+                </div>
+              </form>
+            </article>
+            <article class="card table-wrap">
+              <h2>Oyuncu listesi</h2>
+              <div id="playerTable"></div>
+            </article>
+          </section>
 
-        <article class="card">
-          <h2>Kulüp yönetimi</h2>
-          <form id="clubForm" class="form compact-form">
-            <label class="field"><span>Kulüp</span><select id="clubSelect"></select></label>
-            <label class="field"><span>Kulüp adı</span><input id="clubName"></label>
-            <label class="field"><span>Bütçe</span><input id="clubBudget" type="number" min="0"></label>
-            <label class="field"><span>Taraftar</span><input id="clubFans" type="number" min="0"></label>
-            <label class="field"><span>Stadyum kapasitesi</span><input id="clubStadium" type="number" min="1000"></label>
-            <label class="field"><span>Para birimi</span><select id="clubCurrency"><option>TRY</option><option>USD</option><option>EUR</option></select></label>
-            <button class="btn green" type="submit">Kulübü kaydet</button>
-          </form>
-        </article>
+          <section class="admin-section" data-admin-section="league">
+            <article class="card">
+              <h2>Lig Ayarları</h2>
+              <p class="muted">Lig puanı ve takım sıralama verileri Takım Yönetimi alanından düzenlenir. Admin panelinde hafta ilerletme veya maç oynatma bulunmaz.</p>
+            </article>
+          </section>
 
-        <article class="card">
-          <h2>Şifre yenile</h2>
-          <p class="muted">Eski şifre görünmez. Seçilen kullanıcıya yeni şifre atanır.</p>
-          <form id="passwordForm" class="form compact-form">
-            <label class="field"><span>Kullanıcı</span><select id="passwordUserSelect"></select></label>
-            <label class="field"><span>Yeni Şifre</span><input id="newPassword" type="password" minlength="6" placeholder="En az 6 karakter"></label>
-            <button class="btn green" type="submit">Şifreyi yenile</button>
-          </form>
-        </article>
+          <section class="admin-section" data-admin-section="transfers">
+            <article class="card">
+              <h2>Transfer Ayarları</h2>
+              <p class="muted">Oyuncu maaşı, piyasa değeri, takım ve transfer durumu Oyuncu Yönetimi üzerinden düzenlenir. Değişiklikler transfer merkezine veritabanından yansır.</p>
+            </article>
+          </section>
 
-        <article class="card">
-          <h2>Takım güçleri</h2>
-          <form id="teamForm" class="form compact-form">
-            <label class="field"><span>Takım</span><select id="teamSelect"></select></label>
-            <label class="field"><span>Genel</span><input id="teamOverall" type="number" min="1" max="99"></label>
-            <label class="field"><span>Hücum</span><input id="teamAttack" type="number" min="1" max="99"></label>
-            <label class="field"><span>Orta saha</span><input id="teamMidfield" type="number" min="1" max="99"></label>
-            <label class="field"><span>Savunma</span><input id="teamDefense" type="number" min="1" max="99"></label>
-            <label class="field"><span>Kaleci</span><input id="teamGoalkeeper" type="number" min="1" max="99"></label>
-            <label class="field"><span>Bütçe</span><input id="teamBudget" type="number" min="0"></label>
-            <label class="field"><span>Taraftar</span><input id="teamFans" type="number" min="0"></label>
-            <label class="field"><span>Diziliş</span><select id="teamFormation"><option>4-4-2</option><option>4-3-3</option><option>4-2-3-1</option><option>3-5-2</option><option>3-4-3</option><option>5-3-2</option><option>4-1-4-1</option></select></label>
-            <button class="btn green" type="submit">Takımı kaydet</button>
-          </form>
-        </article>
+          <section class="admin-section" data-admin-section="economy">
+            <article class="card">
+              <h2>Ekonomi Ayarları</h2>
+              <p class="muted">Takım bütçesi Takım Yönetimi alanından kaydedilir. Kullanıcı takımının bütçesi bağlı takım güncellenince dashboardda yenilenir.</p>
+            </article>
+          </section>
 
-        <article class="card">
-          <h2>Oyuncu editörü</h2>
-          <div class="form compact-form">
-            <label class="field"><span>Takıma göre ara</span><select id="playerTeamSelect"></select></label>
-            <label class="field"><span>Oyuncu adı</span><input id="playerSearch" placeholder="Örnek: Kerem"></label>
-            <button id="loadPlayers" class="btn secondary" type="button">Oyuncuları getir</button>
-          </div>
-          <form id="playerForm" class="form compact-form" style="margin-top:16px">
-            <label class="field"><span>Oyuncu</span><select id="playerSelect"></select></label>
-            <label class="field"><span>Overall</span><input id="playerOverall" type="number" min="1" max="99"></label>
-            <label class="field"><span>Hız</span><input id="playerPace" type="number" min="1" max="99"></label>
-            <label class="field"><span>Şut</span><input id="playerShooting" type="number" min="1" max="99"></label>
-            <label class="field"><span>Pas</span><input id="playerPassing" type="number" min="1" max="99"></label>
-            <label class="field"><span>Top sürme</span><input id="playerDribbling" type="number" min="1" max="99"></label>
-            <label class="field"><span>Savunma</span><input id="playerDefending" type="number" min="1" max="99"></label>
-            <label class="field"><span>Fizik</span><input id="playerPhysical" type="number" min="1" max="99"></label>
-            <label class="field"><span>Kondisyon</span><input id="playerStamina" type="number" min="1" max="100"></label>
-            <label class="field"><span>Moral</span><input id="playerMorale" type="number" min="1" max="100"></label>
-            <label class="field"><span>Maaş</span><input id="playerSalary" type="number" min="0"></label>
-            <label class="field"><span>Piyasa değeri</span><input id="playerMarket" type="number" min="0"></label>
-            <label class="field checkbox-field"><input id="playerInjured" type="checkbox"><span>Sakat</span></label>
-            <button class="btn green" type="submit">Oyuncuyu kaydet</button>
-          </form>
-        </article>
+          <section class="admin-section" data-admin-section="users">
+            <article class="card wide-admin-card">
+              <h2>Kullanıcı Yönetimi</h2>
+              <div id="userManagement" class="table-wrap"></div>
+            </article>
+            <article class="card">
+              <h2>Şifre yenile</h2>
+              <form id="passwordForm" class="form compact-form">
+                <label class="field"><span>Kullanıcı</span><select id="passwordUserSelect"></select></label>
+                <label class="field"><span>Yeni şifre</span><input id="newPassword" type="password" minlength="6" placeholder="En az 6 karakter"></label>
+                <button class="btn green" type="submit">Şifreyi yenile</button>
+              </form>
+            </article>
+          </section>
 
-        <article class="card">
-          <h2>Sosyal medya / gazete</h2>
-          <form id="socialForm" class="form compact-form">
-            <label class="field"><span>Tür</span><select id="socialType"><option value="social">Sosyal medya</option><option value="newspaper">Gazete manşeti</option></select></label>
-            <label class="field"><span>Gün</span><input id="socialDay" type="number" min="1"></label>
-            <label class="field"><span>Yazar</span><input id="socialAuthor" value="Admin"></label>
-            <label class="field wide-field"><span>Metin</span><input id="socialContent" placeholder="Bugünün yorumu..."></label>
-            <button class="btn green" type="submit">Paylaş</button>
-          </form>
-          <div id="latestPosts" class="admin-list"></div>
-        </article>
-
-        <article class="card">
-          <h2>Lig araçları</h2>
-          <p class="muted">Ligi sıfırlarsan skorlar, maç olayları ve puan durumu yeni sezona döner.</p>
-          <button id="resetLeague" class="btn danger" type="button">Ligi sıfırla</button>
-          <div id="recentMatches" class="table-wrap" style="margin-top:16px"></div>
-        </article>
+          <section class="admin-section" data-admin-section="system">
+            <article class="card">
+              <h2>Sistem Ayarları</h2>
+              <div id="systemStats" class="grid stats"></div>
+              <p class="muted">Seed dosyaları sadece başlangıç verisidir. Admin panelinde yapılan değişiklikler doğrudan veritabanına kaydedilir.</p>
+            </article>
+          </section>
+        </div>
       </section>
     </main>
     <script src="/js/auth.js?v=20260607-compact-fixes"></script>
-    <script src="/js/admin.js?v=20260603-admin-simple"></script>
+    <script src="/js/admin.js?v=20260607-admin-data-panel"></script>
   </body>
 </html>
-
-
-
-
