@@ -137,7 +137,8 @@ async function dynamicMarket(clubOrTeamId, filters = {}) {
   const window = transferWindow(state.current_day);
   const q = `%${String(filters.q || '').trim().toLowerCase()}%`;
   const rows = await all(`
-    SELECT p.*, t.name AS team_name, t.overall AS team_prestige, t.budget AS team_budget
+    SELECT p.*, t.name AS team_name, t.overall AS team_prestige, t.budget AS team_budget,
+      t.logo_url AS team_logo, t.logo_url AS club_logo
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
     WHERE (p.team_id IS NULL OR p.team_id != ?)
@@ -159,6 +160,7 @@ async function dynamicMarket(clubOrTeamId, filters = {}) {
     const baseMarketValue = calculateBaseMarketValue(player);
     return {
       ...player,
+      logo_url: player.team_logo || player.club_logo || player.logo_url || null,
       base_market_value: baseMarketValue,
       market_value: baseMarketValue,
       salary: calculatePlayerSalary(player),

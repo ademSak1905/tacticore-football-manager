@@ -1698,9 +1698,21 @@ async function initDatabase() {
 }
 
 async function backfillPlayerTransferData() {
-  const valueFlagKey = 'rebalance_player_values_20260603_v2';
+  const valueFlagKey = 'rebalance_player_values_20260607_tm_seed_v2';
   const valueRebalanceDone = await get('SELECT flag_key FROM maintenance_flags WHERE flag_key = ?', [valueFlagKey]);
   const forceRebalance = !valueRebalanceDone;
+  let seedValueByTeamAndName = new Map();
+  let seedValueByName = new Map();
+  try {
+    const seedPlayers = require(path.join(__dirname, '..', 'frontend', 'data', 'superlig-players-2026.json'));
+    const normalizeName = (value) => String(value || '').trim().toLocaleLowerCase('tr-TR');
+    seedValueByTeamAndName = new Map(seedPlayers
+      .filter((player) => Number(player.market_value || 0) > 0)
+      .map((player) => [`${player.team_id}:${normalizeName(player.name)}`, Number(player.market_value)]));
+    seedValueByName = new Map(seedPlayers
+      .filter((player) => Number(player.market_value || 0) > 0)
+      .map((player) => [normalizeName(player.name), Number(player.market_value)]));
+  } catch {}
   const players = await all(`
     SELECT p.*, t.overall AS team_overall
     FROM players p
@@ -1710,6 +1722,9 @@ async function backfillPlayerTransferData() {
   `);
 
   for (const player of players) {
+    const normalizedName = String(player.name || '').trim().toLocaleLowerCase('tr-TR');
+    const seedMarketValue = seedValueByTeamAndName.get(`${player.team_id}:${normalizedName}`) || seedValueByName.get(normalizedName) || 0;
+    const seededMarketValue = seedMarketValue ? normalizeInternalMoney(seedMarketValue) : 0;
     const potential = Math.max(player.overall, Math.min(95, player.overall + (player.age <= 21 ? 9 : player.age <= 24 ? 6 : player.age >= 31 ? 1 : 3)));
     const contractUntil = player.contract_until && player.contract_until !== 2027
       ? player.contract_until
@@ -1722,7 +1737,7 @@ async function backfillPlayerTransferData() {
       : happiness < 48 ? 'unhappy' : contractUntil <= 2026 ? 'expiring' : player.age <= 21 && potential >= 78 ? 'hot_prospect' : 'normal';
     const loanAvailable = player.loan_available || (player.age <= 22 && player.lineup_role !== 'starter' ? 1 : 0);
     const baseMarketValue = forceRebalance
-      ? rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness })
+      ? (seededMarketValue || rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness }))
       : player.base_market_value && player.base_market_value > 0
         ? player.base_market_value
         : rebalancePlayerMarketValue({ ...player, potential, contract_until: contractUntil, happiness });

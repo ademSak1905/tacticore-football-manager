@@ -190,7 +190,7 @@ function wireShellLeaderboard(topbar, logout) {
     </button>
     <section class="shell-leaderboard-panel" aria-label="Menajer Siralamasi">
       <div class="leaderboard-head">
-        <span class="message-category gold">Canli</span>
+        <span class="message-category gold">Top 8</span>
         <h2>Menajer Siralamasi</h2>
       </div>
       <div id="shellLeaderboardList" class="leaderboard-list">
@@ -387,10 +387,13 @@ function wireAuthForms() {
       event.preventDefault();
       setMessage('Giriş yapılıyor...');
       try {
+        const loginValue = byId('login').value.trim();
         await api.request('/api/login', {
           method: 'POST',
           body: JSON.stringify({
-            login: byId('login').value,
+            login: loginValue,
+            username: loginValue,
+            email: loginValue,
             password: byId('password').value
           })
         });

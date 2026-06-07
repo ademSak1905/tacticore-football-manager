@@ -10,7 +10,7 @@ function requireAuth(req, res, next) {
 
 router.get('/manager/leaderboard', async (req, res, next) => {
   try {
-    res.json(await getManagerLeaderboard(10));
+    res.json(await getManagerLeaderboard(8));
   } catch (error) {
     next(error);
   }

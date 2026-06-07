@@ -136,18 +136,16 @@ function estimatePlayerValueEuro(player = {}) {
   return value;
 }
 
-function marketAnchor(player = {}) {
+function marketAnchor(player = {}, options = {}) {
   const rawValue = Number(player.market_value || 0);
   const estimateEuro = estimatePlayerValueEuro(player);
-  if (!rawValue) return toInternalEuro(estimateEuro);
-  const rawEuro = normalizeInternalMoney(rawValue) / INTERNAL_EUR_RATE;
-  const cappedEuro = Math.min(rawEuro, estimateEuro * 0.85);
-  return toInternalEuro(Math.max(estimateEuro * 0.55, cappedEuro));
+  if (!rawValue || options.ignoreMarket) return toInternalEuro(estimateEuro);
+  return normalizeInternalMoney(rawValue);
 }
 
 function calculateBaseMarketValue(player = {}, options = {}) {
   const storedBase = Number(player.base_market_value || 0);
-  const anchor = marketAnchor(player);
+  const anchor = marketAnchor(player, options);
   if (!options.ignoreStored && storedBase > 0) {
     const stored = normalizeInternalMoney(storedBase);
     return roundInternalEuro(Math.min(stored, anchor * 1.12), 50000);
@@ -170,7 +168,7 @@ function calculateBaseMarketValue(player = {}, options = {}) {
 }
 
 function rebalancePlayerMarketValue(player = {}) {
-  return calculateBaseMarketValue(player, { ignoreStored: true });
+  return calculateBaseMarketValue({ ...player, market_value: 0, base_market_value: 0 }, { ignoreStored: true, ignoreMarket: true });
 }
 
 function calculatePlayerSalary(player = {}) {

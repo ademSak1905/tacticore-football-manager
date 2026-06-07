@@ -329,8 +329,8 @@ async function playedStatsFor(userId, teamId) {
   };
 }
 
-async function getManagerLeaderboard(limit = 10) {
-  const safeLimit = Math.min(10, Math.max(1, Number(limit || 10)));
+async function getManagerLeaderboard(limit = 8) {
+  const safeLimit = Math.min(8, Math.max(1, Number(limit || 8)));
   const rows = await all(`
     SELECT
       u.id AS user_id,
