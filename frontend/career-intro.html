@@ -44,7 +44,7 @@
           const session = await requireAuth();
           const plan = await api.request('/api/game/season-plan').catch(() => null);
           const club = session.club || {};
-          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direktÃ¶r';
+          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direkt?r';
           byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
           byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
           byId('introText').textContent = plan

@@ -105,8 +105,8 @@ function budgetRateForTeam(team = {}) {
   const name = teamNameForFinance(team);
   const seed = Number(team.team_id || team.id || 1);
   const noise = seededRatio(seed + 17);
-  if (['Galatasaray', 'FenerbahÃ§e', 'Fenerbahce'].includes(name)) return 0.18 + noise * 0.08;
-  if (['BeÅŸiktaÅŸ', 'Besiktas', 'Trabzonspor'].includes(name)) return 0.14 + noise * 0.06;
+  if (['Galatasaray', 'Fenerbah?e', 'Fenerbahce'].includes(name)) return 0.18 + noise * 0.08;
+  if (['Be?ikta?', 'Besiktas', 'Trabzonspor'].includes(name)) return 0.14 + noise * 0.06;
   const overall = Number(team.overall || team.team_overall || 70);
   if (overall >= 74) return 0.12 + noise * 0.06;
   return 0.08 + noise * 0.05;

@@ -42,14 +42,14 @@ function renderMetrics() {
 
   byId('tempo').value = tempoValue;
   byId('tacticMetrics').innerHTML = [
-    ['HÃ¼cum', attack],
+    ['H?cum', attack],
     ['Orta saha', control],
     ['Savunma', defense],
     ['Pres riski', Math.round(pressing * 0.55 + aggression * 0.25)]
   ].map(([label, value]) => `<article class="stat-card"><span class="muted">${label}</span><strong>${value}</strong></article>`).join('');
 
   const attackLabel = byId('attack_style').selectedOptions[0]?.textContent || 'Dengeli';
-  const defenseLabel = byId('defense_style').selectedOptions[0]?.textContent || 'Alan SavunmasÄ±';
+  const defenseLabel = byId('defense_style').selectedOptions[0]?.textContent || 'Alan Savunmas?';
   byId('tacticHints').innerHTML = `
     <div class="event"><strong>${attackLabel}</strong><br>${attackHint(byId('attack_style').value)}</div>
     <div class="event"><strong>${defenseLabel}</strong><br>${defenseHint(byId('defense_style').value)}</div>
@@ -58,23 +58,23 @@ function renderMetrics() {
 
 function attackHint(value) {
   const hints = {
-    counter: 'HÄ±zlÄ± forvetlerle gÃ¼Ã§lÃ¼dÃ¼r. Rakip savunma Ã§izgisi Ã¶ndeyse ekstra tehlike Ã¼retir.',
-    tiki_taka: 'YÃ¼ksek pas ve top sÃ¼rme deÄŸerleriyle topa sahip olmayÄ± artÄ±rÄ±r.',
-    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkasÄ±na erken oynar.',
-    wide: 'GeniÅŸlik yÃ¼kseldikÃ§e kanat ortalarÄ± ve korner baskÄ±sÄ± artar.',
-    press_attack: 'Ã–nde top kazanÄ±r ama yÃ¼ksek kondisyon ister.',
-    balanced: 'Riskleri dÃ¼ÅŸÃ¼k, maÃ§ iÃ§inde dengeli tepki veren plan.'
+    counter: 'H?zl? forvetlerle g??l?d?r. Rakip savunma ?izgisi ?ndeyse ekstra tehlike ?retir.',
+    tiki_taka: 'Y?ksek pas ve top s?rme de?erleriyle topa sahip olmay? art?r?r.',
+    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkas?na erken oynar.',
+    wide: 'Geni?lik y?kseldik?e kanat ortalar? ve korner bask?s? artar.',
+    press_attack: '?nde top kazan?r ama y?ksek kondisyon ister.',
+    balanced: 'Riskleri d???k, ma? i?inde dengeli tepki veren plan.'
   };
   return hints[value] || hints.balanced;
 }
 
 function defenseHint(value) {
   const hints = {
-    deep_block: 'Skoru korumaya iyidir, rakibe top bÄ±rakÄ±r.',
-    zonal: 'Dengeli savunma yerleÅŸimi saÄŸlar.',
+    deep_block: 'Skoru korumaya iyidir, rakibe top b?rak?r.',
+    zonal: 'Dengeli savunma yerle?imi sa?lar.',
     man_marking: 'Rakibin pas ritmini bozar ama faul riski artar.',
-    high_press: 'Rakibi Ã§Ä±karken boÄŸar, arkada boÅŸluk bÄ±rakabilir.',
-    ultra_defense: 'Ã‡ok gÃ¼venli ama hÃ¼cum Ã¼retimini dÃ¼ÅŸÃ¼rÃ¼r.'
+    high_press: 'Rakibi ??karken bo?ar, arkada bo?luk b?rakabilir.',
+    ultra_defense: '?ok g?venli ama h?cum ?retimini d???r?r.'
   };
   return hints[value] || hints.zonal;
 }
@@ -211,7 +211,7 @@ byId('useBooster')?.addEventListener('click', async () => {
   const itemKey = byId('boosterSelect')?.value;
   const playerId = byId('boosterPlayer')?.value;
   if (!itemKey || !playerId) return;
-  byId('boosterMessage').textContent = 'Boost uygulanÄ±yor...';
+  byId('boosterMessage').textContent = 'Boost uygulan?yor...';
   try {
     const result = await api.request('/api/boosters/use', {
       method: 'POST',
