@@ -1,23 +1,23 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Maç | TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260604-coins-spy-market">
+    <title>MaÃ§ | TactiCore</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260607-compact-fixes">
   </head>
-  <body>
+  <body data-shell-page="match" class="match-page">
     <header class="topbar">
-      <button id="menuButton" class="btn secondary menu-btn">Menü</button>
-      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">Kulüp</span></div>
-      <button id="logoutButton" class="btn secondary">Çıkış</button>
+      <button id="menuButton" class="btn secondary menu-btn">MenÃ¼</button>
+      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">KulÃ¼p</span></div>
+      <button id="logoutButton" class="btn secondary">Ã‡Ä±kÄ±ÅŸ</button>
     </header>
     <div class="layout">
       <aside id="sidebar" class="sidebar">
         <nav class="nav">
           <a data-page="dashboard" href="/dashboard.html">Dashboard</a>
           <a data-page="squad" href="/squad.html">Kadro</a>
-          <a data-page="lineup" href="/lineup.html">İlk 11</a>
+          <a data-page="lineup" href="/lineup.html">Ä°lk 11</a>
           <a data-page="calendar" href="/calendar.html">Takvim</a>
           <a data-page="social" href="/social.html">Sosyal</a>
           <a data-page="league" href="/league.html">Lig</a>
@@ -28,32 +28,32 @@
       <main class="content">
         <section class="page-title">
           <div>
-            <h1>Maç merkezi</h1>
-            <p class="muted">Dakika dakika canlı anlatım, ses efektleri ve tam ekran maç sonu.</p>
+            <h1>MaÃ§ merkezi</h1>
+            <p class="muted">Dakika dakika canlÄ± anlatÄ±m, ses efektleri ve tam ekran maÃ§ sonu.</p>
           </div>
           <div class="actions">
             <select id="matchSpeed">
-              <option value="1900" selected>Yavaş</option>
+              <option value="1900" selected>YavaÅŸ</option>
               <option value="1250">Normal</option>
-              <option value="800">Hızlı</option>
+              <option value="800">HÄ±zlÄ±</option>
             </select>
-            <button id="playMatch" class="btn green">Maç yap</button>
+            <button id="playMatch" class="btn green">MaÃ§ yap</button>
             <button id="skipMatch" class="btn secondary">Atla</button>
           </div>
         </section>
         <section class="grid two-col">
           <div class="card">
             <div id="matchClock" class="match-clock">00'</div>
-            <div id="scoreboard" class="scoreboard empty">Henüz maç oynanmadı.</div>
+            <div id="scoreboard" class="scoreboard empty">HenÃ¼z maÃ§ oynanmadÄ±.</div>
             <div id="matchStats" class="grid stats" style="margin-top:16px"></div>
           </div>
           <div class="card">
-            <h2>Canlı anlatım</h2>
+            <h2>CanlÄ± anlatÄ±m</h2>
             <div id="events" class="timeline"></div>
           </div>
         </section>
         <section class="card post-match" style="margin-top:16px">
-          <h2>Son maçlar</h2>
+          <h2>Son maÃ§lar</h2>
           <div id="recentMatches" class="table-wrap"></div>
         </section>
         <div id="highlightBanner" class="highlight-banner" hidden></div>
@@ -65,7 +65,8 @@
         </section>
       </main>
     </div>
-    <script src="/js/auth.js?v=20260604-coins-nav"></script>
-    <script src="/js/match.js?v=20260526-manager"></script>
+    <script src="/js/auth.js?v=20260607-compact-fixes"></script>
+    <script src="/js/match.js?v=20260607-compact-fixes"></script>
   </body>
 </html>
+

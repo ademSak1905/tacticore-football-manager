@@ -8189,3 +8189,293 @@ body[data-shell-page="dashboard"] .dashboard-board-grid {
     margin-top: 8px !important;
   }
 }
+
+/* 2026-06-07 final compact fix */
+body .topbar {
+  position: relative !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  max-height: 78px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 8px 12px !important;
+  overflow: hidden !important;
+}
+
+body .topbar .menu-btn,
+body .topbar #continueWidget,
+body .topbar .continue-widget,
+body .topbar [data-action="continue"] {
+  display: none !important;
+}
+
+body .topbar .brand,
+body .topbar .budget-widget,
+body .topbar .coin-widget,
+body .topbar .date-widget,
+body .topbar .manager-xp-widget,
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  height: 56px !important;
+  min-height: 56px !important;
+  max-height: 56px !important;
+  border-radius: 10px !important;
+  padding: 6px 9px !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+body .topbar .brand {
+  width: 228px !important;
+  min-width: 228px !important;
+  grid-template-columns: 42px minmax(0, 1fr) 20px !important;
+  gap: 8px !important;
+}
+
+body .topbar .brand-mark {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  font-size: 18px !important;
+}
+
+body .topbar #userBadge strong {
+  font-size: 18px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .topbar #userBadge small {
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+body .topbar .budget-widget {
+  width: 176px !important;
+  min-width: 176px !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+}
+
+body .topbar .coin-widget {
+  width: 122px !important;
+  min-width: 122px !important;
+  grid-template-columns: 34px minmax(0, 1fr) 22px !important;
+}
+
+body .topbar .date-widget {
+  width: 178px !important;
+  min-width: 178px !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+}
+
+body .topbar .manager-xp-widget {
+  width: 138px !important;
+  min-width: 138px !important;
+  grid-template-columns: 32px minmax(0, 1fr) auto !important;
+  gap: 5px !important;
+}
+
+body .topbar .shell-leaderboard .leaderboard-toggle,
+body .topbar #logoutButton {
+  width: 76px !important;
+  min-width: 76px !important;
+  font-size: 12px !important;
+  line-height: 1.05 !important;
+}
+
+body .topbar .shell-widget-icon,
+body .topbar .shell-money-icon,
+body .topbar .shell-coin-icon,
+body .topbar .shell-calendar-icon,
+body .topbar .manager-icon {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+}
+
+body .topbar .shell-widget-copy {
+  gap: 2px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body .topbar .shell-widget-copy small {
+  font-size: 11px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+body .topbar .shell-widget-copy strong,
+body .topbar .date-widget .shell-widget-copy strong {
+  font-size: 17px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .topbar .date-widget .shell-widget-copy strong {
+  font-size: 15px !important;
+}
+
+body .topbar .budget-widget b {
+  font-size: 13px !important;
+}
+
+body .topbar .shell-plus {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  font-size: 16px !important;
+  border-radius: 6px !important;
+}
+
+body .topbar .manager-xp-widget span:not(.manager-icon) {
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+body .topbar .manager-xp-widget strong {
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+
+body .topbar .manager-xp-widget em {
+  font-size: 9px !important;
+  line-height: 1 !important;
+}
+
+body .topbar .manager-xp-widget::after {
+  height: 5px !important;
+}
+
+body[data-shell-page="dashboard"] .content {
+  width: calc(100% - 18px) !important;
+  max-width: none !important;
+  padding: 8px 9px 24px !important;
+}
+
+body[data-shell-page="dashboard"] .page-title {
+  margin: 0 0 4px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-tabs {
+  margin: 6px 0 8px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-head-grid {
+  grid-template-columns: minmax(0, 1fr) 292px !important;
+  gap: 8px !important;
+  align-items: start !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel {
+  height: 166px !important;
+  min-height: 166px !important;
+  max-height: 166px !important;
+  padding: 9px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel h2,
+body[data-shell-page="dashboard"] .dashboard-side-panel h3 {
+  font-size: 14px !important;
+  margin: 0 0 5px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions,
+body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-controls,
+body[data-shell-page="dashboard"] .dashboard-side-panel .dashboard-calendar-controls {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 5px !important;
+  margin-top: 5px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel button,
+body[data-shell-page="dashboard"] .dashboard-side-panel select {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 3px 6px !important;
+  font-size: 10px !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-side-panel .notifications,
+body[data-shell-page="dashboard"] .dashboard-side-panel .notification-list,
+body[data-shell-page="dashboard"] .dashboard-side-panel #dashboardNotifications,
+body[data-shell-page="dashboard"] .dashboard-side-panel .muted:last-child {
+  display: none !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+  grid-template-columns: repeat(8, minmax(82px, 1fr)) !important;
+  gap: 6px !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card {
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
+  padding: 8px 6px !important;
+}
+
+body[data-shell-page="dashboard"] #dashboardStats .stat-card strong,
+body[data-shell-page="dashboard"] #dashboardStats .stat-card .stat-value {
+  font-size: 15px !important;
+  line-height: 1 !important;
+  overflow-wrap: anywhere !important;
+}
+
+body[data-shell-page="dashboard"] .dashboard-board-grid {
+  margin-top: 8px !important;
+  gap: 8px !important;
+}
+
+body[data-shell-page="match"] .topbar,
+body.match-page .topbar {
+  display: none !important;
+}
+
+body[data-shell-page="match"] .layout,
+body.match-page .layout {
+  padding-top: 0 !important;
+}
+
+body[data-shell-page="match"] .content,
+body.match-page .content {
+  padding-top: 12px !important;
+}
+
+.tactic-setting-tile {
+  cursor: pointer !important;
+  appearance: none !important;
+  border: 1px solid rgba(56, 130, 230, 0.55) !important;
+  color: inherit !important;
+  font: inherit !important;
+}
+
+.tactic-setting-tile.active {
+  border-color: rgba(34, 239, 90, 0.75) !important;
+  box-shadow: 0 0 18px rgba(34, 239, 90, 0.18) !important;
+}
+
+@media (max-width: 1280px) {
+  body .topbar {
+    height: 70px !important;
+    min-height: 70px !important;
+    gap: 6px !important;
+    padding: 6px 8px !important;
+  }
+
+  body .topbar .brand { width: 190px !important; min-width: 190px !important; }
+  body .topbar .budget-widget { width: 144px !important; min-width: 144px !important; }
+  body .topbar .coin-widget { width: 98px !important; min-width: 98px !important; }
+  body .topbar .date-widget { width: 150px !important; min-width: 150px !important; }
+  body .topbar .manager-xp-widget { width: 112px !important; min-width: 112px !important; }
+  body .topbar .shell-leaderboard .leaderboard-toggle,
+  body .topbar #logoutButton { width: 64px !important; min-width: 64px !important; font-size: 11px !important; }
+  body .topbar .shell-widget-copy strong { font-size: 14px !important; }
+  body .topbar #userBadge strong { font-size: 15px !important; }
+}

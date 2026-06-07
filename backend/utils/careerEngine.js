@@ -257,7 +257,7 @@ async function dailyRandomEvent(userId, day) {
       summary: `${player.name} moralinde ${delta > 0 ? 'yükseliş' : 'düşüş'} var.`,
       body: `${player.name} için günlük moral değişimi raporlandı.`
     });
-  } else if (roll < 0.27 && player) {
+  } else if (false && roll < 0.27 && player) {
     const type = roll < 0.21 ? 'hafif' : roll < 0.25 ? 'orta' : 'ağır';
     const daysOut = type === 'hafif' ? 7 : type === 'orta' ? 21 : 45;
     await run('UPDATE players SET injured = 1, injury_type = ?, injury_return_day = ? WHERE id = ?', [type, day + daysOut, player.id]);

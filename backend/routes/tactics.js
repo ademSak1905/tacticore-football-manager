@@ -54,6 +54,13 @@ async function rebuildLineupForFormation(teamId, formation) {
   return { updated: true, warnings: validation.warnings };
 }
 
+async function updateLineupFormationOnly(teamId, formation) {
+  const current = await all('SELECT id FROM lineups WHERE team_id = ? LIMIT 1', [teamId]);
+  if (!current.length) return rebuildLineupForFormation(teamId, formation);
+  await run('UPDATE lineups SET formation = ? WHERE team_id = ?', [formation, teamId]);
+  return { updated: false, warnings: [] };
+}
+
 router.use(requireAuth);
 
 router.get('/formations', async (req, res) => {
@@ -113,7 +120,7 @@ router.post('/', async (req, res, next) => {
     ]);
 
     await run('UPDATE teams SET default_formation = ? WHERE id = ?', [formation, club.team_id]);
-    const lineupUpdate = await rebuildLineupForFormation(club.team_id, formation);
+    const lineupUpdate = await updateLineupFormationOnly(club.team_id, formation);
 
     const tactic = await get('SELECT * FROM tactics WHERE club_id = ?', [club.id]);
     res.json({ ...normalizeTactic(tactic, club), lineupUpdated: lineupUpdate.updated, lineupWarnings: lineupUpdate.warnings });

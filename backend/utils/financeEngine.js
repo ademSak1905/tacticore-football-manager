@@ -1,34 +1,34 @@
-const INTERNAL_EUR_RATE = 35;
+﻿const INTERNAL_EUR_RATE = 35;
 
 const CLUB_MARKET_VALUES_EUR = {
   Galatasaray: 305000000,
-  Fenerbahçe: 285000000,
-  'Fenerbahce': 285000000,
-  Beşiktaş: 165000000,
+  Fenerbahce: 285000000,
+  'Fenerbahçe': 285000000,
   Besiktas: 165000000,
+  'Beşiktaş': 165000000,
   Trabzonspor: 112000000,
   'İstanbul Başakşehir': 68000000,
   'Istanbul Basaksehir': 68000000,
   Samsunspor: 52000000,
-  Göztepe: 47000000,
   Goztepe: 47000000,
-  Eyüpspor: 43000000,
+  'Göztepe': 47000000,
   Eyupspor: 43000000,
+  'Eyüpspor': 43000000,
   Konyaspor: 36000000,
   'Çaykur Rizespor': 34000000,
   'Caykur Rizespor': 34000000,
   Antalyaspor: 33000000,
   Gaziantep: 32000000,
   'Gaziantep FK': 32000000,
-  Kasımpaşa: 30000000,
   Kasimpasa: 30000000,
+  'Kasımpaşa': 30000000,
   Alanyaspor: 28500000,
   Kayserispor: 26000000,
   Kocaelispor: 23000000,
   'Fatih Karagümrük': 22000000,
   'Fatih Karagumruk': 22000000,
-  Gençlerbirliği: 20000000,
-  Genclerbirligi: 20000000
+  Genclerbirligi: 20000000,
+  'Gençlerbirliği': 20000000
 };
 
 Object.assign(CLUB_MARKET_VALUES_EUR, {
@@ -105,11 +105,11 @@ function budgetRateForTeam(team = {}) {
   const name = teamNameForFinance(team);
   const seed = Number(team.team_id || team.id || 1);
   const noise = seededRatio(seed + 17);
-  if (['Galatasaray', 'Fenerbahçe', 'Fenerbahce'].includes(name)) return 0.12 + noise * 0.06;
-  if (['Beşiktaş', 'Besiktas', 'Trabzonspor'].includes(name)) return 0.09 + noise * 0.04;
+  if (['Galatasaray', 'FenerbahÃ§e', 'Fenerbahce'].includes(name)) return 0.18 + noise * 0.08;
+  if (['BeÅŸiktaÅŸ', 'Besiktas', 'Trabzonspor'].includes(name)) return 0.14 + noise * 0.06;
   const overall = Number(team.overall || team.team_overall || 70);
-  if (overall >= 74) return 0.09 + noise * 0.05;
-  return 0.05 + noise * 0.04;
+  if (overall >= 74) return 0.12 + noise * 0.06;
+  return 0.08 + noise * 0.05;
 }
 
 function clubTransferBudget(team = {}) {
@@ -210,3 +210,4 @@ module.exports = {
   seededRatio,
   toInternalEuro
 };
+

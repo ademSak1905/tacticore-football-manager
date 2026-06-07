@@ -1,4 +1,4 @@
-const FALLBACK_FORMATIONS = {
+﻿const FALLBACK_FORMATIONS = {
   '4-4-2': [['GK', 50, 88], ['LB', 18, 70], ['CB', 39, 72], ['CB', 61, 72], ['RB', 82, 70], ['LM', 18, 48], ['CM', 39, 50], ['CM', 61, 50], ['RM', 82, 48], ['ST', 42, 22], ['ST', 58, 22]],
   '4-2-3-1': [['GK', 50, 88], ['LB', 18, 70], ['CB', 39, 72], ['CB', 61, 72], ['RB', 82, 70], ['DM', 40, 58], ['DM', 60, 58], ['AM', 50, 40], ['LW', 24, 32], ['RW', 76, 32], ['ST', 50, 20]],
   '4-3-3': [['GK', 50, 88], ['LB', 18, 70], ['CB', 39, 72], ['CB', 61, 72], ['RB', 82, 70], ['CM', 32, 52], ['CM', 50, 55], ['CM', 68, 52], ['LW', 23, 25], ['ST', 50, 20], ['RW', 77, 25]],
@@ -9,6 +9,9 @@ const FALLBACK_FORMATIONS = {
 };
 
 let tacticOptions = null;
+let tacticSession = null;
+let tacticBoosters = [];
+let tacticBoosterPlayers = [];
 
 function optionList(target, rows) {
   target.innerHTML = rows.map((item) => `<option value="${item.id}">${item.label || item.id}</option>`).join('');
@@ -22,7 +25,7 @@ function sliderText(id, labelId) {
 
 function syncSharedPitch() {
   const formation = byId('formation').value;
-  window.setSharedLineupFormation?.(formation);
+  window.setSharedLineupFormation?.(formation, { keepPlayers: true });
 }
 
 function renderMetrics() {
@@ -39,14 +42,14 @@ function renderMetrics() {
 
   byId('tempo').value = tempoValue;
   byId('tacticMetrics').innerHTML = [
-    ['Hücum', attack],
+    ['HÃ¼cum', attack],
     ['Orta saha', control],
     ['Savunma', defense],
     ['Pres riski', Math.round(pressing * 0.55 + aggression * 0.25)]
   ].map(([label, value]) => `<article class="stat-card"><span class="muted">${label}</span><strong>${value}</strong></article>`).join('');
 
   const attackLabel = byId('attack_style').selectedOptions[0]?.textContent || 'Dengeli';
-  const defenseLabel = byId('defense_style').selectedOptions[0]?.textContent || 'Alan Savunması';
+  const defenseLabel = byId('defense_style').selectedOptions[0]?.textContent || 'Alan SavunmasÄ±';
   byId('tacticHints').innerHTML = `
     <div class="event"><strong>${attackLabel}</strong><br>${attackHint(byId('attack_style').value)}</div>
     <div class="event"><strong>${defenseLabel}</strong><br>${defenseHint(byId('defense_style').value)}</div>
@@ -55,23 +58,23 @@ function renderMetrics() {
 
 function attackHint(value) {
   const hints = {
-    counter: 'Hızlı forvetlerle güçlüdür. Rakip savunma çizgisi öndeyse ekstra tehlike üretir.',
-    tiki_taka: 'Yüksek pas ve top sürme değerleriyle topa sahip olmayı artırır.',
-    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkasına erken oynar.',
-    wide: 'Genişlik yükseldikçe kanat ortaları ve korner baskısı artar.',
-    press_attack: 'Önde top kazanır ama yüksek kondisyon ister.',
-    balanced: 'Riskleri düşük, maç içinde dengeli tepki veren plan.'
+    counter: 'HÄ±zlÄ± forvetlerle gÃ¼Ã§lÃ¼dÃ¼r. Rakip savunma Ã§izgisi Ã¶ndeyse ekstra tehlike Ã¼retir.',
+    tiki_taka: 'YÃ¼ksek pas ve top sÃ¼rme deÄŸerleriyle topa sahip olmayÄ± artÄ±rÄ±r.',
+    long_ball: 'Pivot forvet ve toplu stoperlerle savunma arkasÄ±na erken oynar.',
+    wide: 'GeniÅŸlik yÃ¼kseldikÃ§e kanat ortalarÄ± ve korner baskÄ±sÄ± artar.',
+    press_attack: 'Ã–nde top kazanÄ±r ama yÃ¼ksek kondisyon ister.',
+    balanced: 'Riskleri dÃ¼ÅŸÃ¼k, maÃ§ iÃ§inde dengeli tepki veren plan.'
   };
   return hints[value] || hints.balanced;
 }
 
 function defenseHint(value) {
   const hints = {
-    deep_block: 'Skoru korumaya iyidir, rakibe top bırakır.',
-    zonal: 'Dengeli savunma yerleşimi sağlar.',
+    deep_block: 'Skoru korumaya iyidir, rakibe top bÄ±rakÄ±r.',
+    zonal: 'Dengeli savunma yerleÅŸimi saÄŸlar.',
     man_marking: 'Rakibin pas ritmini bozar ama faul riski artar.',
-    high_press: 'Rakibi çıkarken boğar, arkada boşluk bırakabilir.',
-    ultra_defense: 'Çok güvenli ama hücum üretimini düşürür.'
+    high_press: 'Rakibi Ã§Ä±karken boÄŸar, arkada boÅŸluk bÄ±rakabilir.',
+    ultra_defense: 'Ã‡ok gÃ¼venli ama hÃ¼cum Ã¼retimini dÃ¼ÅŸÃ¼rÃ¼r.'
   };
   return hints[value] || hints.zonal;
 }
@@ -87,9 +90,69 @@ function refreshPreview() {
 
 window.refreshTacticPreview = refreshPreview;
 
+function loadTileSettings() {
+  document.querySelectorAll('.tactic-setting-tile[data-setting]').forEach((tile) => {
+    const options = String(tile.dataset.options || '').split(',').filter(Boolean);
+    const saved = localStorage.getItem(`tacticore_${tile.dataset.setting}`) || options[0] || '';
+    const value = options.includes(saved) ? saved : options[0];
+    tile.querySelector('small').textContent = value;
+    tile.classList.toggle('active', value !== options[0]);
+  });
+}
+
+document.querySelectorAll('.tactic-setting-tile[data-setting]').forEach((tile) => {
+  tile.addEventListener('click', () => {
+    const options = String(tile.dataset.options || '').split(',').filter(Boolean);
+    if (!options.length) return;
+    const current = tile.querySelector('small')?.textContent || options[0];
+    const next = options[(options.indexOf(current) + 1) % options.length] || options[0];
+    localStorage.setItem(`tacticore_${tile.dataset.setting}`, next);
+    tile.querySelector('small').textContent = next;
+    tile.classList.toggle('active', next !== options[0]);
+  });
+});
+
+function boosterLabel(key) {
+  const labels = {
+    condition_boost: 'Kondisyon guclendirici',
+    morale_boost: 'Moral guclendirici',
+    training_bonus: 'Antrenman bonusu',
+    scout_pack: 'Transfer gozlem paketi',
+    injury_heal: 'Sakatlik iyilestirme karti'
+  };
+  return labels[key] || key;
+}
+
+function renderBoosterInventory() {
+  const select = byId('boosterSelect');
+  const playerSelect = byId('boosterPlayer');
+  if (!select || !playerSelect) return;
+  select.innerHTML = tacticBoosters.length
+    ? tacticBoosters.map((item) => `<option value="${item.item_key}">${boosterLabel(item.item_key)} (${item.quantity})</option>`).join('')
+    : '<option value="">Boost yok</option>';
+  playerSelect.innerHTML = tacticBoosterPlayers.map((player) => (
+    `<option value="${player.id}">${player.name} - ${player.position} OVR ${player.overall}</option>`
+  )).join('');
+  byId('boosterInventory').innerHTML = tacticBoosters.length
+    ? tacticBoosters.map((item) => `<span>${boosterLabel(item.item_key)} x${item.quantity}</span>`).join('')
+    : '<span>Envanter bos</span>';
+  byId('useBooster').disabled = !tacticBoosters.length || !tacticBoosterPlayers.length;
+}
+
+async function loadBoosterInventory() {
+  if (!byId('boosterSelect')) return;
+  const [marketData, players] = await Promise.all([
+    api.request('/api/market/items'),
+    api.request(`/api/teams/${tacticSession.club.team_id}/players`)
+  ]);
+  tacticBoosters = marketData.boosters || [];
+  tacticBoosterPlayers = players || [];
+  renderBoosterInventory();
+}
+
 async function loadTactics() {
   wireShell(document.body.dataset.shellPage || 'tactics');
-  await requireAuth();
+  tacticSession = await requireAuth();
   tacticOptions = await api.request('/api/tactics/formations');
   optionList(byId('formation'), tacticOptions.formations.filter((item) => item.id !== 'custom'));
   optionList(byId('attack_style'), tacticOptions.attackStyles);
@@ -108,7 +171,9 @@ async function loadTactics() {
   byId('defensive_line').value = tactic.defensive_line ?? 50;
   byId('aggression').value = tactic.aggression ?? 50;
   byId('width').value = tactic.width ?? 60;
+  loadTileSettings();
   refreshPreview();
+  await loadBoosterInventory();
 }
 
 ['formation', 'attack_style', 'defense_style', 'tempo_label', 'pressing', 'defensive_line', 'aggression', 'width'].forEach((id) => {
@@ -135,13 +200,30 @@ byId('tacticForm')?.addEventListener('submit', async (event) => {
         width: byId('width').value
       })
     });
-    setMessage(saved.lineupUpdated
-      ? 'Taktik kaydedildi. İlk 11 dizilişi de güncellendi.'
-      : 'Taktik kaydedildi. İlk 11 için kadro ekranını kontrol et.');
-    window.reloadLineup?.();
+    setMessage('Taktik kaydedildi. İlk 11 oyuncuların korunuyor.');
+    window.renderLineup?.();
   } catch (error) {
     setMessage(error.message, 'error');
   }
 });
 
+byId('useBooster')?.addEventListener('click', async () => {
+  const itemKey = byId('boosterSelect')?.value;
+  const playerId = byId('boosterPlayer')?.value;
+  if (!itemKey || !playerId) return;
+  byId('boosterMessage').textContent = 'Boost uygulanÄ±yor...';
+  try {
+    const result = await api.request('/api/boosters/use', {
+      method: 'POST',
+      body: JSON.stringify({ itemKey, playerId })
+    });
+    byId('boosterMessage').textContent = result.message || 'Boost kullanildi.';
+    await loadBoosterInventory();
+    window.reloadLineup?.();
+  } catch (error) {
+    byId('boosterMessage').textContent = error.message;
+  }
+});
+
 loadTactics().catch((error) => setMessage(error.message, 'error'));
+

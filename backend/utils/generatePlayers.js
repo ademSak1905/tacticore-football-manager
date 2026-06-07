@@ -33,7 +33,7 @@ function createPlayer(position, strength, index, role = 'reserve') {
     morale: clamp(62 + rand(-12, 18)),
     salary: Math.round((base * 900 + rand(5000, 18000)) / 100) * 100,
     market_value: Math.round((base * base * 950 + rand(150000, 900000)) / 1000) * 1000,
-    injured: Math.random() < 0.04,
+    injured: false,
     lineup_role: role
   };
 }

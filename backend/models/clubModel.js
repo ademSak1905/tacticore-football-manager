@@ -17,7 +17,7 @@ async function createClub(userId, name, teamId = null) {
 }
 
 async function getByUserId(userId) {
-  return get(`
+  const club = await get(`
     SELECT c.id, c.user_id, c.team_id, c.currency, COALESCE(t.name, c.name) AS name,
       c.budget, c.salary_budget, c.season_objectives_json, c.season_intro_seen, c.season_summary_seen,
       c.stadium_capacity, c.fans, c.points, c.wins, c.draws, c.losses,
@@ -31,6 +31,17 @@ async function getByUserId(userId) {
     LEFT JOIN league_standings ls ON ls.team_id = c.team_id AND ls.user_id = c.user_id
     WHERE c.user_id = ?
   `, [userId]);
+  if (!club?.team_id) return club;
+  const plan = buildSeasonPlan({ ...club, overall: club.team_overall });
+  const budgetFloor = Math.round(Number(plan.transferBudget || 0) * 0.9);
+  const salaryFloor = Math.round(Number(plan.salaryBudget || 0) * 0.85);
+  if (Number(club.budget || 0) < budgetFloor || Number(club.salary_budget || 0) < salaryFloor) {
+    const nextBudget = Math.max(Number(club.budget || 0), budgetFloor);
+    const nextSalary = Math.max(Number(club.salary_budget || 0), salaryFloor);
+    await run('UPDATE clubs SET budget = ?, salary_budget = ? WHERE user_id = ?', [nextBudget, nextSalary, userId]);
+    return { ...club, budget: nextBudget, salary_budget: nextSalary };
+  }
+  return club;
 }
 
 async function getById(id) {

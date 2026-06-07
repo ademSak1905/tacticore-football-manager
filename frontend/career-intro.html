@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Imza Toreni | TactiCore</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260604-coins-spy-market">
+    <link rel="stylesheet" href="/css/style.css?v=20260607-compact-fixes">
   </head>
   <body class="intro-page">
     <main class="signing-stage">
@@ -37,14 +37,14 @@
         </div>
       </section>
     </main>
-    <script src="/js/auth.js?v=20260604-coins-nav"></script>
+    <script src="/js/auth.js?v=20260607-compact-fixes"></script>
     <script>
       (async () => {
         try {
           const session = await requireAuth();
           const plan = await api.request('/api/game/season-plan').catch(() => null);
           const club = session.club || {};
-          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direktör';
+          const managerName = session.user?.username || session.manager?.managerName || 'Teknik direktÃ¶r';
           byId('introLogo').src = club.logo_url || '/assets/logos/placeholder.svg';
           byId('introTitle').textContent = `${club.name || 'Kulup'} yeni teknik direktorunu acikladi`;
           byId('introText').textContent = plan
@@ -64,3 +64,4 @@
     </script>
   </body>
 </html>
+

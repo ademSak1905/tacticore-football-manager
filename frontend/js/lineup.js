@@ -185,10 +185,11 @@ function renderLineup() {
   renderPower();
 }
 
-function setSharedLineupFormation(formation) {
+function setSharedLineupFormation(formation, options = {}) {
   const lineupFormation = byId('formationSelect');
   if (!lineupFormation || !formations.some((item) => item.name === formation)) return;
   lineupFormation.value = formation;
+  if (options.keepPlayers) selectedIds = selectedIds.slice(0, 11);
   renderLineup();
 }
 

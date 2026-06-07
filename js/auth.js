@@ -54,7 +54,7 @@ const SHELL_NAV_ITEMS = [
   ['calendar', '/calendar.html', 'Maçlar'],
   ['transfers', '/transfers.html', 'Transferler'],
   ['training', '/training.html', 'Tesisler'],
-  ['lineup', '/lineup.html', 'Akademi'],
+  ['academy', '/academy.html', 'Akademi'],
   ['manager', '/manager.html', 'Menajer'],
   ['messages', '/messages.html', 'Mesajlar'],
   ['daily-tasks', '/daily-tasks.html', 'Görevler'],

@@ -1,0 +1,40 @@
+﻿<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Akademi | TactiCore</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260607-compact-fixes">
+  </head>
+  <body data-shell-page="academy">
+    <header class="topbar">
+      <button id="menuButton" class="btn secondary menu-btn">MenÃ¼</button>
+      <div class="brand"><span class="brand-mark">TC</span><span id="userBadge">KulÃ¼p</span></div>
+      <button id="logoutButton" class="btn secondary">Ã‡Ä±kÄ±ÅŸ</button>
+    </header>
+    <div class="layout">
+      <aside id="sidebar" class="sidebar"><nav class="nav"></nav></aside>
+      <main class="content">
+        <section class="page-title">
+          <div>
+            <h1>Akademi</h1>
+            <p class="muted">GenÃ§ oyuncu raporlarÄ±, potansiyel ve altyapÄ± takibi.</p>
+          </div>
+        </section>
+        <section class="grid two-col">
+          <div class="card">
+            <h2>GenÃ§ akademi raporlarÄ±</h2>
+            <div id="academyReports" class="timeline-list"></div>
+          </div>
+          <div class="card">
+            <h2>Akademi Ã¶zeti</h2>
+            <div id="academySummary" class="grid stats"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/js/auth.js?v=20260607-compact-fixes"></script>
+    <script src="/js/academy.js?v=20260607-compact-fixes"></script>
+  </body>
+</html>
+
