@@ -9216,3 +9216,110 @@ body[data-shell-page="dashboard"] .finance-card {
     display: none !important;
   }
 }
+
+/* 2026-06-08 emergency mobile dashboard overlap fix */
+@media (max-width: 900px) {
+  body .topbar .menu-btn::before {
+    content: "" !important;
+    width: 22px !important;
+    height: 15px !important;
+    background:
+      linear-gradient(#fff, #fff) 0 0 / 100% 3px no-repeat,
+      linear-gradient(#fff, #fff) 0 6px / 100% 3px no-repeat,
+      linear-gradient(#fff, #fff) 0 12px / 100% 3px no-repeat !important;
+  }
+
+  body .topbar .coin-widget {
+    grid-template-columns: 22px minmax(0, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  body .topbar .coin-widget .shell-widget-copy small,
+  body .topbar .coin-widget .shell-plus {
+    display: none !important;
+  }
+
+  body .topbar .coin-widget .shell-widget-copy strong {
+    display: block !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    color: #fff !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  body[data-shell-page="dashboard"] .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px 10px 28px !important;
+    overflow: visible !important;
+  }
+
+  body[data-shell-page="dashboard"] .dashboard-head-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "stats"
+      "match" !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+    margin: 0 0 10px !important;
+  }
+
+  body[data-shell-page="dashboard"] #dashboardStats.grid.stats {
+    grid-area: stats !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body[data-shell-page="dashboard"] #dashboardStats .stat-card {
+    height: auto !important;
+    min-height: 78px !important;
+    max-height: none !important;
+    padding: 10px 8px !important;
+  }
+
+  body[data-shell-page="dashboard"] #dashboardStats .stat-card strong,
+  body[data-shell-page="dashboard"] #dashboardStats .stat-card .stat-value {
+    font-size: 17px !important;
+    line-height: 1.08 !important;
+  }
+
+  body[data-shell-page="dashboard"] .dashboard-side-panel {
+    grid-area: match !important;
+    position: static !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 12px !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions select,
+  body[data-shell-page="dashboard"] .dashboard-side-panel .calendar-actions .btn,
+  body[data-shell-page="dashboard"] #goMatch {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    font-size: 12px !important;
+  }
+
+  body[data-shell-page="dashboard"] #goMatch {
+    grid-column: 1 / -1 !important;
+  }
+}
