@@ -53,11 +53,7 @@ async function seedSuperLigData(db) {
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         short_name = excluded.short_name,
-        logo_url = CASE
-          WHEN teams.logo_url IS NULL OR teams.logo_url = '' OR teams.logo_url LIKE '/assets/logos/%'
-          THEN excluded.logo_url
-          ELSE teams.logo_url
-        END,
+        logo_url = COALESCE(NULLIF(teams.logo_url, ''), excluded.logo_url),
         city = excluded.city,
         stadium = excluded.stadium,
         budget = excluded.budget,
